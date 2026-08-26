@@ -16,6 +16,11 @@ const sidebars = {
   docs: [
     {
       type: "category",
+      label: "Causcape",
+      items: ["causcape/first-vertical-slice"],
+    },
+    {
+      type: "category",
       label: "Introduction",
       link: {
         type: "doc",

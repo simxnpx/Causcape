@@ -32,7 +32,6 @@ import {
   isTestEnv,
   preventUnload,
   resolvablePromise,
-  isRunningInIframe,
   isDevEnv,
   randomId,
   viewportCoordsToSceneCoords,
@@ -433,7 +432,9 @@ const ExcalidrawWrapper = ({
   const initialProjectRef = useRef(initialProject);
 
   const [errorMessage, setErrorMessage] = useState("");
-  const isCollabDisabled = isRunningInIframe();
+  // The first Causcape slice is intentionally local-first. Keeping this gate
+  // explicit prevents upstream collaboration UI from implying a server model.
+  const isCollabDisabled = true;
 
   const { editorTheme, appTheme, setAppTheme } = useHandleAppTheme();
 
