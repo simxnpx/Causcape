@@ -290,7 +290,7 @@ export const CauscapeDocumentEditor = ({
       schema: causcapeDocumentSchema,
       initialContent: initialContent as never,
     },
-    [document],
+    [],
   );
 
   const getReferenceItems = async (query: string) => {

@@ -35,6 +35,61 @@
   color: #77736f;
 }
 
+.causcape-document-project-title {
+  margin: 0.35rem 0 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.causcape-canvas-stack {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.causcape-project-actions {
+  position: absolute;
+  z-index: calc(var(--zIndex-ui-top, 100) + 1);
+  top: 0.75rem;
+  left: 50%;
+  display: flex;
+  gap: 0.4rem;
+  transform: translateX(-50%);
+}
+
+.causcape-project-actions button {
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  border-radius: 0.55rem;
+  padding: 0.5rem 0.7rem;
+  background: rgba(255, 255, 255, 0.94);
+  color: #34323d;
+  box-shadow: 0 0.15rem 0.65rem rgba(0, 0, 0, 0.1);
+  font: 600 0.78rem/1 var(--ui-font, system-ui, sans-serif);
+  cursor: pointer;
+}
+
+.causcape-project-loading {
+  display: grid;
+  min-height: 100dvh;
+  place-items: center;
+  color: #706c77;
+  background: #f7f7f4;
+  font-family: Assistant, system-ui, sans-serif;
+}
+
+.causcape-project-error {
+  position: fixed;
+  z-index: 1000;
+  right: 1rem;
+  bottom: 1rem;
+  max-width: 28rem;
+  border: 1px solid #b64343;
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: #fff1f1;
+  color: #782828;
+}
+
 .causcape-document-region h1 {
   margin: 0 0 1rem;
   font-size: clamp(2rem, 4vw, 3.5rem);

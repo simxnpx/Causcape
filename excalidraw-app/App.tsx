@@ -9,7 +9,10 @@ import {
   useExcalidrawAPI,
 } from "@excalidraw/excalidraw";
 import { trackEvent } from "@excalidraw/excalidraw/analytics";
-import { getDefaultAppState } from "@excalidraw/excalidraw/appState";
+import {
+  clearAppStateForLocalStorage,
+  getDefaultAppState,
+} from "@excalidraw/excalidraw/appState";
 import {
   CommandPalette,
   DEFAULT_CATEGORIES,
@@ -31,6 +34,7 @@ import {
   resolvablePromise,
   isRunningInIframe,
   isDevEnv,
+  randomId,
 } from "@excalidraw/common";
 import polyfill from "@excalidraw/excalidraw/polyfill";
 import {
@@ -86,7 +90,12 @@ import type {
 } from "@excalidraw/excalidraw/types";
 import type { ResolutionType } from "@excalidraw/common/utility-types";
 import type { ResolvablePromise } from "@excalidraw/common/utils";
-import type { CanvasObject, CauscapeDocument } from "@causcape/core";
+import {
+  createProjectFromTemplate,
+  type CauscapeDocument,
+  type Project,
+  type ProjectTemplate,
+} from "@causcape/core";
 
 import CustomStats from "./CustomStats";
 import {
@@ -158,6 +167,13 @@ import "./index.scss";
 import { ExcalidrawPlusPromoBanner } from "./components/ExcalidrawPlusPromoBanner";
 import { AppSidebar } from "./components/AppSidebar";
 import { CauscapeProjectShell } from "./components/CauscapeProjectShell";
+import { CauscapeProjectDashboard } from "./components/CauscapeProjectDashboard";
+import {
+  CauscapeProjectRepository,
+  downloadProjectFile,
+  IndexedDbProjectDriver,
+  type ProjectSummary,
+} from "./data/CauscapeProjectRepository";
 
 import type { CollabAPI } from "./collab/Collab";
 
@@ -389,16 +405,20 @@ const initializeScene = async (opts: {
 };
 
 type ExcalidrawWrapperProps = {
+  initialProject?: Project;
   onProjectCanvasChange?: (
     elements: readonly OrderedExcalidrawElement[],
     appState: AppState,
+    files: BinaryFiles,
   ) => void;
 };
 
 const ExcalidrawWrapper = ({
+  initialProject,
   onProjectCanvasChange,
 }: ExcalidrawWrapperProps) => {
   const excalidrawAPI = useExcalidrawAPI();
+  const initialProjectRef = useRef(initialProject);
 
   const [errorMessage, setErrorMessage] = useState("");
   const isCollabDisabled = isRunningInIframe();
@@ -587,6 +607,14 @@ const ExcalidrawWrapper = ({
       return;
     }
 
+    if (initialProjectRef.current) {
+      initialStatePromiseRef.current.promise.resolve(
+        initialProjectRef.current.canvas
+          .scene as unknown as ExcalidrawInitialDataState,
+      );
+      return;
+    }
+
     initializeScene({ collabAPI, excalidrawAPI }).then(async (data) => {
       loadImages(data, /* isInitialLoad */ true);
       initialStatePromiseRef.current.promise.resolve(data.scene);
@@ -742,7 +770,7 @@ const ExcalidrawWrapper = ({
     appState: AppState,
     files: BinaryFiles,
   ) => {
-    onProjectCanvasChange?.(elements, appState);
+    onProjectCanvasChange?.(elements, appState, files);
 
     if (collabAPI?.isCollaborating()) {
       collabAPI.syncElements(elements);
@@ -1328,44 +1356,106 @@ const ExcalidrawWrapper = ({
   );
 };
 
-const initialCauscapeDocument: CauscapeDocument = {
-  schemaVersion: 1,
-  blocks: [
-    {
-      id: "project-overview",
-      type: "heading",
-      props: { level: 1 },
-      content: [{ type: "text", text: "Untitled engineering project" }],
-      children: [],
+const createBrowserProject = (template: ProjectTemplate) => {
+  const title =
+    template === "architecture"
+      ? "Untitled architecture"
+      : template === "post-incident"
+      ? "Untitled post-incident"
+      : "Untitled engineering project";
+  return createProjectFromTemplate({
+    id: randomId(),
+    title,
+    template,
+    occurredAt: new Date().toISOString(),
+    provenance: {
+      actor: { type: "human", id: "local-user" },
+      channel: "browser",
+      summary: `Created from the ${template} template`,
     },
-    {
-      id: "project-introduction",
-      type: "paragraph",
-      props: {},
-      content: [
-        {
-          type: "text",
-          text: "Explain the architecture, incident, decisions, and evidence represented by the canvas above. Type @ to reference a named canvas object.",
-        },
-      ],
-      children: [],
-    },
-  ],
+  });
 };
+
+const serializeCanvasScene = (
+  elements: readonly OrderedExcalidrawElement[],
+  appState: AppState,
+  files: BinaryFiles,
+): Project["canvas"]["scene"] =>
+  JSON.parse(
+    JSON.stringify({
+      elements,
+      appState: clearAppStateForLocalStorage(appState),
+      files,
+    }),
+  ) as Project["canvas"]["scene"];
 
 const CauscapeProjectWorkspace = () => {
   const excalidrawAPI = useExcalidrawAPI();
-  const [document, setDocument] = useState(initialCauscapeDocument);
-  const [objects, setObjects] = useState<
-    Readonly<Record<string, CanvasObject>>
-  >({});
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  const repositoryRef = useRef<CauscapeProjectRepository | null>(null);
+  const [project, setProject] = useState<Project | null>(null);
+  const [projects, setProjects] = useState<readonly ProjectSummary[]>([]);
+  const [showDashboard, setShowDashboard] = useState(false);
   const [selectedObjectIds, setSelectedObjectIds] = useState<readonly string[]>(
     [],
   );
   const [isDocumentEditable, setIsDocumentEditable] = useState(true);
+  const [projectError, setProjectError] = useState("");
+
+  const refreshProjects = useCallback(async () => {
+    if (repositoryRef.current) {
+      setProjects(await repositoryRef.current.list());
+    }
+  }, []);
+
+  useEffect(() => {
+    if (repositoryRef.current) {
+      return;
+    }
+    const ownerWindow = workspaceRef.current?.ownerDocument.defaultView;
+    if (!ownerWindow) {
+      return;
+    }
+    const repository = new CauscapeProjectRepository(
+      new IndexedDbProjectDriver(ownerWindow.indexedDB),
+    );
+    repositoryRef.current = repository;
+
+    void repository
+      .list()
+      .then(async (summaries) => {
+        setProjects(summaries);
+        if (summaries[0]) {
+          setProject(await repository.load(summaries[0].id));
+          return;
+        }
+        const initialProject = createBrowserProject("blank");
+        await repository.save(initialProject);
+        setProject(initialProject);
+        setProjects(await repository.list());
+      })
+      .catch((error: Error) => setProjectError(error.message));
+  }, []);
+
+  useEffect(() => {
+    const ownerWindow = workspaceRef.current?.ownerDocument.defaultView;
+    if (!project || !ownerWindow || !repositoryRef.current) {
+      return;
+    }
+    const timeout = ownerWindow.setTimeout(() => {
+      void repositoryRef.current
+        ?.save(project)
+        .catch((error: Error) => setProjectError(error.message));
+    }, 350);
+    return () => ownerWindow.clearTimeout(timeout);
+  }, [project]);
 
   const handleCanvasChange = useCallback(
-    (elements: readonly OrderedExcalidrawElement[], appState: AppState) => {
+    (
+      elements: readonly OrderedExcalidrawElement[],
+      appState: AppState,
+      files: BinaryFiles,
+    ) => {
       const nextSelectedObjectIds = Object.keys(appState.selectedElementIds);
       setSelectedObjectIds((currentIds) =>
         currentIds.length === nextSelectedObjectIds.length &&
@@ -1373,30 +1463,22 @@ const CauscapeProjectWorkspace = () => {
           ? currentIds
           : nextSelectedObjectIds,
       );
-      setObjects((currentObjects) => {
-        const nextObjects = { ...currentObjects };
-        let didChange = false;
+      setProject((currentProject) => {
+        if (!currentProject) {
+          return currentProject;
+        }
+        const nextObjects = { ...currentProject.canvas.objects };
         for (const element of elements) {
           const storedName = element.customData?.causcape?.name;
-          const currentObject = currentObjects[element.id];
+          const currentObject = currentProject.canvas.objects[element.id];
           const nextName =
             typeof storedName === "string" && storedName.trim()
               ? storedName.trim()
               : currentObject?.name;
           const nextState = element.isDeleted ? "deleted" : "active";
-          if (
-            currentObject &&
-            currentObject.state === nextState &&
-            currentObject.name === nextName &&
-            currentObject.elementIds.length === 1 &&
-            currentObject.elementIds[0] === element.id
-          ) {
-            continue;
-          }
-          didChange = true;
           nextObjects[element.id] = {
             id: element.id,
-            elementIds: [element.id],
+            elementIds: nextState === "active" ? [element.id] : [],
             ...(nextName ? { name: nextName } : {}),
             metadata: currentObject?.metadata ?? {},
             state: nextState,
@@ -1405,15 +1487,44 @@ const CauscapeProjectWorkspace = () => {
               : {}),
           };
         }
-        return didChange ? nextObjects : currentObjects;
+        const nextScene = serializeCanvasScene(elements, appState, files);
+        if (
+          JSON.stringify(currentProject.canvas.scene) ===
+            JSON.stringify(nextScene) &&
+          JSON.stringify(currentProject.canvas.objects) ===
+            JSON.stringify(nextObjects)
+        ) {
+          return currentProject;
+        }
+        return {
+          ...currentProject,
+          updatedAt: new Date().toISOString(),
+          canvas: { scene: nextScene, objects: nextObjects },
+        };
       });
     },
     [],
   );
 
+  const handleDocumentChange = useCallback((document: CauscapeDocument) => {
+    setProject((currentProject) => {
+      if (
+        !currentProject ||
+        JSON.stringify(currentProject.document) === JSON.stringify(document)
+      ) {
+        return currentProject;
+      }
+      return {
+        ...currentProject,
+        document,
+        updatedAt: new Date().toISOString(),
+      };
+    });
+  }, []);
+
   const focusCanvasObject = useCallback(
     (objectId: string) => {
-      const object = objects[objectId];
+      const object = project?.canvas.objects[objectId];
       const elementId = object?.elementIds[0];
       if (!excalidrawAPI || !elementId || object.state !== "active") {
         return;
@@ -1427,41 +1538,154 @@ const CauscapeProjectWorkspace = () => {
         animation: true,
       });
     },
-    [excalidrawAPI, objects],
+    [excalidrawAPI, project?.canvas.objects],
   );
 
+  const createProject = useCallback(async (template: ProjectTemplate) => {
+    if (!repositoryRef.current) {
+      return;
+    }
+    const nextProject = createBrowserProject(template);
+    await repositoryRef.current.save(nextProject);
+    setProject(nextProject);
+    setSelectedObjectIds([]);
+    setShowDashboard(false);
+    setProjects(await repositoryRef.current.list());
+  }, []);
+
+  const openLocalProject = useCallback(async (id: string) => {
+    if (!repositoryRef.current) {
+      return;
+    }
+    const opened = await repositoryRef.current.load(id);
+    if (opened) {
+      setProject(opened);
+      setSelectedObjectIds([]);
+      setShowDashboard(false);
+    }
+  }, []);
+
+  const importProject = useCallback(async (file: File) => {
+    if (!repositoryRef.current) {
+      return;
+    }
+    try {
+      const imported = await repositoryRef.current.importCopy(
+        await file.text(),
+        { id: randomId(), occurredAt: new Date().toISOString() },
+      );
+      setProject(imported);
+      setSelectedObjectIds([]);
+      setShowDashboard(false);
+      setProjects(await repositoryRef.current.list());
+      setProjectError("");
+    } catch (error) {
+      setProjectError(
+        error instanceof Error ? error.message : "Could not import project",
+      );
+    }
+  }, []);
+
+  const exportProject = useCallback(() => {
+    const ownerDocument = workspaceRef.current?.ownerDocument;
+    if (project && ownerDocument) {
+      downloadProjectFile(project, ownerDocument);
+    }
+  }, [project]);
+
+  if (showDashboard) {
+    return (
+      <div ref={workspaceRef}>
+        <CauscapeProjectDashboard
+          projects={projects}
+          onOpen={(id) => void openLocalProject(id)}
+          onCreate={(template) => void createProject(template)}
+          onImport={(file) => void importProject(file)}
+        />
+        {projectError ? (
+          <p className="causcape-project-error" role="alert">
+            {projectError}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (!project) {
+    return (
+      <div ref={workspaceRef} className="causcape-project-loading">
+        {projectError || "Opening your project…"}
+      </div>
+    );
+  }
+
   return (
-    <CauscapeProjectShell
-      canvas={<ExcalidrawWrapper onProjectCanvasChange={handleCanvasChange} />}
-      document={
-        <article>
-          <header className="causcape-document-header">
-            <p className="causcape-document-eyebrow">Project document</p>
-            <button
-              type="button"
-              className="causcape-document-mode-button"
-              onClick={() => setIsDocumentEditable((editable) => !editable)}
-            >
-              {isDocumentEditable ? "Read" : "Edit"}
-            </button>
-          </header>
-          <Suspense
-            fallback={
-              <p className="causcape-document-loading">Loading document…</p>
-            }
-          >
-            <CauscapeDocumentEditor
-              document={document}
-              objects={objects}
-              selectedObjectIds={selectedObjectIds}
-              editable={isDocumentEditable}
-              onChange={setDocument}
-              onReferenceActivate={focusCanvasObject}
+    <div ref={workspaceRef}>
+      <CauscapeProjectShell
+        canvas={
+          <div className="causcape-canvas-stack">
+            <ExcalidrawWrapper
+              key={project.id}
+              initialProject={project}
+              onProjectCanvasChange={handleCanvasChange}
             />
-          </Suspense>
-        </article>
-      }
-    />
+            <nav className="causcape-project-actions" aria-label="Project">
+              <button
+                type="button"
+                onClick={() => {
+                  void refreshProjects();
+                  setShowDashboard(true);
+                }}
+              >
+                Projects
+              </button>
+              <button type="button" onClick={exportProject}>
+                Export .causcape
+              </button>
+            </nav>
+          </div>
+        }
+        document={
+          <article>
+            <header className="causcape-document-header">
+              <div>
+                <p className="causcape-document-eyebrow">Project document</p>
+                <p className="causcape-document-project-title">
+                  {project.title}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="causcape-document-mode-button"
+                onClick={() => setIsDocumentEditable((editable) => !editable)}
+              >
+                {isDocumentEditable ? "Read" : "Edit"}
+              </button>
+            </header>
+            <Suspense
+              fallback={
+                <p className="causcape-document-loading">Loading document…</p>
+              }
+            >
+              <CauscapeDocumentEditor
+                key={project.id}
+                document={project.document}
+                objects={project.canvas.objects}
+                selectedObjectIds={selectedObjectIds}
+                editable={isDocumentEditable}
+                onChange={handleDocumentChange}
+                onReferenceActivate={focusCanvasObject}
+              />
+            </Suspense>
+          </article>
+        }
+      />
+      {projectError ? (
+        <p className="causcape-project-error" role="alert">
+          {projectError}
+        </p>
+      ) : null}
+    </div>
   );
 };
 

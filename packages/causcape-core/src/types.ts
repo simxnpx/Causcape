@@ -49,6 +49,16 @@ export type CauscapeDocument = {
   readonly blocks: readonly DocumentBlock[];
 };
 
+export type ProjectTemplate = "blank" | "architecture" | "post-incident";
+
+export type CreateProjectFromTemplateOptions = {
+  readonly id: string;
+  readonly title: string;
+  readonly template: ProjectTemplate;
+  readonly occurredAt: string;
+  readonly provenance: Provenance;
+};
+
 export type SerializedScene = {
   readonly elements: readonly Readonly<Record<string, JsonValue>>[];
   readonly appState: Readonly<Record<string, JsonValue>>;

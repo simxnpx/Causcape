@@ -1,4 +1,5 @@
 export {
+  createProjectFromTemplate,
   findCanvasReferences,
   openProject,
   resolveCanvasReference,

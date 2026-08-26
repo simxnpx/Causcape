@@ -2,6 +2,7 @@ import type {
   CanvasObject,
   CanvasReference,
   CauscapeDocument,
+  CreateProjectFromTemplateOptions,
   DocumentBlock,
   JsonValue,
   MetadataValue,
@@ -15,6 +16,29 @@ import type {
 } from "./types";
 
 const EMPTY_SCENE = { elements: [], appState: {}, files: {} } as const;
+
+const TEMPLATE_SECTIONS = {
+  architecture: [
+    "Overview",
+    "Goals and constraints",
+    "Components",
+    "Main flows",
+    "Decisions",
+    "Risks and failure modes",
+    "Open questions",
+  ],
+  "post-incident": [
+    "Summary",
+    "Impact",
+    "Detection",
+    "Timeline",
+    "Technical explanation",
+    "Root cause and contributing factors",
+    "Mitigation and recovery",
+    "Follow-up actions",
+    "Lessons learned",
+  ],
+} as const;
 
 const issue = (
   code: ProjectIssue["code"],
@@ -406,6 +430,62 @@ export const transactProject = (
   });
   const issues = validateProject(draft);
   return issues.length ? { ok: false, issues } : { ok: true, value: draft };
+};
+
+export const createProjectFromTemplate = (
+  options: CreateProjectFromTemplateOptions,
+): Project => {
+  const sections =
+    options.template === "blank" ? [] : TEMPLATE_SECTIONS[options.template];
+  const blocks: DocumentBlock[] = sections.flatMap((section, index) => {
+    const sectionId = section
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+    const heading: DocumentBlock = {
+      id: `${options.id}-${sectionId}-heading`,
+      type: "heading",
+      props: { level: index === 0 ? 1 : 2 },
+      content: [{ type: "text", text: section }],
+      children: [],
+    };
+    const body: DocumentBlock = {
+      id: `${options.id}-${sectionId}-body`,
+      type: "paragraph",
+      props: {},
+      content: [],
+      children: [],
+    };
+    return [heading, body];
+  });
+  if (blocks.length === 0) {
+    blocks.push({
+      id: `${options.id}-body`,
+      type: "paragraph",
+      props: {},
+      content: [],
+      children: [],
+    });
+  }
+
+  const result = transactProject(null, {
+    id: `create-${options.id}`,
+    expectedRevision: null,
+    occurredAt: options.occurredAt,
+    provenance: options.provenance,
+    operations: [
+      {
+        type: "project.create",
+        id: options.id,
+        title: options.title,
+        document: { schemaVersion: 1, blocks },
+      },
+    ],
+  });
+  if (!result.ok) {
+    throw new Error(result.issues.map((entry) => entry.message).join("; "));
+  }
+  return result.value;
 };
 
 const canonicalize = (value: JsonValue): JsonValue => {

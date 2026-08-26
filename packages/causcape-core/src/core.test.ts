@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  createProjectFromTemplate,
   findCanvasReferences,
   openProject,
   resolveCanvasReference,
@@ -42,6 +43,40 @@ const createProject = (): Project => {
 };
 
 describe("Causcape project transactions", () => {
+  it("creates removable architecture and post-incident document sections", () => {
+    const architecture = createProjectFromTemplate({
+      id: "architecture-project",
+      title: "Payments architecture",
+      template: "architecture",
+      occurredAt: "2026-08-26T10:00:00.000Z",
+      provenance,
+    });
+    const incident = createProjectFromTemplate({
+      id: "incident-project",
+      title: "Checkout incident",
+      template: "post-incident",
+      occurredAt: "2026-08-26T10:00:00.000Z",
+      provenance,
+    });
+
+    expect(architecture.document.blocks.map((block) => block.content)).toEqual(
+      expect.arrayContaining([
+        [{ type: "text", text: "Overview" }],
+        [{ type: "text", text: "Main flows" }],
+        [{ type: "text", text: "Risks and failure modes" }],
+      ]),
+    );
+    expect(incident.document.blocks.map((block) => block.content)).toEqual(
+      expect.arrayContaining([
+        [{ type: "text", text: "Impact" }],
+        [{ type: "text", text: "Timeline" }],
+        [{ type: "text", text: "Root cause and contributing factors" }],
+      ]),
+    );
+    expect(architecture.canvas.scene.elements).toEqual([]);
+    expect(incident.canvas.scene.elements).toEqual([]);
+  });
+
   it("creates a valid project at revision zero", () => {
     const project = createProject();
 

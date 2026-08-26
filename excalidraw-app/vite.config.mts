@@ -24,6 +24,20 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: [
         {
+          find: /^@causcape\/core$/,
+          replacement: path.resolve(
+            __dirname,
+            "../packages/causcape-core/src/index.ts",
+          ),
+        },
+        {
+          find: /^@causcape\/core\/(.*?)/,
+          replacement: path.resolve(
+            __dirname,
+            "../packages/causcape-core/src/$1",
+          ),
+        },
+        {
           find: /^@excalidraw\/common$/,
           replacement: path.resolve(
             __dirname,

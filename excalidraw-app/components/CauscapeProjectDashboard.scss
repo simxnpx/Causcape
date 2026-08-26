@@ -1,0 +1,95 @@
+.causcape-dashboard {
+  min-height: 100dvh;
+  padding: 5rem max(2rem, calc((100vw - 70rem) / 2)) 8rem;
+  color: #29272f;
+  background: #f7f7f4;
+  font-family: Assistant, system-ui, sans-serif;
+}
+
+.causcape-dashboard__header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 3rem;
+  margin-bottom: 4rem;
+}
+
+.causcape-dashboard h1 {
+  max-width: 42rem;
+  margin: 0.5rem 0 1rem;
+  font-size: clamp(2.5rem, 5vw, 4.5rem);
+  line-height: 0.98;
+  letter-spacing: -0.055em;
+}
+
+.causcape-dashboard h2 {
+  margin: 2.5rem 0 1rem;
+  font-size: 1rem;
+}
+
+.causcape-dashboard__import,
+.causcape-dashboard__templates button,
+.causcape-dashboard__projects button {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 0.75rem;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.causcape-dashboard__import {
+  flex: none;
+  padding: 0.75rem 1rem;
+  font-weight: 650;
+}
+
+.causcape-dashboard__import input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.causcape-dashboard__templates {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.causcape-dashboard__templates button,
+.causcape-dashboard__projects button {
+  display: grid;
+  gap: 0.45rem;
+  padding: 1.25rem;
+  text-align: left;
+  transition: transform 120ms ease, border-color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.causcape-dashboard__templates button:hover,
+.causcape-dashboard__projects button:hover {
+  transform: translateY(-2px);
+  border-color: rgba(105, 99, 203, 0.55);
+  box-shadow: 0 0.6rem 1.5rem rgba(30, 28, 45, 0.08);
+}
+
+.causcape-dashboard__templates span,
+.causcape-dashboard__projects span,
+.causcape-dashboard__compatibility {
+  color: #706c77;
+  line-height: 1.45;
+}
+
+.causcape-dashboard__projects {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.causcape-dashboard__compatibility {
+  max-width: 44rem;
+  margin-top: 2rem;
+  font-size: 0.9rem;
+}
