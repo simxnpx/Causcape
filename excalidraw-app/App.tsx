@@ -148,6 +148,7 @@ import "./index.scss";
 
 import { ExcalidrawPlusPromoBanner } from "./components/ExcalidrawPlusPromoBanner";
 import { AppSidebar } from "./components/AppSidebar";
+import { CauscapeProjectShell } from "./components/CauscapeProjectShell";
 
 import type { CollabAPI } from "./collab/Collab";
 
@@ -1311,9 +1312,23 @@ const ExcalidrawApp = () => {
   return (
     <TopErrorBoundary>
       <Provider store={appJotaiStore}>
-        <ExcalidrawAPIProvider>
-          <ExcalidrawWrapper />
-        </ExcalidrawAPIProvider>
+        <CauscapeProjectShell
+          canvas={
+            <ExcalidrawAPIProvider>
+              <ExcalidrawWrapper />
+            </ExcalidrawAPIProvider>
+          }
+          document={
+            <article>
+              <p className="causcape-document-eyebrow">Project document</p>
+              <h1>Untitled engineering project</h1>
+              <p>
+                Explain the architecture, incident, decisions, and evidence
+                represented by the canvas above.
+              </p>
+            </article>
+          }
+        />
       </Provider>
     </TopErrorBoundary>
   );

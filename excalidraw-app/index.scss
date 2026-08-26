@@ -1,5 +1,26 @@
 @import "../packages/excalidraw/css/variables.module.scss";
 
+.causcape-document-eyebrow {
+  margin: 0 0 0.75rem;
+  color: #6f6a7a;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.causcape-document-region h1 {
+  margin: 0 0 1rem;
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  letter-spacing: -0.04em;
+}
+
+.causcape-document-region p {
+  max-width: 44rem;
+  font-size: 1.1rem;
+  line-height: 1.7;
+}
+
 .excalidraw {
   --color-primary-contrast-offset: #625ee0; // to offset Chubb illusion
 
