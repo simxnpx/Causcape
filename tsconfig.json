@@ -19,6 +19,8 @@
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
+      "@causcape/core": ["./packages/causcape-core/src/index.ts"],
+      "@causcape/core/*": ["./packages/causcape-core/src/*"],
       "@excalidraw/common": ["./packages/common/src/index.ts"],
       "@excalidraw/common/*": ["./packages/common/src/*"],
       "@excalidraw/excalidraw": ["./packages/excalidraw/index.tsx"],
