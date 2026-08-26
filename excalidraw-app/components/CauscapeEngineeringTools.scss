@@ -1,18 +1,21 @@
 .causcape-engineering-tools {
   position: absolute;
   z-index: calc(var(--zIndex-ui-top, 100) + 2);
-  top: 0.75rem;
-  left: 0.75rem;
+  top: 50%;
+  right: 0.75rem;
+  transform: translateY(-50%);
   color: #34323d;
   font: 500 0.78rem/1.25 var(--ui-font, system-ui, sans-serif);
 }
 
 .causcape-engineering-tools__buttons {
   display: flex;
+  flex-direction: column;
   gap: 0.35rem;
-  justify-content: center;
+  align-items: stretch;
 
   button {
+    min-width: 8.5rem;
     padding: 0.55rem 0.75rem;
     border: 1px solid rgba(0, 0, 0, 0.12);
     border-radius: 0.55rem;
@@ -30,8 +33,12 @@
 
 .causcape-engineering-tools__popover {
   position: absolute;
-  top: calc(100% + 0.5rem);
+  top: 50%;
+  right: calc(100% + 0.5rem);
+  transform: translateY(-50%);
   width: min(22rem, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
   padding: 0.65rem;
   border: 1px solid rgba(0, 0, 0, 0.12);
   border-radius: 0.75rem;
@@ -40,7 +47,6 @@
 }
 
 .causcape-engineering-tools__palette {
-  left: 0;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.3rem;
@@ -74,8 +80,6 @@
 }
 
 .causcape-engineering-tools__details {
-  left: 0;
-
   header,
   header > div,
   form,
