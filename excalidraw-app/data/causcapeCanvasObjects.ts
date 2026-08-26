@@ -15,7 +15,8 @@ export type PreparedEngineeringShapeKind =
   | "actor"
   | "trust-boundary"
   | "resource"
-  | "flow";
+  | "flow"
+  | "flow-interrupted";
 
 type PreparedEngineeringShape = {
   readonly kind: PreparedEngineeringShapeKind;
@@ -26,6 +27,8 @@ type PreparedEngineeringShape = {
   readonly strokeColor: string;
   readonly backgroundColor: string;
   readonly strokeStyle?: "solid" | "dashed";
+  readonly objectKind?: string;
+  readonly metadata?: Readonly<Record<string, MetadataValue>>;
 };
 
 export const PREPARED_ENGINEERING_SHAPES: readonly PreparedEngineeringShape[] =
@@ -104,6 +107,18 @@ export const PREPARED_ENGINEERING_SHAPES: readonly PreparedEngineeringShape[] =
       strokeColor: "#4263eb",
       backgroundColor: "transparent",
     },
+    {
+      kind: "flow-interrupted",
+      label: "Interrupted flow",
+      elementType: "arrow",
+      width: 260,
+      height: 0,
+      strokeColor: "#e03131",
+      backgroundColor: "transparent",
+      strokeStyle: "dashed",
+      objectKind: "flow",
+      metadata: { status: "interrupted" },
+    },
   ];
 
 type CauscapeElementData = {
@@ -159,12 +174,13 @@ export const createPreparedEngineeringShape = ({
     throw new Error(`Unknown prepared engineering shape ${kind}`);
   }
   const objectName = name?.trim() || preparedShape.label;
+  const objectKind = preparedShape.objectKind ?? kind;
   const elementData = {
     causcape: {
-      kind,
+      kind: objectKind,
       name: objectName,
       prepared: true,
-      metadata: { kind },
+      metadata: { kind: objectKind, ...(preparedShape.metadata ?? {}) },
     },
   };
   const commonSkeleton = {

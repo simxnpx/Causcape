@@ -97,6 +97,37 @@ describe("CauscapeFlowOverlay", () => {
     );
   });
 
+  it("stops failed-flow packets at a visible interruption marker", () => {
+    const interruptedArrow = arrow({
+      customData: {
+        causcape: {
+          kind: "flow",
+          metadata: { kind: "flow", status: "interrupted" },
+        },
+      },
+    });
+    const [path] = buildEngineeringFlowPaths([interruptedArrow], {
+      zoom: { value: 1 },
+      scrollX: 0,
+      scrollY: 0,
+      width: 800,
+      height: 600,
+    });
+
+    expect(path.interruption).toEqual({ x: 124.57, y: 34.57 });
+    expect(path.packetD).toBe("M 10.5 20.5 L 110 20 L 124.57 34.57");
+
+    render(<CauscapeFlowOverlay paths={[path]} />);
+    const overlay = screen.getByTestId("causcape-flow-overlay");
+    expect(
+      overlay.querySelector("[data-flow-interruption='flow-arrow']"),
+    ).toBeInTheDocument();
+    expect(overlay.querySelector("animateMotion")).toHaveAttribute(
+      "path",
+      path.packetD,
+    );
+  });
+
   it("retains live paths supplied through its frame-coalesced update handle", () => {
     const callbacks: FrameRequestCallback[] = [];
     vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {

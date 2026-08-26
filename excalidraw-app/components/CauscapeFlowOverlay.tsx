@@ -25,6 +25,8 @@ export type EngineeringFlowPath = {
   readonly color: string;
   readonly d: string;
   readonly packetCount: number;
+  readonly packetD?: string;
+  readonly interruption?: { readonly x: number; readonly y: number };
 };
 
 export type CauscapeFlowOverlayHandle = {
@@ -42,6 +44,50 @@ const FLOW_VIEWPORT_MARGIN = 32;
 const EMPTY_FLOW_PATHS: readonly EngineeringFlowPath[] = [];
 
 const compactCoordinate = (value: number) => Number(value.toFixed(2));
+
+type FlowPoint = { readonly x: number; readonly y: number };
+
+const toSvgPath = (points: readonly FlowPoint[]) =>
+  points
+    .map(({ x, y }, index) => `${index === 0 ? "M" : "L"} ${x} ${y}`)
+    .join(" ");
+
+const slicePathAtProgress = (
+  points: readonly FlowPoint[],
+  progress: number,
+): { readonly points: readonly FlowPoint[]; readonly end: FlowPoint } => {
+  const segmentLengths = points
+    .slice(1)
+    .map((point, index) =>
+      Math.hypot(point.x - points[index].x, point.y - points[index].y),
+    );
+  const targetLength =
+    segmentLengths.reduce((sum, length) => sum + length, 0) * progress;
+  const slicedPoints: FlowPoint[] = [points[0]];
+  let traversed = 0;
+
+  for (let index = 0; index < segmentLengths.length; index += 1) {
+    const segmentLength = segmentLengths[index];
+    const start = points[index];
+    const end = points[index + 1];
+    if (traversed + segmentLength < targetLength) {
+      slicedPoints.push(end);
+      traversed += segmentLength;
+      continue;
+    }
+    const segmentProgress = segmentLength
+      ? (targetLength - traversed) / segmentLength
+      : 0;
+    const interruption = {
+      x: compactCoordinate(start.x + (end.x - start.x) * segmentProgress),
+      y: compactCoordinate(start.y + (end.y - start.y) * segmentProgress),
+    };
+    slicedPoints.push(interruption);
+    return { points: slicedPoints, end: interruption };
+  }
+
+  return { points, end: points[points.length - 1] };
+};
 
 export const buildEngineeringFlowPaths = (
   elements: readonly OrderedExcalidrawElement[],
@@ -83,15 +129,26 @@ export const buildEngineeringFlowPaths = (
       return length + Math.hypot(point.x - previous.x, point.y - previous.y);
     }, 0);
     const packetCount = pathLength < 160 ? 1 : pathLength < 280 ? 2 : 3;
+    const causcapeData = element.customData?.causcape as
+      | { readonly metadata?: Readonly<Record<string, unknown>> }
+      | undefined;
+    const isInterrupted = causcapeData?.metadata?.status === "interrupted";
+    const interruption = isInterrupted
+      ? slicePathAtProgress(points, 0.5)
+      : null;
 
     return [
       {
         id: element.id,
         color: element.strokeColor,
-        d: points
-          .map(({ x, y }, index) => `${index === 0 ? "M" : "L"} ${x} ${y}`)
-          .join(" "),
+        d: toSvgPath(points),
         packetCount,
+        ...(interruption
+          ? {
+              packetD: toSvgPath(interruption.points),
+              interruption: interruption.end,
+            }
+          : {}),
       },
     ];
   });
@@ -174,7 +231,7 @@ export const CauscapeFlowOverlay = forwardRef<
               fill={path.color}
             >
               <animateMotion
-                path={path.d}
+                path={path.packetD ?? path.d}
                 dur="2.4s"
                 begin={`${(-2.4 * index) / path.packetCount}s`}
                 repeatCount="indefinite"
@@ -183,6 +240,36 @@ export const CauscapeFlowOverlay = forwardRef<
               />
             </rect>
           ))}
+          {path.interruption ? (
+            <g
+              className="causcape-flow-overlay__interruption"
+              data-flow-interruption={path.id}
+              transform={`translate(${path.interruption.x} ${path.interruption.y})`}
+            >
+              <circle
+                className="causcape-flow-overlay__interruption-pulse"
+                r="10"
+              >
+                <animate
+                  attributeName="r"
+                  values="10;18"
+                  dur="1.6s"
+                  repeatCount="indefinite"
+                />
+                <animate
+                  attributeName="opacity"
+                  values="0.55;0"
+                  dur="1.6s"
+                  repeatCount="indefinite"
+                />
+              </circle>
+              <circle
+                className="causcape-flow-overlay__interruption-core"
+                r="10"
+              />
+              <path d="M -3.5 -3.5 L 3.5 3.5 M 3.5 -3.5 L -3.5 3.5" />
+            </g>
+          ) : null}
         </g>
       ))}
     </svg>

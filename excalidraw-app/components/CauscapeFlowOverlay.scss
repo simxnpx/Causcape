@@ -14,8 +14,33 @@
   vector-effect: non-scaling-stroke;
 }
 
+.causcape-flow-overlay__interruption {
+  > path {
+    fill: none;
+    stroke: white;
+    stroke-linecap: round;
+    stroke-width: 2.25;
+  }
+}
+
+.causcape-flow-overlay__interruption-core {
+  fill: #e03131;
+  stroke: white;
+  stroke-width: 2;
+}
+
+.causcape-flow-overlay__interruption-pulse {
+  fill: none;
+  stroke: #e03131;
+  stroke-width: 2;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .causcape-flow-overlay__packet {
+    display: none;
+  }
+
+  .causcape-flow-overlay__interruption-pulse {
     display: none;
   }
 }

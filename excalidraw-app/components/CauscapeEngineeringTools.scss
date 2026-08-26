@@ -98,6 +98,27 @@
   }
 }
 
+.causcape-engineering-tools__swatch--flow-interrupted {
+  border-top-style: dashed;
+
+  &::before {
+    position: absolute;
+    z-index: 1;
+    top: -0.38rem;
+    left: 50%;
+    display: grid;
+    width: 0.7rem;
+    height: 0.7rem;
+    transform: translateX(-50%);
+    border-radius: 50%;
+    background: #e03131;
+    color: white;
+    content: "×";
+    font: 700 0.65rem/0.65rem system-ui, sans-serif;
+    place-items: center;
+  }
+}
+
 .causcape-engineering-tools__details {
   header,
   header > div,

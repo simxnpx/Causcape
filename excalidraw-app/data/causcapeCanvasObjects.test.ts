@@ -20,6 +20,7 @@ describe("Causcape canvas objects", () => {
       "trust-boundary",
       "resource",
       "flow",
+      "flow-interrupted",
     ]);
   });
 
@@ -53,6 +54,34 @@ describe("Causcape canvas objects", () => {
         metadata: { kind: "flow" },
         state: "active",
       },
+    });
+  });
+
+  it("creates an interrupted flow with inspectable failure metadata", () => {
+    const elements = createPreparedEngineeringShape({
+      kind: "flow-interrupted",
+      objectId: "failed-payment-request",
+      x: 100,
+      y: 200,
+    });
+
+    expect(elements[0]).toMatchObject({
+      type: "arrow",
+      strokeColor: "#e03131",
+      strokeStyle: "dashed",
+      endArrowhead: "arrow",
+      customData: {
+        causcape: {
+          kind: "flow",
+          metadata: { kind: "flow", status: "interrupted" },
+        },
+      },
+    });
+    expect(
+      deriveCanvasObjects(elements, {})["failed-payment-request"],
+    ).toMatchObject({
+      name: "Interrupted flow",
+      metadata: { kind: "flow", status: "interrupted" },
     });
   });
 

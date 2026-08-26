@@ -71,7 +71,7 @@ export const CauscapeEngineeringTools = ({
               }}
             >
               <span
-                className={`causcape-engineering-tools__swatch causcape-engineering-tools__swatch--${shape.elementType}`}
+                className={`causcape-engineering-tools__swatch causcape-engineering-tools__swatch--${shape.elementType} causcape-engineering-tools__swatch--${shape.kind}`}
                 style={{
                   borderColor: shape.strokeColor,
                   background: shape.backgroundColor,
