@@ -1,4 +1,10 @@
-import { useRef, useState, type ReactNode, type WheelEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+  type WheelEvent,
+} from "react";
 
 import "./CauscapeProjectShell.scss";
 
@@ -11,38 +17,163 @@ type CauscapeProjectShellProps = {
 };
 
 const REVEAL_WHEEL_DISTANCE = 600;
+const REVEAL_ANIMATION_DURATION = 180;
+const SURFACE_RESIZE_SETTLE_DELAY = 100;
 const BRIEFING_CANVAS_HEIGHT_VH = 45;
 
 const clampProgress = (value: number) => Math.min(1, Math.max(0, value));
+const canvasHeightForProgress = (progress: number) =>
+  Number((100 - progress * (100 - BRIEFING_CANVAS_HEIGHT_VH)).toFixed(3));
 
 export const CauscapeProjectShell = ({
   canvas,
   document,
   onModeChange,
 }: CauscapeProjectShellProps) => {
-  const [revealProgress, setRevealProgress] = useState(0);
+  const [mode, setMode] = useState<ProjectMode>("focus");
+  const modeRef = useRef<ProjectMode>("focus");
+  const shellRef = useRef<HTMLDivElement>(null);
+  const canvasRegionRef = useRef<HTMLElement>(null);
+  const canvasSurfaceRef = useRef<HTMLDivElement>(null);
   const documentRef = useRef<HTMLElement>(null);
-  const mode: ProjectMode = revealProgress === 0 ? "focus" : "briefing";
-  const canvasHeight = 100 - revealProgress * (100 - BRIEFING_CANVAS_HEIGHT_VH);
+  const revealProgressRef = useRef(0);
+  const surfaceProgressRef = useRef(0);
+  const targetProgressRef = useRef(0);
+  const animationFrameRef = useRef<number | null>(null);
+  const previousFrameTimeRef = useRef<number | null>(null);
+  const deferSurfaceResizeRef = useRef(false);
+  const surfaceResizeTimeoutRef = useRef<number | null>(null);
 
-  const setProgress = (value: number) => {
-    const nextProgress = clampProgress(value);
-    const nextMode: ProjectMode = nextProgress === 0 ? "focus" : "briefing";
-    if (nextMode !== mode) {
+  const changeMode = (nextMode: ProjectMode) => {
+    if (modeRef.current !== nextMode) {
+      modeRef.current = nextMode;
+      setMode(nextMode);
       onModeChange?.(nextMode);
     }
-    setRevealProgress(nextProgress);
+  };
+
+  const renderProgress = (progress: number) => {
+    const roundedProgress = Number(progress.toFixed(3));
+    revealProgressRef.current = roundedProgress;
+    if (shellRef.current) {
+      shellRef.current.dataset.revealProgress = String(roundedProgress);
+    }
+    if (canvasRegionRef.current) {
+      canvasRegionRef.current.style.height = `${canvasHeightForProgress(
+        roundedProgress,
+      )}dvh`;
+    }
+  };
+
+  const resizeCanvasSurface = (progress: number) => {
+    const roundedProgress = Number(progress.toFixed(3));
+    surfaceProgressRef.current = roundedProgress;
+    if (canvasSurfaceRef.current) {
+      canvasSurfaceRef.current.style.height = `${canvasHeightForProgress(
+        roundedProgress,
+      )}dvh`;
+    }
+  };
+
+  const cancelSurfaceResizeDelay = () => {
+    const ownerWindow = shellRef.current?.ownerDocument.defaultView;
+    if (surfaceResizeTimeoutRef.current !== null) {
+      ownerWindow?.clearTimeout(surfaceResizeTimeoutRef.current);
+      surfaceResizeTimeoutRef.current = null;
+    }
+  };
+
+  const deferCanvasSurfaceResize = () => {
+    const ownerWindow = shellRef.current?.ownerDocument.defaultView;
+    cancelSurfaceResizeDelay();
+    deferSurfaceResizeRef.current = true;
+    if (ownerWindow) {
+      surfaceResizeTimeoutRef.current = ownerWindow.setTimeout(() => {
+        surfaceResizeTimeoutRef.current = null;
+        deferSurfaceResizeRef.current = false;
+        if (animationFrameRef.current === null) {
+          resizeCanvasSurface(targetProgressRef.current);
+        }
+      }, SURFACE_RESIZE_SETTLE_DELAY);
+    }
+  };
+
+  function scheduleAnimation() {
+    if (animationFrameRef.current !== null) {
+      return;
+    }
+    const ownerWindow = shellRef.current?.ownerDocument.defaultView;
+    if (ownerWindow) {
+      animationFrameRef.current = ownerWindow.requestAnimationFrame(animate);
+    }
+  }
+
+  function animate(frameTime: number) {
+    animationFrameRef.current = null;
+    const previousFrameTime = previousFrameTimeRef.current ?? frameTime - 16;
+    const elapsed = Math.min(32, Math.max(1, frameTime - previousFrameTime));
+    previousFrameTimeRef.current = frameTime;
+
+    const currentProgress = revealProgressRef.current;
+    const targetProgress = targetProgressRef.current;
+    const distance = targetProgress - currentProgress;
+    const maximumStep = elapsed / REVEAL_ANIMATION_DURATION;
+    const nextProgress =
+      Math.abs(distance) <= maximumStep
+        ? targetProgress
+        : currentProgress + Math.sign(distance) * maximumStep;
+
+    renderProgress(nextProgress);
+    if (nextProgress !== targetProgress) {
+      scheduleAnimation();
+      return;
+    }
+
+    previousFrameTimeRef.current = null;
+    if (!deferSurfaceResizeRef.current) {
+      resizeCanvasSurface(targetProgress);
+    }
+    if (targetProgress === 0) {
+      changeMode("focus");
+    }
+  }
+
+  const requestProgress = (value: number, deferSurfaceResize = false) => {
+    const nextProgress = clampProgress(value);
+    targetProgressRef.current = nextProgress;
+    if (deferSurfaceResize) {
+      deferCanvasSurfaceResize();
+    } else {
+      cancelSurfaceResizeDelay();
+      deferSurfaceResizeRef.current = false;
+    }
+    // Expand Excalidraw before revealing more of it. During shrink, keep its
+    // viewport stable and clip it until the transition completes.
+    if (nextProgress < surfaceProgressRef.current) {
+      resizeCanvasSurface(deferSurfaceResize ? 0 : nextProgress);
+    }
+    if (nextProgress > 0) {
+      changeMode("briefing");
+    }
+    scheduleAnimation();
   };
 
   const adjustProgress = (deltaY: number) => {
-    setProgress(revealProgress + deltaY / REVEAL_WHEEL_DISTANCE);
+    requestProgress(
+      targetProgressRef.current + deltaY / REVEAL_WHEEL_DISTANCE,
+      true,
+    );
   };
 
   const handleCanvasWheel = (event: WheelEvent<HTMLElement>) => {
     if (event.ctrlKey || event.metaKey || event.deltaY === 0) {
       return;
     }
-    if (event.deltaY > 0 || revealProgress > 0) {
+    if (
+      event.deltaY > 0 ||
+      targetProgressRef.current > 0 ||
+      revealProgressRef.current > 0
+    ) {
       event.preventDefault();
       event.stopPropagation();
       adjustProgress(event.deltaY);
@@ -55,7 +186,7 @@ export const CauscapeProjectShell = ({
     }
     const documentAtTop = (documentRef.current?.scrollTop ?? 0) <= 0;
     const shouldResizeForDownwardScroll =
-      event.deltaY > 0 && revealProgress < 1;
+      event.deltaY > 0 && revealProgressRef.current < 1;
     const shouldResizeForUpwardScroll = event.deltaY < 0 && documentAtTop;
     if (shouldResizeForDownwardScroll || shouldResizeForUpwardScroll) {
       event.preventDefault();
@@ -64,26 +195,50 @@ export const CauscapeProjectShell = ({
     }
   };
 
+  useEffect(
+    () => () => {
+      const ownerWindow = shellRef.current?.ownerDocument.defaultView;
+      if (animationFrameRef.current !== null) {
+        ownerWindow?.cancelAnimationFrame(animationFrameRef.current);
+      }
+      cancelSurfaceResizeDelay();
+    },
+    [],
+  );
+
   return (
     <div
+      ref={shellRef}
       className="causcape-project-shell"
       data-mode={mode}
-      data-reveal-progress={String(Number(revealProgress.toFixed(3)))}
+      data-reveal-progress={String(revealProgressRef.current)}
       data-testid="causcape-project-shell"
     >
       <section
+        ref={canvasRegionRef}
         className="causcape-canvas-region"
         data-testid="causcape-canvas-region"
         aria-label="Engineering canvas"
-        style={{ height: `${Number(canvasHeight.toFixed(3))}dvh` }}
+        style={{
+          height: `${canvasHeightForProgress(revealProgressRef.current)}dvh`,
+        }}
         onWheelCapture={handleCanvasWheel}
       >
-        <div className="causcape-canvas-surface">{canvas}</div>
+        <div
+          ref={canvasSurfaceRef}
+          className="causcape-canvas-surface"
+          data-testid="causcape-canvas-surface"
+          style={{
+            height: `${canvasHeightForProgress(surfaceProgressRef.current)}dvh`,
+          }}
+        >
+          {canvas}
+        </div>
         {mode === "focus" ? (
           <button
             className="causcape-document-handle"
             type="button"
-            onClick={() => setProgress(1)}
+            onClick={() => requestProgress(1)}
             aria-label="Open project document"
           >
             <span
@@ -96,7 +251,7 @@ export const CauscapeProjectShell = ({
           <button
             className="causcape-focus-button"
             type="button"
-            onClick={() => setProgress(0)}
+            onClick={() => requestProgress(0)}
             aria-label="Focus canvas"
           >
             Focus canvas

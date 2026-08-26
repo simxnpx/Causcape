@@ -15,7 +15,6 @@
   overflow: hidden;
   background: var(--island-bg-color, #fff);
   z-index: 2;
-  transition: height 80ms ease-out;
 }
 
 .causcape-project-shell[data-mode="briefing"] .causcape-canvas-region {
@@ -24,8 +23,9 @@
 }
 
 .causcape-canvas-surface {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  height: 100%;
 }
 
 .causcape-document-handle,
