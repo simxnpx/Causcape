@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 
 import {
+  adjustmentsIcon,
+  drawShapeToolIcon,
+} from "@excalidraw/excalidraw/components/icons";
+
+import {
   PREPARED_ENGINEERING_SHAPES,
   type PreparedEngineeringShapeKind,
 } from "../data/causcapeCanvasObjects";
@@ -42,22 +47,59 @@ export const CauscapeEngineeringTools = ({
 
   return (
     <div className="causcape-engineering-tools">
-      <div className="causcape-engineering-tools__buttons">
-        <button type="button" onClick={() => setShowShapes((shown) => !shown)}>
-          Engineering shapes
+      <div
+        className="causcape-engineering-tools__buttons"
+        role="toolbar"
+        aria-label="Engineering canvas tools"
+      >
+        <button
+          type="button"
+          className="causcape-engineering-tools__tool"
+          aria-label="Engineering shapes"
+          aria-expanded={showShapes}
+          aria-controls="causcape-engineering-shapes"
+          data-tooltip="Engineering shapes"
+          title="Engineering shapes"
+          onClick={() => {
+            setShowShapes((shown) => !shown);
+            setShowDetails(false);
+          }}
+        >
+          {drawShapeToolIcon}
         </button>
         <button
           type="button"
+          className={`causcape-engineering-tools__tool causcape-engineering-tools__tool--details${
+            selectedObject
+              ? " causcape-engineering-tools__tool--has-selection"
+              : ""
+          }`}
           disabled={!selectedObject}
-          onClick={() => setShowDetails((shown) => !shown)}
           aria-label="Object details"
+          aria-expanded={showDetails}
+          aria-controls="causcape-object-details"
+          data-tooltip={
+            selectedObject
+              ? "Object details"
+              : "Select an object to view details"
+          }
+          title={
+            selectedObject
+              ? "Object details"
+              : "Select an object to view details"
+          }
+          onClick={() => {
+            setShowDetails((shown) => !shown);
+            setShowShapes(false);
+          }}
         >
-          Details
+          {adjustmentsIcon}
         </button>
       </div>
 
       {showShapes ? (
         <div
+          id="causcape-engineering-shapes"
           className="causcape-engineering-tools__popover causcape-engineering-tools__palette"
           aria-label="Prepared engineering shapes"
         >
@@ -86,6 +128,7 @@ export const CauscapeEngineeringTools = ({
 
       {showDetails && selectedObject ? (
         <aside
+          id="causcape-object-details"
           className="causcape-engineering-tools__popover causcape-engineering-tools__details"
           aria-label="Selected object details"
         >

@@ -4,6 +4,53 @@ import { describe, expect, it, vi } from "vitest";
 import { CauscapeEngineeringTools } from "./CauscapeEngineeringTools";
 
 describe("CauscapeEngineeringTools", () => {
+  it("uses compact accessible icon tools and clearly disables details", () => {
+    const { rerender } = render(
+      <CauscapeEngineeringTools
+        selectedObject={null}
+        onAddShape={vi.fn()}
+        onRename={vi.fn()}
+        onMetadataSet={vi.fn()}
+        onMetadataDelete={vi.fn()}
+      />,
+    );
+
+    const shapesButton = screen.getByRole("button", {
+      name: "Engineering shapes",
+    });
+    const detailsButton = screen.getByRole("button", {
+      name: "Object details",
+    });
+    expect(shapesButton.textContent).toBe("");
+    expect(shapesButton.querySelector("svg")).toBeInTheDocument();
+    expect(detailsButton).toBeDisabled();
+    expect(detailsButton).toHaveAttribute(
+      "data-tooltip",
+      "Select an object to view details",
+    );
+
+    rerender(
+      <CauscapeEngineeringTools
+        selectedObject={{
+          id: "api",
+          elementIds: ["api-shape"],
+          name: "API",
+          metadata: { kind: "service" },
+          state: "active",
+        }}
+        onAddShape={vi.fn()}
+        onRename={vi.fn()}
+        onMetadataSet={vi.fn()}
+        onMetadataDelete={vi.fn()}
+      />,
+    );
+
+    expect(detailsButton).toBeEnabled();
+    expect(detailsButton).toHaveClass(
+      "causcape-engineering-tools__tool--has-selection",
+    );
+  });
+
   it("adds prepared engineering shapes from the palette", () => {
     const onAddShape = vi.fn();
     render(
