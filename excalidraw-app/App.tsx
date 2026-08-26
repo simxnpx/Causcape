@@ -173,6 +173,10 @@ import { CauscapeProjectShell } from "./components/CauscapeProjectShell";
 import { CauscapeProjectDashboard } from "./components/CauscapeProjectDashboard";
 import { CauscapeEngineeringTools } from "./components/CauscapeEngineeringTools";
 import {
+  CauscapeFlowOverlay,
+  type CauscapeFlowOverlayHandle,
+} from "./components/CauscapeFlowOverlay";
+import {
   CauscapeProjectRepository,
   downloadProjectFile,
   IndexedDbProjectDriver,
@@ -430,6 +434,7 @@ const ExcalidrawWrapper = ({
 }: ExcalidrawWrapperProps) => {
   const excalidrawAPI = useExcalidrawAPI();
   const initialProjectRef = useRef(initialProject);
+  const flowOverlayRef = useRef<CauscapeFlowOverlayHandle>(null);
 
   const [errorMessage, setErrorMessage] = useState("");
   // The first Causcape slice is intentionally local-first. Keeping this gate
@@ -778,11 +783,21 @@ const ExcalidrawWrapper = ({
     };
   }, [excalidrawAPI]);
 
+  useEffect(() => {
+    if (excalidrawAPI) {
+      flowOverlayRef.current?.update(
+        excalidrawAPI.getSceneElementsIncludingDeleted(),
+        excalidrawAPI.getAppState(),
+      );
+    }
+  }, [excalidrawAPI]);
+
   const onChange = (
     elements: readonly OrderedExcalidrawElement[],
     appState: AppState,
     files: BinaryFiles,
   ) => {
+    flowOverlayRef.current?.update(elements, appState);
     onProjectCanvasChange?.(elements, appState, files);
 
     if (collabAPI?.isCollaborating()) {
@@ -1365,6 +1380,7 @@ const ExcalidrawWrapper = ({
           />
         )}
       </Excalidraw>
+      <CauscapeFlowOverlay ref={flowOverlayRef} />
     </div>
   );
 };

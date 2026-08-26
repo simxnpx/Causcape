@@ -19,7 +19,41 @@ describe("Causcape canvas objects", () => {
       "actor",
       "trust-boundary",
       "resource",
+      "flow",
     ]);
+  });
+
+  it("creates a prepared flow as a named directional arrow", () => {
+    const elements = createPreparedEngineeringShape({
+      kind: "flow",
+      objectId: "payment-request",
+      name: "Payment request",
+      x: 100,
+      y: 200,
+    });
+
+    expect(elements).toHaveLength(2);
+    expect(elements[0]).toMatchObject({
+      type: "arrow",
+      endArrowhead: "arrow",
+      groupIds: ["payment-request"],
+      customData: {
+        causcape: {
+          kind: "flow",
+          name: "Payment request",
+          prepared: true,
+        },
+      },
+    });
+    expect(deriveCanvasObjects(elements, {})).toEqual({
+      "payment-request": {
+        id: "payment-request",
+        elementIds: elements.map((element) => element.id),
+        name: "Payment request",
+        metadata: { kind: "flow" },
+        state: "active",
+      },
+    });
   });
 
   it("creates a prepared shape as one grouped, named canvas object", () => {

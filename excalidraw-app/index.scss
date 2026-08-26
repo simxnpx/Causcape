@@ -47,6 +47,10 @@
   height: 100%;
 }
 
+.causcape-canvas-stack > .excalidraw-app {
+  position: relative;
+}
+
 .causcape-project-actions {
   position: absolute;
   z-index: calc(var(--zIndex-ui-top, 100) + 1);

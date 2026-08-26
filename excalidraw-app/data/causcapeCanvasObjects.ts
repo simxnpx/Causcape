@@ -14,12 +14,13 @@ export type PreparedEngineeringShapeKind =
   | "external-system"
   | "actor"
   | "trust-boundary"
-  | "resource";
+  | "resource"
+  | "flow";
 
 type PreparedEngineeringShape = {
   readonly kind: PreparedEngineeringShapeKind;
   readonly label: string;
-  readonly elementType: "rectangle" | "ellipse" | "diamond";
+  readonly elementType: "rectangle" | "ellipse" | "diamond" | "arrow";
   readonly width: number;
   readonly height: number;
   readonly strokeColor: string;
@@ -94,6 +95,15 @@ export const PREPARED_ENGINEERING_SHAPES: readonly PreparedEngineeringShape[] =
       strokeColor: "#495057",
       backgroundColor: "#e9ecef",
     },
+    {
+      kind: "flow",
+      label: "Flow / Packets",
+      elementType: "arrow",
+      width: 260,
+      height: 0,
+      strokeColor: "#4263eb",
+      backgroundColor: "transparent",
+    },
   ];
 
 type CauscapeElementData = {
@@ -157,18 +167,16 @@ export const createPreparedEngineeringShape = ({
       metadata: { kind },
     },
   };
-  const skeleton: ExcalidrawElementSkeleton = {
-    id: `${objectId}-shape`,
-    type: preparedShape.elementType,
+  const commonSkeleton = {
     x,
     y,
     width: preparedShape.width,
     height: preparedShape.height,
     strokeColor: preparedShape.strokeColor,
     backgroundColor: preparedShape.backgroundColor,
-    fillStyle: "solid",
-    strokeWidth: 2,
-    strokeStyle: preparedShape.strokeStyle ?? "solid",
+    fillStyle: "solid" as const,
+    strokeWidth: preparedShape.elementType === "arrow" ? 3 : 2,
+    strokeStyle: preparedShape.strokeStyle ?? ("solid" as const),
     groupIds: [objectId],
     customData: elementData,
     label: {
@@ -178,6 +186,20 @@ export const createPreparedEngineeringShape = ({
       customData: elementData,
     },
   };
+  const skeleton: ExcalidrawElementSkeleton =
+    preparedShape.elementType === "arrow"
+      ? {
+          ...commonSkeleton,
+          id: `${objectId}-flow`,
+          type: "arrow",
+          endArrowhead: "arrow",
+          roughness: 0,
+        }
+      : {
+          ...commonSkeleton,
+          id: `${objectId}-shape`,
+          type: preparedShape.elementType,
+        };
   return convertToExcalidrawElements([skeleton], {
     regenerateIds: false,
   }) as OrderedExcalidrawElement[];

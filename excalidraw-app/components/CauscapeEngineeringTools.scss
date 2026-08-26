@@ -79,6 +79,25 @@
   border-radius: 0.25rem;
 }
 
+.causcape-engineering-tools__swatch--arrow {
+  position: relative;
+  height: 0;
+  border-width: 2px 0 0;
+  border-radius: 0;
+
+  &::after {
+    position: absolute;
+    top: -0.35rem;
+    right: -0.05rem;
+    width: 0.55rem;
+    height: 0.55rem;
+    border-top: 2px solid;
+    border-right: 2px solid;
+    transform: rotate(45deg);
+    content: "";
+  }
+}
+
 .causcape-engineering-tools__details {
   header,
   header > div,
