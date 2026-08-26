@@ -1,33 +1,24 @@
 .causcape-project-shell {
-  --causcape-briefing-canvas-height: 45vh;
-
+  display: flex;
+  flex-direction: column;
   height: 100dvh;
   width: 100%;
   background: #f7f7f4;
   overflow: hidden;
-
-  &[data-mode="briefing"] {
-    overflow-y: auto;
-    overscroll-behavior-y: contain;
-  }
+  overscroll-behavior: none;
 }
 
 .causcape-canvas-region {
   position: relative;
-  height: 100dvh;
+  flex: 0 0 auto;
   min-height: 18rem;
+  overflow: hidden;
   background: var(--island-bg-color, #fff);
   z-index: 2;
+  transition: height 80ms ease-out;
 }
 
 .causcape-project-shell[data-mode="briefing"] .causcape-canvas-region {
-  position: sticky;
-  top: 0;
-  height: var(--causcape-briefing-canvas-height);
-  max-height: 75vh;
-  min-height: 18rem;
-  resize: vertical;
-  overflow: hidden;
   border-bottom: 1px solid rgba(0, 0, 0, 0.12);
   box-shadow: 0 0.4rem 1.6rem rgba(20, 20, 20, 0.1);
 }
@@ -47,7 +38,7 @@
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.94);
   color: #34323d;
-  box-shadow: 0 0.2rem 0.8rem rgba(0, 0, 0, 0.12);
+  box-shadow: 0 0.2rem 0.8rem rgba(20, 20, 20, 0.12);
   font: 600 0.78rem/1 var(--ui-font, system-ui, sans-serif);
   cursor: pointer;
 }
@@ -76,7 +67,11 @@
 
 .causcape-document-region {
   display: none;
-  min-height: 100vh;
+  flex: 1 1 auto;
+  min-height: 0;
+  box-sizing: border-box;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
   padding: 4rem max(2rem, calc((100vw - 54rem) / 2)) 8rem;
   color: #29272f;
   background: #f7f7f4;

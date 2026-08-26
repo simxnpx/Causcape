@@ -1,5 +1,4 @@
-import type { ReactNode, WheelEvent } from "react";
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode, type WheelEvent } from "react";
 
 import "./CauscapeProjectShell.scss";
 
@@ -11,68 +10,80 @@ type CauscapeProjectShellProps = {
   onModeChange?: (mode: ProjectMode) => void;
 };
 
+const REVEAL_WHEEL_DISTANCE = 600;
+const BRIEFING_CANVAS_HEIGHT_VH = 45;
+
+const clampProgress = (value: number) => Math.min(1, Math.max(0, value));
+
 export const CauscapeProjectShell = ({
   canvas,
   document,
   onModeChange,
 }: CauscapeProjectShellProps) => {
-  const [mode, setMode] = useState<ProjectMode>("focus");
-  const shellRef = useRef<HTMLDivElement>(null);
+  const [revealProgress, setRevealProgress] = useState(0);
   const documentRef = useRef<HTMLElement>(null);
-  const briefingScrollTop = useRef(0);
+  const mode: ProjectMode = revealProgress === 0 ? "focus" : "briefing";
+  const canvasHeight = 100 - revealProgress * (100 - BRIEFING_CANVAS_HEIGHT_VH);
 
-  const changeMode = (nextMode: ProjectMode) => {
-    if (nextMode === mode) {
-      return;
+  const setProgress = (value: number) => {
+    const nextProgress = clampProgress(value);
+    const nextMode: ProjectMode = nextProgress === 0 ? "focus" : "briefing";
+    if (nextMode !== mode) {
+      onModeChange?.(nextMode);
     }
-    const shell = shellRef.current;
-    const ownerWindow = shell?.ownerDocument.defaultView;
-    if (mode === "briefing") {
-      briefingScrollTop.current = shell?.scrollTop ?? 0;
-    }
-    setMode(nextMode);
-    onModeChange?.(nextMode);
+    setRevealProgress(nextProgress);
+  };
 
-    ownerWindow?.requestAnimationFrame(() => {
-      if (nextMode === "briefing") {
-        if (shell) {
-          shell.scrollTop = briefingScrollTop.current;
-        }
-        documentRef.current?.scrollIntoView?.({ block: "start" });
-      }
-    });
+  const adjustProgress = (deltaY: number) => {
+    setProgress(revealProgress + deltaY / REVEAL_WHEEL_DISTANCE);
   };
 
   const handleCanvasWheel = (event: WheelEvent<HTMLElement>) => {
-    if (
-      mode === "focus" &&
-      event.deltaY > 24 &&
-      !event.ctrlKey &&
-      !event.metaKey
-    ) {
-      changeMode("briefing");
+    if (event.ctrlKey || event.metaKey || event.deltaY === 0) {
+      return;
+    }
+    if (event.deltaY > 0 || revealProgress > 0) {
+      event.preventDefault();
+      event.stopPropagation();
+      adjustProgress(event.deltaY);
+    }
+  };
+
+  const handleDocumentWheel = (event: WheelEvent<HTMLElement>) => {
+    if (event.ctrlKey || event.metaKey || event.deltaY === 0) {
+      return;
+    }
+    const documentAtTop = (documentRef.current?.scrollTop ?? 0) <= 0;
+    const shouldResizeForDownwardScroll =
+      event.deltaY > 0 && revealProgress < 1;
+    const shouldResizeForUpwardScroll = event.deltaY < 0 && documentAtTop;
+    if (shouldResizeForDownwardScroll || shouldResizeForUpwardScroll) {
+      event.preventDefault();
+      event.stopPropagation();
+      adjustProgress(event.deltaY);
     }
   };
 
   return (
     <div
-      ref={shellRef}
       className="causcape-project-shell"
       data-mode={mode}
+      data-reveal-progress={String(Number(revealProgress.toFixed(3)))}
       data-testid="causcape-project-shell"
     >
       <section
         className="causcape-canvas-region"
         data-testid="causcape-canvas-region"
         aria-label="Engineering canvas"
-        onWheel={handleCanvasWheel}
+        style={{ height: `${Number(canvasHeight.toFixed(3))}dvh` }}
+        onWheelCapture={handleCanvasWheel}
       >
         <div className="causcape-canvas-surface">{canvas}</div>
         {mode === "focus" ? (
           <button
             className="causcape-document-handle"
             type="button"
-            onClick={() => changeMode("briefing")}
+            onClick={() => setProgress(1)}
             aria-label="Open project document"
           >
             <span
@@ -85,7 +96,7 @@ export const CauscapeProjectShell = ({
           <button
             className="causcape-focus-button"
             type="button"
-            onClick={() => changeMode("focus")}
+            onClick={() => setProgress(0)}
             aria-label="Focus canvas"
           >
             Focus canvas
@@ -93,7 +104,13 @@ export const CauscapeProjectShell = ({
         )}
       </section>
 
-      <main ref={documentRef} className="causcape-document-region">
+      <main
+        ref={documentRef}
+        className="causcape-document-region"
+        data-testid="causcape-document-region"
+        aria-hidden={mode === "focus"}
+        onWheelCapture={handleDocumentWheel}
+      >
         {document}
       </main>
     </div>

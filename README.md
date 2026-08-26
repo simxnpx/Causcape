@@ -38,7 +38,7 @@
 The desktop application currently supports:
 
 - One local-first project containing an infinite Excalidraw canvas and a structured document.
-- Focus mode for the full drawing experience and desktop Briefing mode with a sticky, resizable canvas above the scrolling document.
+- Focus mode for the full drawing experience and a scroll-driven desktop Briefing mode that progressively shrinks the canvas above its independently scrolling document.
 - Stable inline references from document text to named canvas objects, with selection highlighting, click-to-focus, and explicit deleted placeholders.
 - Blank, Architecture, and Post-incident templates, IndexedDB autosave, a recent-project dashboard, and canonical `.causcape` import/export.
 - Prepared Service, Database, Queue / Topic, External System, User / Actor, Trust Boundary, and Generic Resource shapes built from ordinary Excalidraw elements.
