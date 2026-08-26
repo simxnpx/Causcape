@@ -26,6 +26,8 @@ export type EngineeringFlowPath = {
   readonly d: string;
   readonly packetCount: number;
   readonly packetD?: string;
+  readonly reverseD?: string;
+  readonly reversePacketD?: string;
   readonly interruption?: { readonly x: number; readonly y: number };
 };
 
@@ -133,9 +135,17 @@ export const buildEngineeringFlowPaths = (
       | { readonly metadata?: Readonly<Record<string, unknown>> }
       | undefined;
     const isInterrupted = causcapeData?.metadata?.status === "interrupted";
+    const isBidirectional =
+      (!!element.startArrowhead && !!element.endArrowhead) ||
+      causcapeData?.metadata?.direction === "bidirectional";
     const interruption = isInterrupted
       ? slicePathAtProgress(points, 0.5)
       : null;
+    const reversePoints = isBidirectional ? [...points].reverse() : null;
+    const reverseInterruption =
+      isInterrupted && reversePoints
+        ? slicePathAtProgress(reversePoints, 0.5)
+        : null;
 
     return [
       {
@@ -147,6 +157,14 @@ export const buildEngineeringFlowPaths = (
           ? {
               packetD: toSvgPath(interruption.points),
               interruption: interruption.end,
+            }
+          : {}),
+        ...(reversePoints
+          ? {
+              reverseD: toSvgPath(reversePoints),
+              ...(reverseInterruption
+                ? { reversePacketD: toSvgPath(reverseInterruption.points) }
+                : {}),
             }
           : {}),
       },
@@ -216,62 +234,82 @@ export const CauscapeFlowOverlay = forwardRef<
       aria-hidden="true"
       focusable="false"
     >
-      {paths.map((path) => (
-        <g key={path.id}>
-          {Array.from({ length: path.packetCount }, (_, index) => (
-            <rect
-              key={index}
-              className="causcape-flow-overlay__packet"
-              data-flow-packet={path.id}
-              x="-7"
-              y="-3.5"
-              width="14"
-              height="7"
-              rx="3.5"
-              fill={path.color}
-            >
-              <animateMotion
-                path={path.packetD ?? path.d}
-                dur="2.4s"
-                begin={`${(-2.4 * index) / path.packetCount}s`}
-                repeatCount="indefinite"
-                rotate="auto"
-                calcMode="linear"
-              />
-            </rect>
-          ))}
-          {path.interruption ? (
-            <g
-              className="causcape-flow-overlay__interruption"
-              data-flow-interruption={path.id}
-              transform={`translate(${path.interruption.x} ${path.interruption.y})`}
-            >
-              <circle
-                className="causcape-flow-overlay__interruption-pulse"
-                r="10"
+      {paths.map((path) => {
+        const directions = [
+          { name: "forward", d: path.packetD ?? path.d },
+          ...(path.reverseD
+            ? [
+                {
+                  name: "reverse",
+                  d: path.reversePacketD ?? path.reverseD,
+                },
+              ]
+            : []),
+        ];
+        const packetCount = path.reverseD
+          ? Math.max(1, Math.ceil(path.packetCount / 2))
+          : path.packetCount;
+
+        return (
+          <g key={path.id}>
+            {directions.flatMap((direction) =>
+              Array.from({ length: packetCount }, (_, index) => (
+                <rect
+                  key={`${direction.name}-${index}`}
+                  className="causcape-flow-overlay__packet"
+                  data-flow-packet={path.id}
+                  data-flow-direction={direction.name}
+                  x="-7"
+                  y="-3.5"
+                  width="14"
+                  height="7"
+                  rx="3.5"
+                  fill={path.color}
+                >
+                  <animateMotion
+                    path={direction.d}
+                    dur="2.4s"
+                    begin={`${(-2.4 * index) / packetCount}s`}
+                    repeatCount="indefinite"
+                    rotate="auto"
+                    calcMode="linear"
+                  />
+                </rect>
+              )),
+            )}
+            {path.interruption ? (
+              <g
+                className="causcape-flow-overlay__interruption"
+                data-flow-interruption={path.id}
+                transform={`translate(${path.interruption.x} ${path.interruption.y})`}
               >
-                <animate
-                  attributeName="r"
-                  values="10;18"
-                  dur="1.6s"
-                  repeatCount="indefinite"
+                <circle
+                  className="causcape-flow-overlay__interruption-pulse"
+                  r="10"
+                >
+                  <animate
+                    attributeName="r"
+                    values="10;18"
+                    dur="1.6s"
+                    repeatCount="indefinite"
+                  />
+                  <animate
+                    attributeName="opacity"
+                    values="0.55;0"
+                    dur="1.6s"
+                    repeatCount="indefinite"
+                  />
+                </circle>
+                <circle
+                  className="causcape-flow-overlay__interruption-core"
+                  r="10"
                 />
-                <animate
-                  attributeName="opacity"
-                  values="0.55;0"
-                  dur="1.6s"
-                  repeatCount="indefinite"
-                />
-              </circle>
-              <circle
-                className="causcape-flow-overlay__interruption-core"
-                r="10"
-              />
-              <path d="M -3.5 -3.5 L 3.5 3.5 M 3.5 -3.5 L -3.5 3.5" />
-            </g>
-          ) : null}
-        </g>
-      ))}
+                <path d="M -3.5 -3.5 L 3.5 3.5 M 3.5 -3.5 L -3.5 3.5" />
+              </g>
+            ) : null}
+          </g>
+        );
+      })}
     </svg>
   );
 });

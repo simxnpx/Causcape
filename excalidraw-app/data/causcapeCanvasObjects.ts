@@ -16,6 +16,7 @@ export type PreparedEngineeringShapeKind =
   | "trust-boundary"
   | "resource"
   | "flow"
+  | "flow-bidirectional"
   | "flow-interrupted";
 
 type PreparedEngineeringShape = {
@@ -29,6 +30,8 @@ type PreparedEngineeringShape = {
   readonly strokeStyle?: "solid" | "dashed";
   readonly objectKind?: string;
   readonly metadata?: Readonly<Record<string, MetadataValue>>;
+  readonly startArrowhead?: "arrow";
+  readonly endArrowhead?: "arrow";
 };
 
 export const PREPARED_ENGINEERING_SHAPES: readonly PreparedEngineeringShape[] =
@@ -106,6 +109,20 @@ export const PREPARED_ENGINEERING_SHAPES: readonly PreparedEngineeringShape[] =
       height: 0,
       strokeColor: "#4263eb",
       backgroundColor: "transparent",
+      endArrowhead: "arrow",
+    },
+    {
+      kind: "flow-bidirectional",
+      label: "Bidirectional flow",
+      elementType: "arrow",
+      width: 260,
+      height: 0,
+      strokeColor: "#7048e8",
+      backgroundColor: "transparent",
+      objectKind: "flow",
+      metadata: { direction: "bidirectional" },
+      startArrowhead: "arrow",
+      endArrowhead: "arrow",
     },
     {
       kind: "flow-interrupted",
@@ -118,6 +135,7 @@ export const PREPARED_ENGINEERING_SHAPES: readonly PreparedEngineeringShape[] =
       strokeStyle: "dashed",
       objectKind: "flow",
       metadata: { status: "interrupted" },
+      endArrowhead: "arrow",
     },
   ];
 
@@ -208,7 +226,8 @@ export const createPreparedEngineeringShape = ({
           ...commonSkeleton,
           id: `${objectId}-flow`,
           type: "arrow",
-          endArrowhead: "arrow",
+          startArrowhead: preparedShape.startArrowhead ?? null,
+          endArrowhead: preparedShape.endArrowhead ?? "arrow",
           roughness: 0,
         }
       : {

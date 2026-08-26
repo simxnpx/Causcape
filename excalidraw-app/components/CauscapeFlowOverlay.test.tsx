@@ -128,6 +128,40 @@ describe("CauscapeFlowOverlay", () => {
     );
   });
 
+  it("animates packet streams in both directions for two-headed arrows", () => {
+    const bidirectionalArrow = arrow({
+      startArrowhead: "arrow",
+      endArrowhead: "arrow",
+      customData: {
+        causcape: {
+          kind: "flow",
+          metadata: { kind: "flow", direction: "bidirectional" },
+        },
+      },
+    });
+    const [path] = buildEngineeringFlowPaths([bidirectionalArrow], {
+      zoom: { value: 1 },
+      scrollX: 0,
+      scrollY: 0,
+      width: 800,
+      height: 600,
+    });
+
+    expect(path.reverseD).toBe("M 209.5 119.5 L 110 20 L 10.5 20.5");
+
+    render(<CauscapeFlowOverlay paths={[path]} />);
+    const overlay = screen.getByTestId("causcape-flow-overlay");
+    expect(
+      overlay.querySelectorAll("[data-flow-direction='forward']"),
+    ).toHaveLength(1);
+    expect(
+      overlay.querySelectorAll("[data-flow-direction='reverse']"),
+    ).toHaveLength(1);
+    expect(
+      overlay.querySelector("[data-flow-direction='reverse'] animateMotion"),
+    ).toHaveAttribute("path", path.reverseD);
+  });
+
   it("retains live paths supplied through its frame-coalesced update handle", () => {
     const callbacks: FrameRequestCallback[] = [];
     vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {

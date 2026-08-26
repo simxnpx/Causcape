@@ -119,6 +119,20 @@
   }
 }
 
+.causcape-engineering-tools__swatch--flow-bidirectional {
+  &::before {
+    position: absolute;
+    top: -0.35rem;
+    left: -0.05rem;
+    width: 0.55rem;
+    height: 0.55rem;
+    border-bottom: 2px solid;
+    border-left: 2px solid;
+    transform: rotate(45deg);
+    content: "";
+  }
+}
+
 .causcape-engineering-tools__details {
   header,
   header > div,

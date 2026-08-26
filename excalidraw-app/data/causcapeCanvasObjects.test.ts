@@ -20,6 +20,7 @@ describe("Causcape canvas objects", () => {
       "trust-boundary",
       "resource",
       "flow",
+      "flow-bidirectional",
       "flow-interrupted",
     ]);
   });
@@ -82,6 +83,31 @@ describe("Causcape canvas objects", () => {
     ).toMatchObject({
       name: "Interrupted flow",
       metadata: { kind: "flow", status: "interrupted" },
+    });
+  });
+
+  it("creates a bidirectional flow with arrowheads and direction metadata", () => {
+    const elements = createPreparedEngineeringShape({
+      kind: "flow-bidirectional",
+      objectId: "service-sync",
+      x: 100,
+      y: 200,
+    });
+
+    expect(elements[0]).toMatchObject({
+      type: "arrow",
+      startArrowhead: "arrow",
+      endArrowhead: "arrow",
+      customData: {
+        causcape: {
+          kind: "flow",
+          metadata: { kind: "flow", direction: "bidirectional" },
+        },
+      },
+    });
+    expect(deriveCanvasObjects(elements, {})["service-sync"]).toMatchObject({
+      name: "Bidirectional flow",
+      metadata: { kind: "flow", direction: "bidirectional" },
     });
   });
 
