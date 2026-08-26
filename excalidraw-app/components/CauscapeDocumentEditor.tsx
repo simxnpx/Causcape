@@ -12,7 +12,12 @@ import {
   type DefaultReactSuggestionItem,
   useCreateBlockNote,
 } from "@blocknote/react";
-import { createContext, useContext, type KeyboardEvent } from "react";
+import {
+  createContext,
+  useContext,
+  type CSSProperties,
+  type KeyboardEvent,
+} from "react";
 
 import "@blocknote/ariakit/style.css";
 
@@ -325,6 +330,14 @@ export const CauscapeDocumentEditor = ({
     >
       <BlockNoteView
         className="causcape-document-editor"
+        style={
+          {
+            "--bn-colors-editor-background": "transparent",
+            "--bn-colors-editor-text": "#16141c",
+            "--bn-colors-side-menu": "#5c5868",
+            "--bn-colors-disabled-text": "#5c5868",
+          } as CSSProperties
+        }
         editor={editor}
         editable={editable}
         onChange={(currentEditor) => {

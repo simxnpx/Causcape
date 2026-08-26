@@ -13,6 +13,7 @@
   flex: 0 0 auto;
   min-height: 18rem;
   overflow: hidden;
+  contain: layout paint;
   background: var(--island-bg-color, #fff);
   z-index: 2;
 }
@@ -71,9 +72,11 @@
   min-height: 0;
   box-sizing: border-box;
   overflow-y: auto;
+  overflow-anchor: none;
   overscroll-behavior-y: contain;
+  contain: layout;
   padding: 4rem max(2rem, calc((100vw - 54rem) / 2)) 8rem;
-  color: #29272f;
+  color: #16141c;
   background: #f7f7f4;
   font-family: Assistant, system-ui, sans-serif;
 }
@@ -89,6 +92,6 @@
 
 .theme--dark .causcape-document-region,
 .dark .causcape-document-region {
-  color: #ecebf0;
+  color: #f4f2fa;
   background: #17161b;
 }
