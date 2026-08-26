@@ -1,0 +1,51 @@
+.causcape-document-editor {
+  --bn-colors-editor-background: transparent;
+  --bn-colors-editor-text: currentColor;
+
+  background: transparent;
+}
+
+.causcape-document-editor .bn-editor {
+  padding-inline: 0;
+  background: transparent;
+}
+
+.causcape-canvas-reference {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 0.35rem;
+  padding: 0.08rem 0.3rem;
+  background: #e8e6ff;
+  color: #514b9d;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background-color 120ms ease, box-shadow 120ms ease;
+}
+
+.causcape-canvas-reference:hover,
+.causcape-canvas-reference[data-selected="true"] {
+  background: #d8d4ff;
+  box-shadow: 0 0 0 2px rgba(105, 99, 203, 0.32);
+}
+
+.causcape-canvas-reference[data-deleted="true"] {
+  background: #ecebea;
+  color: #77736f;
+  font-style: italic;
+  text-decoration: line-through;
+  cursor: default;
+}
+
+.causcape-document-callout {
+  width: 100%;
+  border-left: 0.25rem solid #6963cb;
+  border-radius: 0.25rem;
+  padding: 0.75rem 1rem;
+  background: rgba(105, 99, 203, 0.08);
+}
+
+.causcape-document-callout[data-kind="warning"],
+.causcape-document-callout[data-kind="danger"] {
+  border-left-color: #c27a20;
+  background: rgba(194, 122, 32, 0.1);
+}

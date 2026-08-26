@@ -26,6 +26,9 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
+    "@blocknote/ariakit": "0.54.0",
+    "@blocknote/core": "0.54.0",
+    "@blocknote/react": "0.54.0",
     "@excalidraw/random-username": "1.0.0",
     "@sentry/browser": "9.0.1",
     "callsites": "4.2.0",

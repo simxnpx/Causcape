@@ -9,6 +9,32 @@
   text-transform: uppercase;
 }
 
+.causcape-document-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.causcape-document-header .causcape-document-eyebrow {
+  margin: 0;
+}
+
+.causcape-document-mode-button {
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  border-radius: 0.45rem;
+  padding: 0.45rem 0.7rem;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.causcape-document-loading {
+  color: #77736f;
+}
+
 .causcape-document-region h1 {
   margin: 0 0 1rem;
   font-size: clamp(2rem, 4vw, 3.5rem);

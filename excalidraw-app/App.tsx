@@ -33,7 +33,15 @@ import {
   isDevEnv,
 } from "@excalidraw/common";
 import polyfill from "@excalidraw/excalidraw/polyfill";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { loadFromBlob } from "@excalidraw/excalidraw/data/blob";
 import { t } from "@excalidraw/excalidraw/i18n";
 
@@ -78,6 +86,7 @@ import type {
 } from "@excalidraw/excalidraw/types";
 import type { ResolutionType } from "@excalidraw/common/utility-types";
 import type { ResolvablePromise } from "@excalidraw/common/utils";
+import type { CanvasObject, CauscapeDocument } from "@causcape/core";
 
 import CustomStats from "./CustomStats";
 import {
@@ -151,6 +160,12 @@ import { AppSidebar } from "./components/AppSidebar";
 import { CauscapeProjectShell } from "./components/CauscapeProjectShell";
 
 import type { CollabAPI } from "./collab/Collab";
+
+const CauscapeDocumentEditor = lazy(() =>
+  import("./components/CauscapeDocumentEditor").then((module) => ({
+    default: module.CauscapeDocumentEditor,
+  })),
+);
 
 polyfill();
 
@@ -373,7 +388,16 @@ const initializeScene = async (opts: {
   return { scene: null, isExternalScene: false };
 };
 
-const ExcalidrawWrapper = () => {
+type ExcalidrawWrapperProps = {
+  onProjectCanvasChange?: (
+    elements: readonly OrderedExcalidrawElement[],
+    appState: AppState,
+  ) => void;
+};
+
+const ExcalidrawWrapper = ({
+  onProjectCanvasChange,
+}: ExcalidrawWrapperProps) => {
   const excalidrawAPI = useExcalidrawAPI();
 
   const [errorMessage, setErrorMessage] = useState("");
@@ -718,6 +742,8 @@ const ExcalidrawWrapper = () => {
     appState: AppState,
     files: BinaryFiles,
   ) => {
+    onProjectCanvasChange?.(elements, appState);
+
     if (collabAPI?.isCollaborating()) {
       collabAPI.syncElements(elements);
     }
@@ -1302,6 +1328,143 @@ const ExcalidrawWrapper = () => {
   );
 };
 
+const initialCauscapeDocument: CauscapeDocument = {
+  schemaVersion: 1,
+  blocks: [
+    {
+      id: "project-overview",
+      type: "heading",
+      props: { level: 1 },
+      content: [{ type: "text", text: "Untitled engineering project" }],
+      children: [],
+    },
+    {
+      id: "project-introduction",
+      type: "paragraph",
+      props: {},
+      content: [
+        {
+          type: "text",
+          text: "Explain the architecture, incident, decisions, and evidence represented by the canvas above. Type @ to reference a named canvas object.",
+        },
+      ],
+      children: [],
+    },
+  ],
+};
+
+const CauscapeProjectWorkspace = () => {
+  const excalidrawAPI = useExcalidrawAPI();
+  const [document, setDocument] = useState(initialCauscapeDocument);
+  const [objects, setObjects] = useState<
+    Readonly<Record<string, CanvasObject>>
+  >({});
+  const [selectedObjectIds, setSelectedObjectIds] = useState<readonly string[]>(
+    [],
+  );
+  const [isDocumentEditable, setIsDocumentEditable] = useState(true);
+
+  const handleCanvasChange = useCallback(
+    (elements: readonly OrderedExcalidrawElement[], appState: AppState) => {
+      const nextSelectedObjectIds = Object.keys(appState.selectedElementIds);
+      setSelectedObjectIds((currentIds) =>
+        currentIds.length === nextSelectedObjectIds.length &&
+        currentIds.every((id, index) => id === nextSelectedObjectIds[index])
+          ? currentIds
+          : nextSelectedObjectIds,
+      );
+      setObjects((currentObjects) => {
+        const nextObjects = { ...currentObjects };
+        let didChange = false;
+        for (const element of elements) {
+          const storedName = element.customData?.causcape?.name;
+          const currentObject = currentObjects[element.id];
+          const nextName =
+            typeof storedName === "string" && storedName.trim()
+              ? storedName.trim()
+              : currentObject?.name;
+          const nextState = element.isDeleted ? "deleted" : "active";
+          if (
+            currentObject &&
+            currentObject.state === nextState &&
+            currentObject.name === nextName &&
+            currentObject.elementIds.length === 1 &&
+            currentObject.elementIds[0] === element.id
+          ) {
+            continue;
+          }
+          didChange = true;
+          nextObjects[element.id] = {
+            id: element.id,
+            elementIds: [element.id],
+            ...(nextName ? { name: nextName } : {}),
+            metadata: currentObject?.metadata ?? {},
+            state: nextState,
+            ...(currentObject?.name
+              ? { lastKnownName: currentObject.name }
+              : {}),
+          };
+        }
+        return didChange ? nextObjects : currentObjects;
+      });
+    },
+    [],
+  );
+
+  const focusCanvasObject = useCallback(
+    (objectId: string) => {
+      const object = objects[objectId];
+      const elementId = object?.elementIds[0];
+      if (!excalidrawAPI || !elementId || object.state !== "active") {
+        return;
+      }
+      excalidrawAPI.updateScene({
+        appState: { selectedElementIds: { [elementId]: true } },
+      });
+      excalidrawAPI.setViewport({
+        target: elementId,
+        fit: "scale-down",
+        animation: true,
+      });
+    },
+    [excalidrawAPI, objects],
+  );
+
+  return (
+    <CauscapeProjectShell
+      canvas={<ExcalidrawWrapper onProjectCanvasChange={handleCanvasChange} />}
+      document={
+        <article>
+          <header className="causcape-document-header">
+            <p className="causcape-document-eyebrow">Project document</p>
+            <button
+              type="button"
+              className="causcape-document-mode-button"
+              onClick={() => setIsDocumentEditable((editable) => !editable)}
+            >
+              {isDocumentEditable ? "Read" : "Edit"}
+            </button>
+          </header>
+          <Suspense
+            fallback={
+              <p className="causcape-document-loading">Loading document…</p>
+            }
+          >
+            <CauscapeDocumentEditor
+              document={document}
+              objects={objects}
+              selectedObjectIds={selectedObjectIds}
+              editable={isDocumentEditable}
+              onChange={setDocument}
+              onReferenceActivate={focusCanvasObject}
+            />
+          </Suspense>
+        </article>
+      }
+    />
+  );
+};
+
 const ExcalidrawApp = () => {
   const isCloudExportWindow =
     window.location.pathname === "/excalidraw-plus-export";
@@ -1312,23 +1475,9 @@ const ExcalidrawApp = () => {
   return (
     <TopErrorBoundary>
       <Provider store={appJotaiStore}>
-        <CauscapeProjectShell
-          canvas={
-            <ExcalidrawAPIProvider>
-              <ExcalidrawWrapper />
-            </ExcalidrawAPIProvider>
-          }
-          document={
-            <article>
-              <p className="causcape-document-eyebrow">Project document</p>
-              <h1>Untitled engineering project</h1>
-              <p>
-                Explain the architecture, incident, decisions, and evidence
-                represented by the canvas above.
-              </p>
-            </article>
-          }
-        />
+        <ExcalidrawAPIProvider>
+          <CauscapeProjectWorkspace />
+        </ExcalidrawAPIProvider>
       </Provider>
     </TopErrorBoundary>
   );
