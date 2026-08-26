@@ -1,13 +1,13 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import type { CauscapeDocument } from "@causcape/core";
-
 import {
   CauscapeDocumentEditor,
   fromBlockNoteDocument,
   toBlockNoteDocument,
 } from "./CauscapeDocumentEditor";
+
+import type { CauscapeDocument } from "@causcape/core";
 
 const document: CauscapeDocument = {
   schemaVersion: 1,

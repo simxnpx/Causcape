@@ -2,7 +2,6 @@ import {
   BlockNoteSchema,
   defaultBlockSpecs,
   defaultInlineContentSpecs,
-  type InlineContent,
 } from "@blocknote/core";
 import { filterSuggestionItems } from "@blocknote/core/extensions";
 import { BlockNoteView } from "@blocknote/ariakit";
@@ -15,15 +14,16 @@ import {
 } from "@blocknote/react";
 import { createContext, useContext, type KeyboardEvent } from "react";
 
+import "@blocknote/ariakit/style.css";
+
+import "./CauscapeDocumentEditor.scss";
+
 import type {
   CanvasObject,
   CauscapeDocument,
   DocumentBlock,
   InlineContent as CauscapeInlineContent,
 } from "@causcape/core";
-
-import "@blocknote/ariakit/style.css";
-import "./CauscapeDocumentEditor.scss";
 
 type CanvasReferenceProps = {
   objectId: string;
@@ -74,6 +74,45 @@ const ReferenceInteractionContext = createContext<ReferenceInteraction>({
   selectedObjectIds: new Set(),
 });
 
+const CanvasReferenceView = ({ objectId }: CanvasReferenceProps) => {
+  const { objects, selectedObjectIds, onActivate } = useContext(
+    ReferenceInteractionContext,
+  );
+  const object = objects[objectId];
+  const isDeleted = !object || object.state === "deleted";
+  const displayText = isDeleted
+    ? "Deleted object"
+    : object.name || object.lastKnownName || "Unnamed object";
+
+  const activate = () => {
+    if (!isDeleted) {
+      onActivate?.(objectId);
+    }
+  };
+  const handleKeyDown = (event: KeyboardEvent<HTMLSpanElement>) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      activate();
+    }
+  };
+
+  return (
+    <span
+      className="causcape-canvas-reference"
+      data-object-id={objectId}
+      data-deleted={isDeleted || undefined}
+      data-selected={selectedObjectIds.has(objectId) || undefined}
+      role="link"
+      tabIndex={isDeleted ? -1 : 0}
+      title={isDeleted ? "This canvas object was deleted" : displayText}
+      onClick={activate}
+      onKeyDown={handleKeyDown}
+    >
+      {displayText}
+    </span>
+  );
+};
+
 const CanvasReference = createReactInlineContentSpec(
   {
     type: "canvasReference",
@@ -83,45 +122,9 @@ const CanvasReference = createReactInlineContentSpec(
     content: "none",
   } as const,
   {
-    render: ({ inlineContent }) => {
-      const { objects, selectedObjectIds, onActivate } = useContext(
-        ReferenceInteractionContext,
-      );
-      const { objectId } = inlineContent.props;
-      const object = objects[objectId];
-      const isDeleted = !object || object.state === "deleted";
-      const displayText = isDeleted
-        ? "Deleted object"
-        : object.name || object.lastKnownName || "Unnamed object";
-
-      const activate = () => {
-        if (!isDeleted) {
-          onActivate?.(objectId);
-        }
-      };
-      const handleKeyDown = (event: KeyboardEvent<HTMLSpanElement>) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          activate();
-        }
-      };
-
-      return (
-        <span
-          className="causcape-canvas-reference"
-          data-object-id={objectId}
-          data-deleted={isDeleted || undefined}
-          data-selected={selectedObjectIds.has(objectId) || undefined}
-          role="link"
-          tabIndex={isDeleted ? -1 : 0}
-          title={isDeleted ? "This canvas object was deleted" : displayText}
-          onClick={activate}
-          onKeyDown={handleKeyDown}
-        >
-          {displayText}
-        </span>
-      );
-    },
+    render: ({ inlineContent }) => (
+      <CanvasReferenceView objectId={inlineContent.props.objectId} />
+    ),
   },
 );
 

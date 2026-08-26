@@ -1,10 +1,9 @@
-import type { ChangeEvent } from "react";
+import "./CauscapeProjectDashboard.scss";
 
 import type { ProjectTemplate } from "@causcape/core";
+import type { ChangeEvent } from "react";
 
 import type { ProjectSummary } from "../data/CauscapeProjectRepository";
-
-import "./CauscapeProjectDashboard.scss";
 
 type CauscapeProjectDashboardProps = {
   projects: readonly ProjectSummary[];
