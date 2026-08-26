@@ -147,6 +147,7 @@ export const layoutEngineeringModel = async (
     const shape: Record<string, JsonValue> = {
       ...baseElement(`node-${node.id}`, "rectangle", x, y, width, height),
       ...styleForKind(kind),
+      groupIds: [node.id],
       boundElements: [{ id: labelId, type: "text" }],
       customData: {
         causcape: { objectId: node.id, name: node.name, kind },
@@ -172,6 +173,7 @@ export const layoutEngineeringModel = async (
       originalText: node.name,
       autoResize: true,
       lineHeight: 1.25,
+      groupIds: [node.id],
       customData: {
         causcape: { objectId: node.id, name: node.name, kind },
       },
@@ -196,6 +198,7 @@ export const layoutEngineeringModel = async (
         endY - startY,
       ),
       strokeColor: "#495057",
+      groupIds: [edge.id],
       points: [
         [0, 0],
         [endX - startX, endY - startY],
@@ -249,6 +252,7 @@ export const layoutEngineeringModel = async (
         originalText: edge.name,
         autoResize: true,
         lineHeight: 1.25,
+        groupIds: [edge.id],
         customData: {
           causcape: { objectId: edge.id, name: edge.name, kind: "flow" },
         },

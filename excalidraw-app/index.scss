@@ -51,10 +51,9 @@
   position: absolute;
   z-index: calc(var(--zIndex-ui-top, 100) + 1);
   top: 0.75rem;
-  left: 50%;
+  right: 0.75rem;
   display: flex;
   gap: 0.4rem;
-  transform: translateX(-50%);
 }
 
 .causcape-project-actions button {

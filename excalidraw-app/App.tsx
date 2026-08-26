@@ -35,6 +35,7 @@ import {
   isRunningInIframe,
   isDevEnv,
   randomId,
+  viewportCoordsToSceneCoords,
 } from "@excalidraw/common";
 import polyfill from "@excalidraw/excalidraw/polyfill";
 import {
@@ -73,6 +74,15 @@ import {
   useHandleLibrary,
 } from "@excalidraw/excalidraw/data/library";
 
+import {
+  createProjectFromTemplate,
+  type CanvasObject,
+  type CauscapeDocument,
+  type MetadataValue,
+  type Project,
+  type ProjectTemplate,
+} from "@causcape/core";
+
 import type { RemoteExcalidrawElement } from "@excalidraw/excalidraw/data/reconcile";
 import type { RestoredDataState } from "@excalidraw/excalidraw/data/restore";
 import type {
@@ -90,12 +100,6 @@ import type {
 } from "@excalidraw/excalidraw/types";
 import type { ResolutionType } from "@excalidraw/common/utility-types";
 import type { ResolvablePromise } from "@excalidraw/common/utils";
-import {
-  createProjectFromTemplate,
-  type CauscapeDocument,
-  type Project,
-  type ProjectTemplate,
-} from "@causcape/core";
 
 import CustomStats from "./CustomStats";
 import {
@@ -168,12 +172,20 @@ import { ExcalidrawPlusPromoBanner } from "./components/ExcalidrawPlusPromoBanne
 import { AppSidebar } from "./components/AppSidebar";
 import { CauscapeProjectShell } from "./components/CauscapeProjectShell";
 import { CauscapeProjectDashboard } from "./components/CauscapeProjectDashboard";
+import { CauscapeEngineeringTools } from "./components/CauscapeEngineeringTools";
 import {
   CauscapeProjectRepository,
   downloadProjectFile,
   IndexedDbProjectDriver,
   type ProjectSummary,
 } from "./data/CauscapeProjectRepository";
+import {
+  createPreparedEngineeringShape,
+  deriveCanvasObjects,
+  getSelectedCanvasObjectIds,
+  PREPARED_ENGINEERING_SHAPES,
+  type PreparedEngineeringShapeKind,
+} from "./data/causcapeCanvasObjects";
 
 import type { CollabAPI } from "./collab/Collab";
 
@@ -1456,7 +1468,10 @@ const CauscapeProjectWorkspace = () => {
       appState: AppState,
       files: BinaryFiles,
     ) => {
-      const nextSelectedObjectIds = Object.keys(appState.selectedElementIds);
+      const nextSelectedObjectIds = getSelectedCanvasObjectIds(
+        elements,
+        appState.selectedElementIds,
+      );
       setSelectedObjectIds((currentIds) =>
         currentIds.length === nextSelectedObjectIds.length &&
         currentIds.every((id, index) => id === nextSelectedObjectIds[index])
@@ -1467,26 +1482,10 @@ const CauscapeProjectWorkspace = () => {
         if (!currentProject) {
           return currentProject;
         }
-        const nextObjects = { ...currentProject.canvas.objects };
-        for (const element of elements) {
-          const storedName = element.customData?.causcape?.name;
-          const currentObject = currentProject.canvas.objects[element.id];
-          const nextName =
-            typeof storedName === "string" && storedName.trim()
-              ? storedName.trim()
-              : currentObject?.name;
-          const nextState = element.isDeleted ? "deleted" : "active";
-          nextObjects[element.id] = {
-            id: element.id,
-            elementIds: nextState === "active" ? [element.id] : [],
-            ...(nextName ? { name: nextName } : {}),
-            metadata: currentObject?.metadata ?? {},
-            state: nextState,
-            ...(currentObject?.name
-              ? { lastKnownName: currentObject.name }
-              : {}),
-          };
-        }
+        const nextObjects = deriveCanvasObjects(
+          elements,
+          currentProject.canvas.objects,
+        );
         const nextScene = serializeCanvasScene(elements, appState, files);
         if (
           JSON.stringify(currentProject.canvas.scene) ===
@@ -1530,7 +1529,11 @@ const CauscapeProjectWorkspace = () => {
         return;
       }
       excalidrawAPI.updateScene({
-        appState: { selectedElementIds: { [elementId]: true } },
+        appState: {
+          selectedElementIds: Object.fromEntries(
+            object.elementIds.map((id) => [id, true] as const),
+          ),
+        },
       });
       excalidrawAPI.setViewport({
         target: elementId,
@@ -1593,6 +1596,127 @@ const CauscapeProjectWorkspace = () => {
     }
   }, [project]);
 
+  const selectedObject = useMemo<CanvasObject | null>(() => {
+    const objectId = selectedObjectIds[0];
+    return objectId ? project?.canvas.objects[objectId] ?? null : null;
+  }, [project?.canvas.objects, selectedObjectIds]);
+
+  const addPreparedShape = useCallback(
+    (kind: PreparedEngineeringShapeKind) => {
+      if (!excalidrawAPI) {
+        return;
+      }
+      const appState = excalidrawAPI.getAppState();
+      const preparedShape = PREPARED_ENGINEERING_SHAPES.find(
+        (shape) => shape.kind === kind,
+      );
+      if (!preparedShape) {
+        return;
+      }
+      const center = viewportCoordsToSceneCoords(
+        {
+          clientX: appState.offsetLeft + appState.width / 2,
+          clientY: appState.offsetTop + appState.height / 2,
+        },
+        appState,
+      );
+      const elements = createPreparedEngineeringShape({
+        kind,
+        x: center.x - preparedShape.width / 2,
+        y: center.y - preparedShape.height / 2,
+      });
+      excalidrawAPI.updateScene({
+        elements: [
+          ...excalidrawAPI.getSceneElementsIncludingDeleted(),
+          ...elements,
+        ],
+        appState: {
+          selectedElementIds: Object.fromEntries(
+            elements.map((element) => [element.id, true] as const),
+          ),
+        },
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+      });
+    },
+    [excalidrawAPI],
+  );
+
+  const updateObjectElements = useCallback(
+    (
+      objectId: string,
+      updates: {
+        readonly name?: string;
+        readonly metadata?: Readonly<Record<string, MetadataValue>>;
+      },
+    ) => {
+      const object = project?.canvas.objects[objectId];
+      if (!excalidrawAPI || !object || object.state !== "active") {
+        return;
+      }
+      const objectElementIds = new Set(object.elementIds);
+      const elements = excalidrawAPI
+        .getSceneElementsIncludingDeleted()
+        .map((element) => {
+          if (!objectElementIds.has(element.id)) {
+            return element;
+          }
+          const causcapeData = element.customData?.causcape ?? {};
+          const customData = {
+            ...element.customData,
+            causcape: {
+              ...causcapeData,
+              ...(updates.name ? { name: updates.name } : {}),
+              ...(updates.metadata ? { metadata: updates.metadata } : {}),
+            },
+          };
+          return element.type === "text" && updates.name
+            ? newElementWith(element, {
+                customData,
+                text: updates.name,
+                originalText: updates.name,
+              })
+            : newElementWith(element, { customData });
+        });
+      excalidrawAPI.updateScene({
+        elements,
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+      });
+    },
+    [excalidrawAPI, project?.canvas.objects],
+  );
+
+  const renameCanvasObject = useCallback(
+    (objectId: string, name: string) => {
+      updateObjectElements(objectId, { name });
+    },
+    [updateObjectElements],
+  );
+
+  const setCanvasObjectMetadata = useCallback(
+    (objectId: string, key: string, value: MetadataValue) => {
+      const object = project?.canvas.objects[objectId];
+      if (object) {
+        updateObjectElements(objectId, {
+          metadata: { ...object.metadata, [key]: value },
+        });
+      }
+    },
+    [project?.canvas.objects, updateObjectElements],
+  );
+
+  const deleteCanvasObjectMetadata = useCallback(
+    (objectId: string, key: string) => {
+      const object = project?.canvas.objects[objectId];
+      if (!object || key === "kind") {
+        return;
+      }
+      const metadata = { ...object.metadata };
+      delete metadata[key];
+      updateObjectElements(objectId, { metadata });
+    },
+    [project?.canvas.objects, updateObjectElements],
+  );
+
   if (showDashboard) {
     return (
       <div ref={workspaceRef}>
@@ -1628,6 +1752,13 @@ const CauscapeProjectWorkspace = () => {
               key={project.id}
               initialProject={project}
               onProjectCanvasChange={handleCanvasChange}
+            />
+            <CauscapeEngineeringTools
+              selectedObject={selectedObject}
+              onAddShape={addPreparedShape}
+              onRename={renameCanvasObject}
+              onMetadataSet={setCanvasObjectMetadata}
+              onMetadataDelete={deleteCanvasObjectMetadata}
             />
             <nav className="causcape-project-actions" aria-label="Project">
               <button
