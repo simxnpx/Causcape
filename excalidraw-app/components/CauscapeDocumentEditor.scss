@@ -1,13 +1,29 @@
 .causcape-document-editor {
   --bn-colors-editor-background: transparent;
-  --bn-colors-editor-text: currentColor;
+  --bn-colors-editor-text: #16141c;
+  --bn-colors-side-menu: #5c5868;
+  --bn-colors-disabled-text: #5c5868;
 
+  color: var(--bn-colors-editor-text);
   background: transparent;
 }
 
 .causcape-document-editor .bn-editor {
   padding-inline: 0;
   background: transparent;
+  color: var(--bn-colors-editor-text);
+}
+
+.causcape-document-editor [data-content-type="quote"] blockquote {
+  border-left-color: #5c5868;
+  color: #2c2933;
+}
+
+.causcape-document-editor .bn-side-menu,
+.causcape-document-editor .bn-table-handle,
+.causcape-document-editor .bn-extend-button,
+.causcape-document-editor .bn-table-cell-handle {
+  color: var(--bn-colors-side-menu);
 }
 
 .causcape-canvas-reference {
@@ -48,4 +64,18 @@
 .causcape-document-callout[data-kind="danger"] {
   border-left-color: #c27a20;
   background: rgba(194, 122, 32, 0.1);
+}
+
+.theme--dark .causcape-document-editor,
+.dark .causcape-document-editor {
+  --bn-colors-editor-text: #f4f2fa !important;
+  --bn-colors-side-menu: #b7b3c2 !important;
+  --bn-colors-disabled-text: #b7b3c2 !important;
+
+  color: var(--bn-colors-editor-text);
+
+  [data-content-type="quote"] blockquote {
+    border-left-color: #b7b3c2;
+    color: #ddd9e6;
+  }
 }

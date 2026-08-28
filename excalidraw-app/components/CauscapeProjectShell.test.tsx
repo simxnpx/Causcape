@@ -99,8 +99,9 @@ describe("CauscapeProjectShell", () => {
     );
     expect(screen.getByTestId("causcape-project-shell")).toHaveAttribute(
       "data-reveal-progress",
-      "0",
+      "0.2",
     );
+    expect(canvasRegion).toHaveStyle({ height: "89dvh" });
     expect(canvasSurface).toHaveStyle({ height: "100dvh" });
 
     act(() => animation.flush());
@@ -156,5 +157,63 @@ describe("CauscapeProjectShell", () => {
       "data-mode",
       "focus",
     );
+  });
+
+  it("hands leftover downward wheel distance to the document as soon as the canvas is fully revealed", () => {
+    const animation = installAnimationFrameHarness();
+    render(
+      <CauscapeProjectShell
+        canvas={<div>Engineering canvas</div>}
+        document={<div>Project overview</div>}
+      />,
+    );
+
+    const canvasRegion = screen.getByTestId("causcape-canvas-region");
+    const documentRegion = screen.getByTestId("causcape-document-region");
+    fireEvent.wheel(canvasRegion, { deltaY: 480 });
+    expect(screen.getByTestId("causcape-project-shell")).toHaveAttribute(
+      "data-reveal-progress",
+      "0.8",
+    );
+
+    Object.defineProperty(documentRegion, "scrollTop", {
+      configurable: true,
+      writable: true,
+      value: 0,
+    });
+
+    fireEvent.wheel(documentRegion, { deltaY: 240 });
+    act(() => animation.flush());
+
+    expect(canvasRegion).toHaveStyle({ height: "45dvh" });
+    expect(screen.getByTestId("causcape-project-shell")).toHaveAttribute(
+      "data-reveal-progress",
+      "1",
+    );
+    expect(documentRegion.scrollTop).toBe(120);
+  });
+
+  it("continues into the document when a canvas flick overshoots the briefing endpoint", () => {
+    const animation = installAnimationFrameHarness();
+    render(
+      <CauscapeProjectShell
+        canvas={<div>Engineering canvas</div>}
+        document={<div>Project overview</div>}
+      />,
+    );
+
+    const canvasRegion = screen.getByTestId("causcape-canvas-region");
+    const documentRegion = screen.getByTestId("causcape-document-region");
+    Object.defineProperty(documentRegion, "scrollTop", {
+      configurable: true,
+      writable: true,
+      value: 0,
+    });
+
+    fireEvent.wheel(canvasRegion, { deltaY: 720 });
+    act(() => animation.flush());
+
+    expect(canvasRegion).toHaveStyle({ height: "45dvh" });
+    expect(documentRegion.scrollTop).toBe(120);
   });
 });

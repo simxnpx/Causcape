@@ -75,6 +75,15 @@ export const CauscapeProjectShell = ({
     }
   };
 
+  const cancelAnimation = () => {
+    const ownerWindow = shellRef.current?.ownerDocument.defaultView;
+    if (animationFrameRef.current !== null) {
+      ownerWindow?.cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+    previousFrameTimeRef.current = null;
+  };
+
   const cancelSurfaceResizeDelay = () => {
     const ownerWindow = shellRef.current?.ownerDocument.defaultView;
     if (surfaceResizeTimeoutRef.current !== null) {
@@ -138,9 +147,10 @@ export const CauscapeProjectShell = ({
     }
   }
 
-  const requestProgress = (value: number, deferSurfaceResize = false) => {
-    const nextProgress = clampProgress(value);
-    targetProgressRef.current = nextProgress;
+  const prepareSurfaceForProgress = (
+    nextProgress: number,
+    deferSurfaceResize: boolean,
+  ) => {
     if (deferSurfaceResize) {
       deferCanvasSurfaceResize();
     } else {
@@ -155,14 +165,42 @@ export const CauscapeProjectShell = ({
     if (nextProgress > 0) {
       changeMode("briefing");
     }
+  };
+
+  const requestProgress = (value: number) => {
+    const nextProgress = clampProgress(value);
+    targetProgressRef.current = nextProgress;
+    prepareSurfaceForProgress(nextProgress, false);
     scheduleAnimation();
   };
 
-  const adjustProgress = (deltaY: number) => {
-    requestProgress(
-      targetProgressRef.current + deltaY / REVEAL_WHEEL_DISTANCE,
-      true,
-    );
+  // Wheel is 1:1 with the split. Interpolating here is what made markdown
+  // scrolling feel like it was chasing the gesture.
+  const applyProgressImmediate = (value: number) => {
+    const nextProgress = clampProgress(value);
+    targetProgressRef.current = nextProgress;
+    cancelAnimation();
+    prepareSurfaceForProgress(nextProgress, true);
+    renderProgress(nextProgress);
+    if (nextProgress === 0) {
+      changeMode("focus");
+    }
+  };
+
+  const scrollDocumentBy = (deltaY: number) => {
+    if (documentRef.current && deltaY > 0) {
+      documentRef.current.scrollTop += deltaY;
+    }
+  };
+
+  const consumeRevealWheel = (deltaY: number) => {
+    const nextUnclamped =
+      targetProgressRef.current + deltaY / REVEAL_WHEEL_DISTANCE;
+    applyProgressImmediate(nextUnclamped);
+    if (deltaY > 0 && nextUnclamped > 1) {
+      return Math.round((nextUnclamped - 1) * REVEAL_WHEEL_DISTANCE);
+    }
+    return 0;
   };
 
   const handleCanvasWheel = (event: WheelEvent<HTMLElement>) => {
@@ -176,7 +214,11 @@ export const CauscapeProjectShell = ({
     ) {
       event.preventDefault();
       event.stopPropagation();
-      adjustProgress(event.deltaY);
+      if (event.deltaY > 0 && targetProgressRef.current >= 1) {
+        scrollDocumentBy(event.deltaY);
+        return;
+      }
+      scrollDocumentBy(consumeRevealWheel(event.deltaY));
     }
   };
 
@@ -186,21 +228,18 @@ export const CauscapeProjectShell = ({
     }
     const documentAtTop = (documentRef.current?.scrollTop ?? 0) <= 0;
     const shouldResizeForDownwardScroll =
-      event.deltaY > 0 && revealProgressRef.current < 1;
+      event.deltaY > 0 && targetProgressRef.current < 1;
     const shouldResizeForUpwardScroll = event.deltaY < 0 && documentAtTop;
     if (shouldResizeForDownwardScroll || shouldResizeForUpwardScroll) {
       event.preventDefault();
       event.stopPropagation();
-      adjustProgress(event.deltaY);
+      scrollDocumentBy(consumeRevealWheel(event.deltaY));
     }
   };
 
   useEffect(
     () => () => {
-      const ownerWindow = shellRef.current?.ownerDocument.defaultView;
-      if (animationFrameRef.current !== null) {
-        ownerWindow?.cancelAnimationFrame(animationFrameRef.current);
-      }
+      cancelAnimation();
       cancelSurfaceResizeDelay();
     },
     [],

@@ -115,4 +115,42 @@ describe("Causcape BlockNote adapter", () => {
     expect(onReferenceActivate).toHaveBeenCalledTimes(1);
     vi.unstubAllGlobals();
   });
+
+  it("uses high-contrast ink instead of BlockNote's muted gray defaults", async () => {
+    vi.stubGlobal(
+      "ClipboardEvent",
+      class ClipboardEvent extends Event {
+        clipboardData = null;
+      },
+    );
+    render(
+      <CauscapeDocumentEditor
+        document={document}
+        editable={false}
+        objects={{
+          "payment-service": {
+            id: "payment-service",
+            elementIds: ["element-payment"],
+            name: "Payment Service",
+            metadata: {},
+            state: "active",
+          },
+        }}
+      />,
+    );
+
+    const editor = await screen.findByRole("link", {
+      name: "Payment Service",
+    });
+    const root = editor.closest(".causcape-document-editor");
+    expect(root).not.toBeNull();
+    const styles = getComputedStyle(root as HTMLElement);
+    expect(styles.getPropertyValue("--bn-colors-editor-text").trim()).toBe(
+      "#16141c",
+    );
+    expect(styles.getPropertyValue("--bn-colors-side-menu").trim()).toBe(
+      "#5c5868",
+    );
+    vi.unstubAllGlobals();
+  });
 });
