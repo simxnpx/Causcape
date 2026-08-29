@@ -1,14 +1,14 @@
 ---
-title: First desktop vertical slice
+title: First desktop project slice
 ---
 
-# First desktop vertical slice
+# First desktop project slice
 
 The first Causcape slice proves that one engineering project can be created and changed through both the browser and an external agent without splitting the canvas, document, or object identity into separate artifacts.
 
 ## Delivered contract
 
-A project contains exactly one infinite canvas, one structured document, a project-local canvas-object index, and provenance. It opens in Focus mode with the complete Excalidraw experience. Scrolling down progressively enters Briefing mode until the canvas occupies 45% of the viewport above the document's independent scroll region. Scrolling upward from the top of the document reverses that transition. The document handle remains as a direct shortcut between the two endpoints.
+A project contains exactly one infinite canvas, one structured document, a project-local canvas-object index, and provenance. It opens in Focus mode with the complete Excalidraw experience. The document handle opens Document mode, where the canvas remains interactive on the left and the document owns an independently scrolling pane on the right. Closing the pane returns the canvas to the full viewport.
 
 The document stores versioned Causcape JSON. BlockNote is a replaceable browser adapter. An inline canvas reference stores a stable object ID, not a text match. Selecting an object highlights its references; activating a reference selects and focuses every element belonging to that logical object. Deleted targets stay visible as explicit placeholders.
 
@@ -35,7 +35,7 @@ Each boundary is independently reviewable and uses the DOM-independent core inst
 ## Acceptance checks
 
 - A new Blank, Architecture, or Post-incident project opens and autosaves.
-- Focus mode occupies the viewport; scrolling progressively reveals Briefing mode until the canvas occupies 45% of the viewport above the independently scrolling document.
+- Focus mode occupies the viewport; Document mode keeps the canvas interactive beside an independently scrolling right-side document pane.
 - Any named canvas object can be inserted with `@`, focused from the document, and highlighted in the document from the canvas.
 - Renaming updates reference display; deleting leaves a deleted placeholder.
 - Prepared shapes behave as one object and copies receive a different stable ID.
