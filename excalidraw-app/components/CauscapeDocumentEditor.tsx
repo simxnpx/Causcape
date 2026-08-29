@@ -16,6 +16,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   type CSSProperties,
   type KeyboardEvent,
 } from "react";
@@ -295,6 +296,7 @@ export const CauscapeDocumentEditor = ({
 }: CauscapeDocumentEditorProps) => {
   const initialContent = toBlockNoteDocument(document);
   const serializedDocument = JSON.stringify(document);
+  const isApplyingExternalDocumentRef = useRef(false);
   const editor = useCreateBlockNote(
     {
       schema: causcapeDocumentSchema,
@@ -315,10 +317,15 @@ export const CauscapeDocumentEditor = ({
     // an already-mounted document pane in sync with WebMCP and other external
     // project transactions without remounting the editor on every local edit.
     const nextDocument = JSON.parse(serializedDocument) as CauscapeDocument;
-    editor.replaceBlocks(
-      editor.document,
-      toBlockNoteDocument(nextDocument) as never,
-    );
+    isApplyingExternalDocumentRef.current = true;
+    try {
+      editor.replaceBlocks(
+        editor.document,
+        toBlockNoteDocument(nextDocument) as never,
+      );
+    } finally {
+      isApplyingExternalDocumentRef.current = false;
+    }
   }, [editor, serializedDocument]);
 
   const getReferenceItems = async (query: string) => {
@@ -361,6 +368,9 @@ export const CauscapeDocumentEditor = ({
         editor={editor}
         editable={editable}
         onChange={(currentEditor) => {
+          if (isApplyingExternalDocumentRef.current) {
+            return;
+          }
           onChange?.(
             fromBlockNoteDocument(
               currentEditor.document as unknown as CauscapeEditorBlock[],

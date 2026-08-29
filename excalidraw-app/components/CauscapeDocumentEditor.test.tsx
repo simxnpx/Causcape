@@ -161,13 +161,16 @@ describe("Causcape BlockNote adapter", () => {
         clipboardData = null;
       },
     );
+    const onChange = vi.fn();
     const { rerender } = render(
       <CauscapeDocumentEditor
         document={document}
         editable={false}
         objects={{}}
+        onChange={onChange}
       />,
     );
+    onChange.mockClear();
 
     rerender(
       <CauscapeDocumentEditor
@@ -187,12 +190,14 @@ describe("Causcape BlockNote adapter", () => {
         }}
         editable={false}
         objects={{}}
+        onChange={onChange}
       />,
     );
 
     expect(
       await screen.findByText("Agent-authored incident summary"),
     ).toBeVisible();
+    expect(onChange).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
   });
 });
