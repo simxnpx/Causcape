@@ -1,10 +1,6 @@
 # ADR 001 — GitHub Nodes as Postmortem Map
 
-**Date:** 2026-08-26
-**Status:** Accepted
-**Branch:** `feature/graph-engine`
-**Deciders:** Causcape core (graph / element / app / WebMCP slices)
-**Scope:** Local MVP — GitHub entities as causal nodes for incident reconstruction
+**Date:** 2026-08-26 **Status:** Accepted **Branch:** `feature/graph-engine` **Deciders:** Causcape core (graph / element / app / WebMCP slices) **Scope:** Local MVP — GitHub entities as causal nodes for incident reconstruction
 
 ---
 
@@ -27,17 +23,17 @@ The following records the 18 settled questions. Wording mirrors the canonical is
 
 ### Q1 — What job are you actually hiring GitHub nodes for?
 
-*Evidence-linking (variable + GitHub citation) vs project graph (GitHub dependency viewer). Why commit/issue/repo as first-class node vs attachment on variable?*
+_Evidence-linking (variable + GitHub citation) vs project graph (GitHub dependency viewer). Why commit/issue/repo as first-class node vs attachment on variable?_
 
 **Settled: Postmortem map; PR included as first-class.**
 
 Causcape optimizes for incident reconstruction (what happened / in what order / what caused/fixed/reverted what), not a GitHub project/dependency viewer. GitHub entities are **first-class `causcape-node` kinds**, not attachments on `variable`. `variable` remains for operator-authored causal factors without a GitHub URL. PR is included from the start — the most common fix-evidence for postmortems — alongside issue/commit/repo.
 
-- *Consequence:* Single `causcape-node` element type branching on `causcape.kind`; render/type-checks discriminate `variable` vs `github-*`. Snapshot travels with the node.
+- _Consequence:_ Single `causcape-node` element type branching on `causcape.kind`; render/type-checks discriminate `variable` vs `github-*`. Snapshot travels with the node.
 
 ### Q2 — Why commits + issues + repos and not PRs?
 
-*Minimal useful entity set for software engineer schemas; why this triple and not pr/discussion/release/workflow/file; sprawl cost (guards/fetchers/render).*
+_Minimal useful entity set for software engineer schemas; why this triple and not pr/discussion/release/workflow/file; sprawl cost (guards/fetchers/render)._
 
 **Settled: MVP is issue / PR / commit / repo (four kinds + variable).**
 
@@ -49,7 +45,7 @@ CauscapeNodeKind = "variable" | "github-issue" | "github-pr" | "github-commit" |
 
 ### Q3 — Live vs snapshot — what does a node store?
 
-*Live mirror (fetch on render, fresh but offline/rate-limit broken) vs frozen citation (deterministic JSON, stale) vs hybrid.*
+_Live mirror (fetch on render, fresh but offline/rate-limit broken) vs frozen citation (deterministic JSON, stale) vs hybrid._
 
 **Settled: Hybrid.**
 
@@ -58,7 +54,7 @@ CauscapeNodeKind = "variable" | "github-issue" | "github-pr" | "github-commit" |
 
 ### Q4 — Public-only unauth — are you okay with 60 req/h?
 
-*Unauth IP limit, 20 nodes × 3 opens = 403. Optional PAT in localStorage vs hard unauth.*
+_Unauth IP limit, 20 nodes × 3 opens = 403. Optional PAT in localStorage vs hard unauth._
 
 **Settled: GitHub App + unauthenticated (local MVP: unauth + ephemeral PAT; App deferred).**
 
@@ -66,15 +62,15 @@ Unauthenticated `fetch` (`60/h` per IP) is the **default**. The map must remain 
 
 ### Q5 — What does an edge mean between GitHub entities?
 
-*Causal vs reference/depends; cycle/orphan validation meaningful?*
+_Causal vs reference/depends; cycle/orphan validation meaningful?_
 
 **Settled: Pool-based freeform causal/temporal semantics; validation remains meaningful.**
 
-Edges denote causal/temporal claims between *postmortem nodes* (not GitHub dependency graph). Cycles, orphans, and duplicates are still diagnosed via `validateGraph` (warning/info, not blocking). Label pool (Q9/Q14) gives the semantics; graph-engine validates structure.
+Edges denote causal/temporal claims between _postmortem nodes_ (not GitHub dependency graph). Cycles, orphans, and duplicates are still diagnosed via `validateGraph` (warning/info, not blocking). Label pool (Q9/Q14) gives the semantics; graph-engine validates structure.
 
 ### Q6 — Which GitHub entities are actually useful for a postmortem?
 
-*issue/pr/commit/repo/release/workflow run/deployment/comment/branch/file; MVP 3–4 that reconstructs what changed/broke/fixed.*
+_issue/pr/commit/repo/release/workflow run/deployment/comment/branch/file; MVP 3–4 that reconstructs what changed/broke/fixed._
 
 **Settled: MVP four (Q2) is sufficient.**
 
@@ -82,7 +78,7 @@ Issue (what broke), PR (proposed fix), commit (what landed / what reverted), rep
 
 ### Q7 — GitHub App vs OAuth — where does private key live?
 
-*Frontend Vite cannot hold PEM/client_secret (CORS, bundle leak); needs Vercel edge function / proxy vs PAT/Device Flow.*
+_Frontend Vite cannot hold PEM/client_secret (CORS, bundle leak); needs Vercel edge function / proxy vs PAT/Device Flow._
 
 **Settled: Safest — private key never in frontend bundle; server-side mint.**
 
@@ -90,7 +86,7 @@ PEM / `client_secret` cannot live in Vite frontend (bundle leak + CORS). The saf
 
 ### Q8 — Hybrid live+snapshot — who is source of truth?
 
-*SnapshotAt + cache + stale bool; who overwrites label (user edit vs GitHub title), invalidation (poll/manual/If-None-Match), load-time fetch?*
+_SnapshotAt + cache + stale bool; who overwrites label (user edit vs GitHub title), invalidation (poll/manual/If-None-Match), load-time fetch?_
 
 **Settled: Hybrid with embedded snapshot as source of truth on load; explicit invalidation; user label wins.**
 
@@ -102,7 +98,7 @@ PEM / `client_secret` cannot live in Vite frontend (bundle leak + CORS). The saf
 
 ### Q9 — What does an edge mean in postmortem if "doesn't matter"?
 
-*Temporal (preceded) vs causal (caused) vs fixes/reverts; need typed label pool or freeform?*
+_Temporal (preceded) vs causal (caused) vs fixes/reverts; need typed label pool or freeform?_
 
 **Settled: Pool-based freeform.**
 
@@ -114,7 +110,7 @@ CAUSCAPE_EDGE_LABEL_POOL = ["caused","fixed by","reverted","preceded","relates t
 
 ### Q10 — How do nodes get created in real postmortem flow?
 
-*Paste URL vs import window (owner/repo+time range → batch fetch) vs Cmd+K search picker; node count 10/50/200.*
+_Paste URL vs import window (owner/repo+time range → batch fetch) vs Cmd+K search picker; node count 10/50/200._
 
 **Settled: WebMCP agent is the entry point; paste-URL / bulk import are future affordances on top.**
 
@@ -122,7 +118,7 @@ In the MVP the **spawned subagent / local WebMCP** creates nodes via `createCaus
 
 ### Q11 — What is WebMCP — who calls what, where does GitHub fetch happen?
 
-*Browser MCP tools createCauscapeNode/Edge, server-side vs browser fetch, token boundary.*
+_Browser MCP tools createCauscapeNode/Edge, server-side vs browser fetch, token boundary._
 
 **Settled: Fetch by app after creation; WebMCP creates structure, app hydrates.**
 
@@ -132,7 +128,7 @@ In the MVP the **spawned subagent / local WebMCP** creates nodes via `createCaus
 
 ### Q12 — Safest GitHub App — which permissions and token lifecycle?
 
-*Permissions (metadata/read, issues:read, etc.), token lifetime (1h install vs long PAT), storage (memory vs httpOnly cookie vs localStorage), per-repo vs per-org.*
+_Permissions (metadata/read, issues:read, etc.), token lifetime (1h install vs long PAT), storage (memory vs httpOnly cookie vs localStorage), per-repo vs per-org._
 
 **Settled: Spawned subagent — cannot be pure-local; App deferred, PAT memory-only for MVP.**
 
@@ -140,7 +136,7 @@ The safest App shape is **read-only, short-lived installation token** (1h, `meta
 
 ### Q13 — Agent scale — dedup, layout, rate limit?
 
-*Same issue twice → one node vs duplicate, x,y agent vs position.ts auto-layout, 50 nodes batch vs 50 REST calls, cap.*
+_Same issue twice → one node vs duplicate, x,y agent vs position.ts auto-layout, 50 nodes batch vs 50 REST calls, cap._
 
 **Settled: Yes — dedup, layout, and fetch optimizations are required.**
 
@@ -150,7 +146,7 @@ The safest App shape is **read-only, short-lived installation token** (1h, `meta
 
 ### Q14 — Pool of edge labels — where does pool live and who curates it?
 
-*Global constants vs per-board appState vs org config .causcape/config.json.*
+_Global constants vs per-board appState vs org config .causcape/config.json._
 
 **Settled: Global pool in `packages/graph`.**
 
@@ -158,7 +154,7 @@ The safest App shape is **read-only, short-lived installation token** (1h, `meta
 
 ### Q15 — Caching — embedded in node vs separate store, and optimization?
 
-*Embedded cache (versioned) vs IndexedDB ETag store (cross-board dedup, 304) + Map inflight + GraphQL batch.*
+_Embedded cache (versioned) vs IndexedDB ETag store (cross-board dedup, 304) + Map inflight + GraphQL batch._
 
 **Settled: Both — embedded snapshot + IndexedDB ETag store.**
 
@@ -167,7 +163,7 @@ The safest App shape is **read-only, short-lived installation token** (1h, `meta
 
 ### Q16 — WebMCP idempotency + layout — who owns x,y?
 
-*Idempotent upsert by github.url lowercased, x,y omitted → graph-engine timeline layout.*
+_Idempotent upsert by github.url lowercased, x,y omitted → graph-engine timeline layout._
 
 **Settled: Graph-engine owns `x,y`; idempotent by lowercased `github.url`.**
 
@@ -176,7 +172,7 @@ The safest App shape is **read-only, short-lived installation token** (1h, `meta
 
 ### Q17 — Where does postmortem live after agent populates?
 
-*localStorage autosave vs file in repo postmortems/*.excalidraw vs Causcape share link; source of truth & sharing.*
+_localStorage autosave vs file in repo postmortems/_.excalidraw vs Causcape share link; source of truth & sharing.\*
 
 **Settled: Within component — local persistence (scene), not Vercel/hosted share for MVP.**
 
@@ -184,7 +180,7 @@ Scene elements (including embedded caches) are the source of truth, persisted vi
 
 ### Q18 — Scalable safest without per-user edge function — which compromise?
 
-*A) unauth + ephemeral token via WebMCP (agent supplies gh auth token memory-only, zero backend) vs B) hosted proxy you run once (App mint in your Vercel, users zero setup). Causcape not on Vercel, keep local then future App secure session in background.*
+_A) unauth + ephemeral token via WebMCP (agent supplies gh auth token memory-only, zero backend) vs B) hosted proxy you run once (App mint in your Vercel, users zero setup). Causcape not on Vercel, keep local then future App secure session in background._
 
 **Settled: A — local, future App background mint.**
 
@@ -199,22 +195,71 @@ All slices must conform to these types. Drift requires an ADR amendment.
 ### `packages/element/src/types.ts`
 
 ```ts
-type CauscapeNodeKind = "variable" | "github-issue" | "github-pr" | "github-commit" | "github-repo";
+type CauscapeNodeKind =
+  | "variable"
+  | "github-issue"
+  | "github-pr"
+  | "github-commit"
+  | "github-repo";
 
 type GithubRef =
-  | { kind: "github-issue"; owner: string; repo: string; number: number; url: string }
-  | { kind: "github-pr";    owner: string; repo: string; number: number; url: string }
-  | { kind: "github-commit"; owner: string; repo: string; sha: string; url: string }
-  | { kind: "github-repo";  owner: string; repo: string; url: string };
+  | {
+      kind: "github-issue";
+      owner: string;
+      repo: string;
+      number: number;
+      url: string;
+    }
+  | {
+      kind: "github-pr";
+      owner: string;
+      repo: string;
+      number: number;
+      url: string;
+    }
+  | {
+      kind: "github-commit";
+      owner: string;
+      repo: string;
+      sha: string;
+      url: string;
+    }
+  | { kind: "github-repo"; owner: string; repo: string; url: string };
 
 type GithubCache =
-  | { title: string; state: "open" | "closed" | "merged" | string; updatedAt: string; labels?: string[]; author?: string; stale?: boolean }
-  | { message: string; author: string; date: string; stats?: { add: number; del: number }; updatedAt: string; stale?: boolean }
-  | { stars: number; language: string; description: string; updatedAt: string; stale?: boolean };
+  | {
+      title: string;
+      state: "open" | "closed" | "merged" | string;
+      updatedAt: string;
+      labels?: string[];
+      author?: string;
+      stale?: boolean;
+    }
+  | {
+      message: string;
+      author: string;
+      date: string;
+      stats?: { add: number; del: number };
+      updatedAt: string;
+      stale?: boolean;
+    }
+  | {
+      stars: number;
+      language: string;
+      description: string;
+      updatedAt: string;
+      stale?: boolean;
+    };
 
 type CauscapeNodeData =
   | { schemaVersion: 1; kind: "variable"; label: string }
-  | { schemaVersion: 1; kind: "github-issue" | "github-pr" | "github-commit" | "github-repo"; label: string; github: GithubRef; cache?: GithubCache & { snapshotAt: string } };
+  | {
+      schemaVersion: 1;
+      kind: "github-issue" | "github-pr" | "github-commit" | "github-repo";
+      label: string;
+      github: GithubRef;
+      cache?: GithubCache & { snapshotAt: string };
+    };
 
 type ExcalidrawCauscapeNodeElement = _ExcalidrawElementBase & {
   type: "causcape-node";
@@ -226,14 +271,25 @@ type ExcalidrawCauscapeNodeElement = _ExcalidrawElementBase & {
 
 ```ts
 type CauscapeNode = {
-  id: string; label: string; kind: CauscapeNodeKind;
-  x: number; y: number; width: number; height: number;
-  github?: GithubRef; cache?: GithubCache;
+  id: string;
+  label: string;
+  kind: CauscapeNodeKind;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  github?: GithubRef;
+  cache?: GithubCache;
   element: ExcalidrawCauscapeNodeElement;
 };
 
 const CAUSCAPE_EDGE_LABEL_POOL = [
-  "caused", "fixed by", "reverted", "preceded", "relates to", "blocked",
+  "caused",
+  "fixed by",
+  "reverted",
+  "preceded",
+  "relates to",
+  "blocked",
 ] as const;
 
 // cacheKey: `github:${kind}:${owner}/${repo}#${number}|@${sha}`  lowercased

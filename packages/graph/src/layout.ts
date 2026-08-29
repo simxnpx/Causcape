@@ -3,6 +3,8 @@ import {
   getCauscapeEdgeLabelBounds,
 } from "@excalidraw/element";
 
+import { isArchitectureNodeKind } from "./types";
+
 import type {
   CauscapeEdge,
   CauscapeGraph,
@@ -10,7 +12,6 @@ import type {
   Diagnostic,
   ViewportBounds,
 } from "./types";
-import { isArchitectureNodeKind } from "./types";
 
 type Point = [number, number];
 type Box = { x: number; y: number; width: number; height: number };
@@ -209,16 +210,10 @@ const getOrthogonalRoutePoints = (
   const toCenter = centerOf(to);
 
   if (Math.abs(fromCenter[1] - toCenter[1]) < EPSILON) {
-    return [
-      borderPoint(from, toCenter),
-      borderPoint(to, fromCenter),
-    ];
+    return [borderPoint(from, toCenter), borderPoint(to, fromCenter)];
   }
   if (Math.abs(fromCenter[0] - toCenter[0]) < EPSILON) {
-    return [
-      borderPoint(from, toCenter),
-      borderPoint(to, fromCenter),
-    ];
+    return [borderPoint(from, toCenter), borderPoint(to, fromCenter)];
   }
 
   if (preferHorizontal) {
@@ -255,8 +250,8 @@ const getFlowEndpointIds = (
 const getLRouteCandidates = (from: Box, to: Box): Point[][] => {
   const fromCenter = centerOf(from);
   const toCenter = centerOf(to);
-  const verticalOverlap = Math.min(from.y + from.height, to.y + to.height) -
-    Math.max(from.y, to.y);
+  const verticalOverlap =
+    Math.min(from.y + from.height, to.y + to.height) - Math.max(from.y, to.y);
   if (verticalOverlap > EPSILON) {
     const y =
       Math.max(from.y, to.y) +
@@ -277,10 +272,8 @@ const getLRouteCandidates = (from: Box, to: Box): Point[][] => {
     ];
   }
 
-  const horizontalOverlap = Math.min(
-    from.x + from.width,
-    to.x + to.width,
-  ) - Math.max(from.x, to.x);
+  const horizontalOverlap =
+    Math.min(from.x + from.width, to.x + to.width) - Math.max(from.x, to.x);
   if (horizontalOverlap > EPSILON) {
     const x =
       Math.max(from.x, to.x) +
@@ -333,7 +326,9 @@ export const routeCauscapeEdge = (
 ): CauscapeEdgeGeometry => {
   const from: Box = fromNode;
   const to: Box = toNode;
-  return geometryFromAbsolutePoints(getPreferredOrthogonalRoutePoints(from, to));
+  return geometryFromAbsolutePoints(
+    getPreferredOrthogonalRoutePoints(from, to),
+  );
 };
 
 const orientation = (p: Point, q: Point, r: Point): number =>
@@ -432,19 +427,17 @@ const countRouteOverlapsAgainst = (
 const pointTouchesNodeBorder = (point: Point, box: Box): boolean => {
   const tolerance = 2;
   const withinX =
-    point[0] >= box.x - tolerance &&
-    point[0] <= box.x + box.width + tolerance;
+    point[0] >= box.x - tolerance && point[0] <= box.x + box.width + tolerance;
   const withinY =
-    point[1] >= box.y - tolerance &&
-    point[1] <= box.y + box.height + tolerance;
+    point[1] >= box.y - tolerance && point[1] <= box.y + box.height + tolerance;
   return (
-    (Math.abs(point[0] - box.x) <= tolerance ||
+    ((Math.abs(point[0] - box.x) <= tolerance ||
       Math.abs(point[0] - (box.x + box.width)) <= tolerance) &&
-      withinY
-  ) ||
+      withinY) ||
     ((Math.abs(point[1] - box.y) <= tolerance ||
       Math.abs(point[1] - (box.y + box.height)) <= tolerance) &&
-      withinX);
+      withinX)
+  );
 };
 
 /** Whether a segment enters the open interior of a rectangle. */
@@ -752,8 +745,7 @@ const routeAroundNodes = (
     const labelNodeHits = labelBox
       ? nodes.reduce(
           (count, node) =>
-            count +
-            (boxesOverlap(labelBox, boxFor(node, positions)) ? 1 : 0),
+            count + (boxesOverlap(labelBox, boxFor(node, positions)) ? 1 : 0),
           0,
         )
       : 0;
@@ -824,7 +816,8 @@ const dedupeDiagnostics = (
 };
 
 const getEdgeRoutingPriority = (edge: CauscapeEdge): number => {
-  const label = getCauscapeEdgeLabel(edge.element.causcape)?.toLowerCase() ?? "";
+  const label =
+    getCauscapeEdgeLabel(edge.element.causcape)?.toLowerCase() ?? "";
   if (/(telemetry|metric|trace|log)/.test(label)) {
     return 100;
   }
@@ -1242,10 +1235,7 @@ const getMainSpine = (
   graph: CauscapeGraph,
   ranks: ReadonlyMap<string, number>,
 ): ReadonlySet<string> => {
-  const outgoing = new Map<
-    string,
-    { id: string; weight: number }[]
-  >();
+  const outgoing = new Map<string, { id: string; weight: number }[]>();
   const incoming = new Map<string, number>();
   for (const node of graph.nodes) {
     outgoing.set(node.id, []);
@@ -1301,7 +1291,8 @@ const getMainSpine = (
         (score.get(b.id) ?? 0) - (score.get(a.id) ?? 0) ||
         a.id.localeCompare(b.id),
     );
-  const current = roots[0] ??
+  const current =
+    roots[0] ??
     [...graph.nodes].sort(
       (a, b) =>
         (score.get(b.id) ?? 0) - (score.get(a.id) ?? 0) ||
@@ -1317,9 +1308,9 @@ const getMainSpine = (
     spine.add(nodeId);
     const next: string | undefined = (outgoing.get(nodeId) ?? []).sort(
       (a, b) =>
-      (b.weight + (score.get(b.id) ?? 0)) -
-          (a.weight + (score.get(a.id) ?? 0)) ||
-        a.id.localeCompare(b.id),
+        b.weight +
+          (score.get(b.id) ?? 0) -
+          (a.weight + (score.get(a.id) ?? 0)) || a.id.localeCompare(b.id),
     )[0]?.id;
     nodeId = next;
   }
@@ -1369,7 +1360,10 @@ const getContainedVerticalSubflows = (
     }
   }
   for (const edge of flowEdges) {
-    if (branchNeighbors.has(edge.fromNodeId) && branchNeighbors.has(edge.toNodeId)) {
+    if (
+      branchNeighbors.has(edge.fromNodeId) &&
+      branchNeighbors.has(edge.toNodeId)
+    ) {
       branchNeighbors.get(edge.fromNodeId)?.add(edge.toNodeId);
       branchNeighbors.get(edge.toNodeId)?.add(edge.fromNodeId);
     }
@@ -1377,7 +1371,9 @@ const getContainedVerticalSubflows = (
 
   const components: string[][] = [];
   const seen = new Set<string>();
-  for (const node of [...graph.nodes].sort((a, b) => a.id.localeCompare(b.id))) {
+  for (const node of [...graph.nodes].sort((a, b) =>
+    a.id.localeCompare(b.id),
+  )) {
     if (mainSpine.has(node.id) || seen.has(node.id)) {
       continue;
     }
@@ -1458,8 +1454,7 @@ const getContainedVerticalSubflows = (
       return anchorToSide || sideToAnchor;
     }).length;
     const orderedNodeIds = [...component].sort(
-      (a, b) =>
-        (ranks.get(a) ?? 0) - (ranks.get(b) ?? 0) || a.localeCompare(b),
+      (a, b) => (ranks.get(a) ?? 0) - (ranks.get(b) ?? 0) || a.localeCompare(b),
     );
     // A vertical exception is useful beside an isolated part of the spine,
     // but it makes a high-fanout hub harder to route and scan. Leave those
@@ -1507,10 +1502,13 @@ const getVerticalSubflowPositions = (
   const nodesById = new Map(graph.nodes.map((node) => [node.id, node]));
   for (const subflow of subflows) {
     const anchor = nodesById.get(subflow.anchorId);
-    if (!anchor || subflow.nodeIds.some((id) => {
-      const node = nodesById.get(id);
-      return !node || isPinned(node, options);
-    })) {
+    if (
+      !anchor ||
+      subflow.nodeIds.some((id) => {
+        const node = nodesById.get(id);
+        return !node || isPinned(node, options);
+      })
+    ) {
       continue;
     }
 
@@ -1541,7 +1539,10 @@ const getVerticalSubflowPositions = (
             continue;
           }
           const otherPosition = positions.get(other.id);
-          if (otherPosition && boxesOverlap(candidate, boxFor(other, positions))) {
+          if (
+            otherPosition &&
+            boxesOverlap(candidate, boxFor(other, positions))
+          ) {
             return true;
           }
         }
@@ -1573,9 +1574,7 @@ const getVerticalSubflowPositions = (
   }
 };
 
-const getObservabilityNodeIds = (
-  graph: CauscapeGraph,
-): ReadonlySet<string> =>
+const getObservabilityNodeIds = (graph: CauscapeGraph): ReadonlySet<string> =>
   new Set(
     graph.nodes
       .filter((node) =>
@@ -1618,7 +1617,8 @@ const placeObservabilityLane = (
         const position = positions.get(node.id);
         return (position?.y ?? node.y) + node.height;
       }),
-    ) + gapY * 2;
+    ) +
+    gapY * 2;
   const flowEdges = validEdges(getFlowGraph(graph));
   const sourceCenters = flowEdges
     .filter((edge) => observabilityIds.has(edge.toNodeId))
@@ -1629,10 +1629,11 @@ const placeObservabilityLane = (
     })
     .filter((center): center is number => center !== undefined);
   const firstWidth = observabilityNodes[0]?.width ?? 0;
-  const sourceCenter = sourceCenters.length > 0
-    ? sourceCenters.reduce((sum, center) => sum + center, 0) /
-      sourceCenters.length
-    : options.originX ?? 0;
+  const sourceCenter =
+    sourceCenters.length > 0
+      ? sourceCenters.reduce((sum, center) => sum + center, 0) /
+        sourceCenters.length
+      : options.originX ?? 0;
   let nextX = Math.max(options.originX ?? 0, sourceCenter - firstWidth / 2);
   for (const node of observabilityNodes) {
     positions.set(node.id, { x: nextX, y: laneY });
@@ -1702,8 +1703,8 @@ const computePositions = (
     let rootIndex = 0;
     for (const node of nodes) {
       const neighborCenters = validEdges(flowGraph)
-        .filter((edge) =>
-          edge.toNodeId === node.id || edge.fromNodeId === node.id,
+        .filter(
+          (edge) => edge.toNodeId === node.id || edge.fromNodeId === node.id,
         )
         .map((edge) => {
           const neighborId =
@@ -1736,8 +1737,7 @@ const computePositions = (
     nodes.sort(
       (a, b) =>
         Number(mainSpine.has(b.id)) - Number(mainSpine.has(a.id)) ||
-        (desiredCenters.get(a.id) ?? a.y) -
-          (desiredCenters.get(b.id) ?? b.y) ||
+        (desiredCenters.get(a.id) ?? a.y) - (desiredCenters.get(b.id) ?? b.y) ||
         a.id.localeCompare(b.id),
     );
     for (const node of nodes) {
@@ -1751,11 +1751,16 @@ const computePositions = (
         (desiredCenters.get(node.id) ?? originY + node.height / 2) -
           node.height / 2,
       );
-      while (
-        placed.some(({ box }) =>
-          boxesOverlap({ x, y, width: node.width, height: node.height }, box),
-        )
-      ) {
+      while (true) {
+        const candidateBox = {
+          x,
+          y,
+          width: node.width,
+          height: node.height,
+        };
+        if (!placed.some(({ box }) => boxesOverlap(candidateBox, box))) {
+          break;
+        }
         y += step;
       }
       const selected = { x, y };

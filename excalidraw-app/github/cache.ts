@@ -1,5 +1,6 @@
-import type { GithubCache, GithubCacheRecord, GithubRef } from "./types";
 import { githubCacheKey } from "./types";
+
+import type { GithubCache, GithubCacheRecord, GithubRef } from "./types";
 
 const DB_NAME = "github-cache-v1";
 const STORE_NAME = "github-cache";
@@ -27,7 +28,9 @@ const getIDBFactory = (ownerDocument?: Document | null): IDBFactory | null => {
       return fromOwner;
     }
     const doc =
-      typeof document !== "undefined" ? (document as unknown as Document) : null;
+      typeof document !== "undefined"
+        ? (document as unknown as Document)
+        : null;
     const fromDoc = doc?.defaultView?.indexedDB;
     if (fromDoc) {
       return fromDoc;
@@ -42,7 +45,9 @@ const getIDBFactory = (ownerDocument?: Document | null): IDBFactory | null => {
   return null;
 };
 
-const openDB = (ownerDocument?: Document | null): Promise<IDBDatabase | null> => {
+const openDB = (
+  ownerDocument?: Document | null,
+): Promise<IDBDatabase | null> => {
   if (dbPromise) {
     return dbPromise;
   }
@@ -203,7 +208,9 @@ export const getCachedGithubData = (
   keyOrRef: string | GithubRef,
 ): GithubCache | undefined => {
   const key =
-    typeof keyOrRef === "string" ? keyOrRef.toLowerCase() : githubCacheKey(keyOrRef);
+    typeof keyOrRef === "string"
+      ? keyOrRef.toLowerCase()
+      : githubCacheKey(keyOrRef);
   const fromMirror = syncMirror.get(key);
   if (fromMirror) {
     return fromMirror;

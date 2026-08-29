@@ -24,7 +24,7 @@ export const ARCHITECTURE_NODE_KINDS = [
   "user",
 ] as const;
 
-export type ArchitectureNodeKind = (typeof ARCHITECTURE_NODE_KINDS)[number];
+export type ArchitectureNodeKind = typeof ARCHITECTURE_NODE_KINDS[number];
 
 export const ARCHITECTURE_RELATIONSHIP_TYPES = [
   "calls",
@@ -36,7 +36,7 @@ export const ARCHITECTURE_RELATIONSHIP_TYPES = [
 ] as const;
 
 export type ArchitectureRelationshipType =
-  (typeof ARCHITECTURE_RELATIONSHIP_TYPES)[number];
+  typeof ARCHITECTURE_RELATIONSHIP_TYPES[number];
 
 export const ARCHITECTURE_REFERENCE_TYPES = [
   "repository",
@@ -46,13 +46,9 @@ export const ARCHITECTURE_REFERENCE_TYPES = [
 ] as const;
 
 export type ArchitectureReferenceType =
-  (typeof ARCHITECTURE_REFERENCE_TYPES)[number];
+  typeof ARCHITECTURE_REFERENCE_TYPES[number];
 
-export type ArchitectureHealth =
-  | "healthy"
-  | "degraded"
-  | "failed"
-  | "unknown";
+export type ArchitectureHealth = "healthy" | "degraded" | "failed" | "unknown";
 
 export type CauscapeReference = Readonly<{
   type: ArchitectureReferenceType;
@@ -82,9 +78,27 @@ export const isArchitectureNodeKind = (
   (ARCHITECTURE_NODE_KINDS as readonly string[]).includes(kind);
 
 export type GithubRef =
-  | { kind: "github-issue"; owner: string; repo: string; number: number; url: string }
-  | { kind: "github-pr"; owner: string; repo: string; number: number; url: string }
-  | { kind: "github-commit"; owner: string; repo: string; sha: string; url: string }
+  | {
+      kind: "github-issue";
+      owner: string;
+      repo: string;
+      number: number;
+      url: string;
+    }
+  | {
+      kind: "github-pr";
+      owner: string;
+      repo: string;
+      number: number;
+      url: string;
+    }
+  | {
+      kind: "github-commit";
+      owner: string;
+      repo: string;
+      sha: string;
+      url: string;
+    }
   | { kind: "github-repo"; owner: string; repo: string; url: string };
 
 export type GithubIssuePrCache = Readonly<{
@@ -113,23 +127,30 @@ export type GithubRepoCache = Readonly<{
   stale?: boolean;
 }>;
 
-export type GithubCache = GithubIssuePrCache | GithubCommitCache | GithubRepoCache;
+export type GithubCache =
+  | GithubIssuePrCache
+  | GithubCommitCache
+  | GithubRepoCache;
 
-export type GithubCacheWithSnapshot = GithubCache & Readonly<{ snapshotAt: string }>;
-
+export type GithubCacheWithSnapshot = GithubCache &
+  Readonly<{ snapshotAt: string }>;
 
 export const githubCacheKey = (ref: GithubRef): string => {
   const owner = ref.owner.toLowerCase();
   const repo = ref.repo.toLowerCase();
   const kind = ref.kind.toLowerCase();
   if (ref.kind === "github-commit") {
-    const sha = (ref as Extract<GithubRef, { kind: "github-commit" }>).sha.toLowerCase();
+    const sha = (
+      ref as Extract<GithubRef, { kind: "github-commit" }>
+    ).sha.toLowerCase();
     return `github:${kind}:${owner}/${repo}@${sha}`;
   }
   if (ref.kind === "github-repo") {
     return `github:${kind}:${owner}/${repo}`;
   }
-  const num = (ref as Extract<GithubRef, { kind: "github-issue" | "github-pr" }>).number;
+  const num = (
+    ref as Extract<GithubRef, { kind: "github-issue" | "github-pr" }>
+  ).number;
   return `github:${kind}:${owner}/${repo}#${num}`;
 };
 

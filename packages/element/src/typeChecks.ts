@@ -32,7 +32,6 @@ import type {
   ExcalidrawCauscapeNodeElement,
   ExcalidrawCauscapeEdgeElement,
   ExcalidrawCauscapeElement,
-  CauscapeNodeKind,
 } from "./types";
 
 export const isInitializedImageElement = <T extends ExcalidrawElement>(
@@ -325,7 +324,10 @@ export const isUsingAdaptiveRadius = (type: string) =>
   type === "image";
 
 export const isUsingProportionalRadius = (type: string) =>
-  type === "line" || type === "arrow" || type === "causcape-edge" || type === "diamond";
+  type === "line" ||
+  type === "arrow" ||
+  type === "causcape-edge" ||
+  type === "diamond";
 
 export const canApplyRoundnessTypeToElement = (
   roundnessType: RoundnessType,
@@ -460,23 +462,31 @@ export const isVariableNode = <T extends ExcalidrawElement>(
 export const isGithubIssueNode = <T extends ExcalidrawElement>(
   element: T | null | undefined,
 ): element is T & ExcalidrawCauscapeNodeElement => {
-  return isCauscapeNodeElement(element) && element.causcape.kind === "github-issue";
+  return (
+    isCauscapeNodeElement(element) && element.causcape.kind === "github-issue"
+  );
 };
 
 export const isGithubPrNode = <T extends ExcalidrawElement>(
   element: T | null | undefined,
 ): element is T & ExcalidrawCauscapeNodeElement => {
-  return isCauscapeNodeElement(element) && element.causcape.kind === "github-pr";
+  return (
+    isCauscapeNodeElement(element) && element.causcape.kind === "github-pr"
+  );
 };
 
 export const isGithubCommitNode = <T extends ExcalidrawElement>(
   element: T | null | undefined,
 ): element is T & ExcalidrawCauscapeNodeElement => {
-  return isCauscapeNodeElement(element) && element.causcape.kind === "github-commit";
+  return (
+    isCauscapeNodeElement(element) && element.causcape.kind === "github-commit"
+  );
 };
 
 export const isGithubRepoNode = <T extends ExcalidrawElement>(
   element: T | null | undefined,
 ): element is T & ExcalidrawCauscapeNodeElement => {
-  return isCauscapeNodeElement(element) && element.causcape.kind === "github-repo";
+  return (
+    isCauscapeNodeElement(element) && element.causcape.kind === "github-repo"
+  );
 };

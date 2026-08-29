@@ -87,75 +87,6 @@ const roughSVGDrawWithPrecision = (
   };
   return rsvg.draw(pshape);
 };
-const GITHUB_OCTICON_SVG_PATH =
-  "M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z";
-
-const getGithubBadgeColorSvg = (
-  kind: string,
-  state: string | undefined,
-  isDark: boolean,
-): string => {
-  const s = (state ?? "").toLowerCase();
-  if (s === "open") {
-    return isDark ? "#3fb950" : "#1a7f37";
-  }
-  if (s === "merged") {
-    return isDark ? "#ab7ff2" : "#8250df";
-  }
-  if (s === "closed") {
-    return isDark ? "#f85149" : "#cf222e";
-  }
-  if (kind === "github-repo") {
-    return isDark ? "#8c959f" : "#656d76";
-  }
-  return isDark ? "#8c959f" : "#656d76";
-};
-
-const truncateSvgTwoLines = (
-  text: string,
-  maxCharsPerLine: number,
-): readonly [string, string | null] => {
-  const raw = text.trim();
-  if (raw.length === 0) {
-    return ["", null] as const;
-  }
-  if (raw.length <= maxCharsPerLine) {
-    return [raw, null] as const;
-  }
-  const words = raw.split(/\s+/);
-  let line1 = "";
-  let line2 = "";
-  let idx = 0;
-  for (; idx < words.length; idx++) {
-    const cand = line1 ? `${line1} ${words[idx]}` : words[idx];
-    if (cand.length > maxCharsPerLine) {
-      break;
-    }
-    line1 = cand;
-  }
-  if (line1.length === 0 && words.length > 0) {
-    return [`${words[0].slice(0, maxCharsPerLine - 1)}…`, null] as const;
-  }
-  if (idx >= words.length) {
-    return [line1, null] as const;
-  }
-  for (; idx < words.length; idx++) {
-    const cand = line2 ? `${line2} ${words[idx]}` : words[idx];
-    const isLast = idx === words.length - 1;
-    const test = isLast ? cand : `${cand}…`;
-    if (test.length > maxCharsPerLine) {
-      break;
-    }
-    line2 = cand;
-  }
-  if (idx < words.length && line2.length === 0) {
-    line2 = `${words[idx].slice(0, maxCharsPerLine - 1)}…`;
-  } else if (idx < words.length && line2.length > 0) {
-    line2 = `${line2}…`;
-  }
-  return [line1, line2.length > 0 ? line2 : null] as const;
-};
-
 const maybeWrapNodesInFrameClipPath = (
   element: Readonly<NonDeletedExcalidrawElement>,
   root: SVGElement,
@@ -561,7 +492,7 @@ const renderElementToSvg = (
         const kind = nodeData.kind;
         const isGithub = nodeData.isGithub;
         if (isGithub) {
-          const cacheVal: unknown = causcape["cache"];
+          const cacheVal: unknown = causcape.cache;
           const cache =
             cacheVal && typeof cacheVal === "object"
               ? (cacheVal as Record<string, unknown>)
@@ -610,9 +541,9 @@ const renderElementToSvg = (
             Math.floor((element.width - textX - pad - (stale ? 12 : 0)) / 6.5),
           );
           if (isRepo && cache) {
-            const starsVal: unknown = cache["stars"];
+            const starsVal: unknown = cache.stars;
             const stars = typeof starsVal === "number" ? starsVal : undefined;
-            const langVal: unknown = cache["language"];
+            const langVal: unknown = cache.language;
             const language = typeof langVal === "string" ? langVal : undefined;
             const hasMeta = stars !== undefined || language !== undefined;
             // title line
@@ -1006,10 +937,7 @@ const renderElementToSvg = (
           const boxHeight = lines.length * lineHeight + verticalPadding * 2;
           const labelX = anchor.x + anchor.normalX * 16;
           const labelY = anchor.y + anchor.normalY * 16;
-          const labelGroup = svgRoot.ownerDocument.createElementNS(
-            SVG_NS,
-            "g",
-          );
+          const labelGroup = svgRoot.ownerDocument.createElementNS(SVG_NS, "g");
           labelGroup.setAttribute(
             "transform",
             `translate(${offsetX || 0} ${
@@ -1041,7 +969,10 @@ const renderElementToSvg = (
             );
             labelText.setAttribute("text-anchor", "middle");
             labelText.setAttribute("dominant-baseline", "middle");
-            labelText.setAttribute("font-family", "system-ui, -apple-system, sans-serif");
+            labelText.setAttribute(
+              "font-family",
+              "system-ui, -apple-system, sans-serif",
+            );
             labelText.setAttribute("font-size", `${fontSize}`);
             labelText.setAttribute("font-weight", "500");
             labelText.setAttribute("fill", textColor);

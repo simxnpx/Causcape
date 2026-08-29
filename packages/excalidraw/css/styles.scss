@@ -1102,9 +1102,18 @@ body.excalidraw-cursor-resize * {
     align-items: center;
     gap: 7px;
     padding: 0 14px;
-    border: 1px solid color-mix(in srgb, var(--causcape-pill-color, var(--causcape-accent)) 40%, transparent);
+    border: 1px solid
+      color-mix(
+        in srgb,
+        var(--causcape-pill-color, var(--causcape-accent)) 40%,
+        transparent
+      );
     border-radius: 9px;
-    background: color-mix(in srgb, var(--causcape-pill-color, var(--causcape-accent)) 9%, transparent);
+    background: color-mix(
+      in srgb,
+      var(--causcape-pill-color, var(--causcape-accent)) 9%,
+      transparent
+    );
     color: var(--causcape-pill-color, var(--causcape-accent));
     font-size: 15px;
     font-weight: 600;

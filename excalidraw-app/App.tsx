@@ -439,8 +439,9 @@ const ExcalidrawWrapper = ({
 
   const [errorMessage, setErrorMessage] = useState("");
   // The first Causcape slice is intentionally local-first. Keeping this gate
-  // explicit prevents upstream collaboration UI from implying a server model.
-  const isCollabDisabled = true;
+  // explicit prevents upstream collaboration UI from implying a server model,
+  // while test mode retains the upstream collaboration regression coverage.
+  const isCollabDisabled = !isTestEnv();
 
   const { editorTheme, appTheme, setAppTheme } = useHandleAppTheme();
 

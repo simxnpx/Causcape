@@ -2077,7 +2077,9 @@ class App extends React.Component<AppProps, AppState> {
     const nodeElements = this.scene
       .getNonDeletedElements()
       .filter(
-        (element): element is Ordered<NonDeleted<ExcalidrawCauscapeNodeElement>> =>
+        (
+          element,
+        ): element is Ordered<NonDeleted<ExcalidrawCauscapeNodeElement>> =>
           element.type === "causcape-node" &&
           isCauscapeArchitectureNodeKind(element.causcape.kind),
       );
@@ -7434,11 +7436,8 @@ class App extends React.Component<AppProps, AppState> {
       point: Readonly<{ x: number; y: number }>,
     ): boolean =>
       this.hitLinkElement?.type === "causcape-node" &&
-      getCauscapeReferenceAtPoint(
-        this.hitLinkElement,
-        point,
-        this.state.theme,
-      )?.url === this.hitLinkElement.link;
+      getCauscapeReferenceAtPoint(this.hitLinkElement, point, this.state.theme)
+        ?.url === this.hitLinkElement.link;
     const lastPointerUpHittingLinkIcon = isPointHittingLink(
       this.hitLinkElement,
       elementsMap,
@@ -7449,7 +7448,8 @@ class App extends React.Component<AppProps, AppState> {
     if (
       (lastPointerDownHittingLinkIcon ||
         isCauscapeReferenceHit(lastPointerDownCoords)) &&
-      (lastPointerUpHittingLinkIcon || isCauscapeReferenceHit(lastPointerUpCoords))
+      (lastPointerUpHittingLinkIcon ||
+        isCauscapeReferenceHit(lastPointerUpCoords))
     ) {
       hideHyperlinkToolip();
       let url = this.hitLinkElement.link;

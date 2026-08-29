@@ -19,9 +19,7 @@ import { newElementWith } from "./mutateElement";
 
 import { ElementsDelta, AppStateDelta, Delta } from "./delta";
 
-import {
-  syncInvalidIndicesImmutable,
-} from "./fractionalIndex";
+import { syncInvalidIndicesImmutable } from "./fractionalIndex";
 import { hashElementsVersion, hashString } from "./elementHelpers";
 import { isInitializedImageElement, isImageElement } from "./typeChecks";
 

@@ -25,8 +25,13 @@ const getOwnerWindowForDebug = (): (Window & typeof globalThis) | null => {
     // Prefer ownerDocument.defaultView when available (AGENTS.md rule).
     // Derive from global document if present; fallback to globalThis window.
     const doc =
-      typeof document !== "undefined" ? (document as unknown as Document) : null;
-    const fromDoc = doc?.defaultView as (Window & typeof globalThis) | null | undefined;
+      typeof document !== "undefined"
+        ? (document as unknown as Document)
+        : null;
+    const fromDoc = doc?.defaultView as
+      | (Window & typeof globalThis)
+      | null
+      | undefined;
     if (fromDoc) {
       return fromDoc;
     }

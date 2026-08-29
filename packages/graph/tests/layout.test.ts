@@ -152,9 +152,9 @@ describe("graph quality pipeline", () => {
     const targetPosition = result.positions.get("target");
     expect(sourcePosition).toBeDefined();
     expect(targetPosition).toBeDefined();
-    expect(
-      (sourcePosition as { y: number }).y + source.height / 2,
-    ).toBe((targetPosition as { y: number }).y + target.height / 2);
+    expect((sourcePosition as { y: number }).y + source.height / 2).toBe(
+      (targetPosition as { y: number }).y + target.height / 2,
+    );
     expect(result.edges.get("source-target")?.points).toHaveLength(2);
   });
 
@@ -177,7 +177,9 @@ describe("graph quality pipeline", () => {
           }),
         ],
       ),
-      { routes: new Map([["source-target", routeCauscapeEdge(source, target)]]) },
+      {
+        routes: new Map([["source-target", routeCauscapeEdge(source, target)]]),
+      },
     );
 
     expect(report.metrics.edgeLabelOverlapCount).toBeGreaterThan(0);
@@ -225,14 +227,9 @@ describe("graph quality pipeline", () => {
       gapY: 40,
     });
     const x = (id: string) => result.positions.get(id)?.x as number;
-    expect(["user", "gateway", "booking", "events", "worker", "email"].map(x)).toEqual([
-      0,
-      240,
-      480,
-      720,
-      960,
-      1200,
-    ]);
+    expect(
+      ["user", "gateway", "booking", "events", "worker", "email"].map(x),
+    ).toEqual([0, 240, 480, 720, 960, 1200]);
     expect(result.positions.get("events")?.y).toBeLessThan(
       result.positions.get("inventory")?.y as number,
     );
@@ -244,7 +241,9 @@ describe("graph quality pipeline", () => {
       edgeThroughNodeCount: 0,
       crossingCount: 0,
     });
-    const subscription = result.edges.get("worker-events") as CauscapeEdgeGeometry;
+    const subscription = result.edges.get(
+      "worker-events",
+    ) as CauscapeEdgeGeometry;
     const subscriptionPoints = subscription.points.map(([pointX, pointY]) => [
       pointX + subscription.x,
       pointY + subscription.y,
@@ -266,13 +265,24 @@ describe("graph quality pipeline", () => {
     });
 
     const result = improveCauscapeGraph(
-      graph([anchor, primary, final, terminal, pricing, pricingStore], [
-          edge("anchor-primary", "anchor", "primary", { relationship: "calls" }),
+      graph(
+        [anchor, primary, final, terminal, pricing, pricingStore],
+        [
+          edge("anchor-primary", "anchor", "primary", {
+            relationship: "calls",
+          }),
           edge("primary-final", "primary", "final", { relationship: "calls" }),
-          edge("final-terminal", "final", "terminal", { relationship: "calls" }),
-          edge("anchor-pricing", "anchor", "pricing", { relationship: "calls" }),
-          edge("pricing-store", "pricing", "pricing-store", { relationship: "writes" }),
-      ]),
+          edge("final-terminal", "final", "terminal", {
+            relationship: "calls",
+          }),
+          edge("anchor-pricing", "anchor", "pricing", {
+            relationship: "calls",
+          }),
+          edge("pricing-store", "pricing", "pricing-store", {
+            relationship: "writes",
+          }),
+        ],
+      ),
       {
         originX: 0,
         originY: 0,
@@ -282,9 +292,18 @@ describe("graph quality pipeline", () => {
       },
     );
 
-    const anchorPosition = result.positions.get("anchor") as { x: number; y: number };
-    const pricingPosition = result.positions.get("pricing") as { x: number; y: number };
-    const pricingStorePosition = result.positions.get("pricing-store") as { x: number; y: number };
+    const anchorPosition = result.positions.get("anchor") as {
+      x: number;
+      y: number;
+    };
+    const pricingPosition = result.positions.get("pricing") as {
+      x: number;
+      y: number;
+    };
+    const pricingStorePosition = result.positions.get("pricing-store") as {
+      x: number;
+      y: number;
+    };
 
     expect(pricingPosition.x + pricing.width / 2).toBe(
       anchorPosition.x + anchor.width / 2,
@@ -350,9 +369,12 @@ describe("graph quality pipeline", () => {
     const verticalBranches = Array.from({ length: 5 }, (_, index) => {
       const anchor = result.positions.get(`spine-${index}`);
       const branch = result.positions.get(`side-${index}`);
-      return anchor && branch &&
+      return (
+        anchor &&
+        branch &&
         branch.x === anchor.x &&
-        branch.y > anchor.y + spine[index].height;
+        branch.y > anchor.y + spine[index].height
+      );
     }).filter(Boolean);
 
     expect(verticalBranches.length).toBeLessThanOrEqual(2);
@@ -409,9 +431,11 @@ describe("graph quality pipeline", () => {
     };
     const verticalBranches = Array.from({ length: 3 }, (_, index) => {
       const branch = result.positions.get(`hub-side-${index}`);
-      return branch &&
+      return (
+        branch &&
         branch.x === hubPosition.x &&
-        branch.y > hubPosition.y + spine[2].height;
+        branch.y > hubPosition.y + spine[2].height
+      );
     }).filter(Boolean);
 
     expect(verticalBranches).toHaveLength(0);
@@ -432,22 +456,46 @@ describe("graph quality pipeline", () => {
         [user, service, response, telemetry, metrics, trace],
         [
           edge("user-service", "user", "service", { relationship: "calls" }),
-          edge("service-response", "service", "response", { relationship: "calls" }),
-          edge("service-telemetry", "service", "telemetry", { relationship: "depends-on" }),
-          edge("response-telemetry", "response", "telemetry", { relationship: "depends-on" }),
-          edge("telemetry-metrics", "telemetry", "metrics", { relationship: "writes" }),
-          edge("telemetry-trace", "telemetry", "trace", { relationship: "depends-on" }),
+          edge("service-response", "service", "response", {
+            relationship: "calls",
+          }),
+          edge("service-telemetry", "service", "telemetry", {
+            relationship: "depends-on",
+          }),
+          edge("response-telemetry", "response", "telemetry", {
+            relationship: "depends-on",
+          }),
+          edge("telemetry-metrics", "telemetry", "metrics", {
+            relationship: "writes",
+          }),
+          edge("telemetry-trace", "telemetry", "trace", {
+            relationship: "depends-on",
+          }),
         ],
       ),
       { originX: 0, originY: 0, gapX: 80, gapY: 40 },
     );
 
-    const responsePosition = result.positions.get("response") as { x: number; y: number };
-    const telemetryPosition = result.positions.get("telemetry") as { x: number; y: number };
-    const metricsPosition = result.positions.get("metrics") as { x: number; y: number };
-    const tracePosition = result.positions.get("trace") as { x: number; y: number };
+    const responsePosition = result.positions.get("response") as {
+      x: number;
+      y: number;
+    };
+    const telemetryPosition = result.positions.get("telemetry") as {
+      x: number;
+      y: number;
+    };
+    const metricsPosition = result.positions.get("metrics") as {
+      x: number;
+      y: number;
+    };
+    const tracePosition = result.positions.get("trace") as {
+      x: number;
+      y: number;
+    };
 
-    expect(telemetryPosition.y).toBeGreaterThan(responsePosition.y + response.height);
+    expect(telemetryPosition.y).toBeGreaterThan(
+      responsePosition.y + response.height,
+    );
     expect(metricsPosition.y).toBe(telemetryPosition.y);
     expect(tracePosition.y).toBe(telemetryPosition.y);
     expect(result.after.metrics.overlapCount).toBe(0);
@@ -483,11 +531,29 @@ describe("graph quality pipeline", () => {
         routes: new Map<string, CauscapeEdgeGeometry>([
           [
             "a-c",
-            { x: 0, y: 0, width: 200, height: 100, points: [[0, 0], [200, 100]] },
+            {
+              x: 0,
+              y: 0,
+              width: 200,
+              height: 100,
+              points: [
+                [0, 0],
+                [200, 100],
+              ],
+            },
           ],
           [
             "b-d",
-            { x: 0, y: 0, width: 200, height: 100, points: [[0, 100], [200, 0]] },
+            {
+              x: 0,
+              y: 0,
+              width: 200,
+              height: 100,
+              points: [
+                [0, 100],
+                [200, 0],
+              ],
+            },
           ],
         ]),
       }).metrics.crossingCount,
@@ -547,8 +613,32 @@ describe("graph quality pipeline", () => {
       ),
       {
         routes: new Map([
-          ["first-route", { x: 20, y: 10, width: 180, height: 1, points: [[0, 0], [180, 0]] }],
-          ["second-route", { x: 100, y: 10, width: 200, height: 1, points: [[0, 0], [200, 0]] }],
+          [
+            "first-route",
+            {
+              x: 20,
+              y: 10,
+              width: 180,
+              height: 1,
+              points: [
+                [0, 0],
+                [180, 0],
+              ],
+            },
+          ],
+          [
+            "second-route",
+            {
+              x: 100,
+              y: 10,
+              width: 200,
+              height: 1,
+              points: [
+                [0, 0],
+                [200, 0],
+              ],
+            },
+          ],
         ]),
       },
     );

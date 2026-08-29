@@ -1,7 +1,9 @@
 import { THEME } from "@excalidraw/common";
 import { pointFrom, type LocalPoint } from "@excalidraw/math";
-import type { StaticCanvasRenderConfig } from "@excalidraw/excalidraw/scene/types";
+
 import { vi } from "vitest";
+
+import type { StaticCanvasRenderConfig } from "@excalidraw/excalidraw/scene/types";
 
 import {
   drawCauscapeEdgeOnCanvas,
@@ -350,7 +352,10 @@ describe("Causcape elements", () => {
       { relationship: "reads", label: "checks availability" },
     );
 
-    expect(vertical).toMatchObject({ x: expect.any(Number), width: expect.any(Number) });
+    expect(vertical).toMatchObject({
+      x: expect.any(Number),
+      width: expect.any(Number),
+    });
     expect(vertical?.x).toBeLessThan(0);
     expect(horizontal?.x).toBeLessThan(0);
     expect((horizontal?.x ?? 0) + (horizontal?.width ?? 0)).toBeGreaterThan(24);

@@ -7,4 +7,4 @@ export const CAUSCAPE_EDGE_LABEL_POOL = [
   "blocked",
 ] as const;
 
-export type CauscapeEdgeLabel = (typeof CAUSCAPE_EDGE_LABEL_POOL)[number];
+export type CauscapeEdgeLabel = typeof CAUSCAPE_EDGE_LABEL_POOL[number];

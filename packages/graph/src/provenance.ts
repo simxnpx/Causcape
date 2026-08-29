@@ -51,9 +51,11 @@ export type GraphProvenance<T = unknown> = Readonly<{
     entities: readonly ProvenanceEntity<T>[],
     sessionId?: string,
   ) => AgentSessionInfo;
-  startMutation: (
-    entities: readonly ProvenanceEntity<T>[],
-  ) => { sessionId: string; segmentId: string; revision: number };
+  startMutation: (entities: readonly ProvenanceEntity<T>[]) => {
+    sessionId: string;
+    segmentId: string;
+    revision: number;
+  };
   commitMutation: (
     context: { sessionId: string; segmentId: string; revision: number },
     entities: readonly ProvenanceEntity<T>[],
@@ -78,7 +80,8 @@ const valueFingerprint = (value: unknown): string => {
 
 const entityMap = <T>(
   entities: readonly ProvenanceEntity<T>[],
-): Map<string, T> => new Map(entities.map((entity) => [entity.id, entity.value]));
+): Map<string, T> =>
+  new Map(entities.map((entity) => [entity.id, entity.value]));
 
 const entitiesFingerprint = <T>(
   entities: readonly ProvenanceEntity<T>[],
@@ -245,7 +248,10 @@ export const createGraphProvenance = <T = unknown>(): GraphProvenance<T> => {
       }
       return {
         rolledBack: false,
-        reason: fingerprint !== lastFingerprint ? "user-change-detected" : "no-agent-changes",
+        reason:
+          fingerprint !== lastFingerprint
+            ? "user-change-detected"
+            : "no-agent-changes",
         sessionId,
         revision,
         segmentId: null,

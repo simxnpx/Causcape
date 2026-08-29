@@ -1,13 +1,4 @@
 import {
-  getBoundsFromPoints,
-  getElementAbsoluteCoords,
-} from "./bounds";
-import {
-  newArrowElement,
-  newElement,
-  newLinearElement,
-} from "./newElement";
-import {
   ELEMENT_PENDING_DRAW_SHAPE_OPACITY,
   getStrokeWidthByKey,
   ROUNDNESS,
@@ -30,6 +21,18 @@ import type { App, AppState } from "@excalidraw/excalidraw/types";
 
 import type { LocalPoint, GlobalPoint, Radians } from "@excalidraw/math";
 import type { Bounds } from "@excalidraw/common";
+
+import { newArrowElement, newElement, newLinearElement } from "./newElement";
+import { getBoundsFromPoints, getElementAbsoluteCoords } from "./bounds";
+
+import { getFrameLikeElements } from "./frame";
+import {
+  isLinearElement,
+  isLineElement,
+  isUsingAdaptiveRadius,
+} from "./typeChecks";
+import { LinearElementEditor } from "./linearElementEditor";
+
 import type {
   ExcalidrawArrowElement,
   ExcalidrawDiamondElement,
@@ -44,14 +47,6 @@ import type {
   NonDeleted,
   ExcalidrawLineElement,
 } from "./types";
-
-import { getFrameLikeElements } from "./frame";
-import {
-  isLinearElement,
-  isLineElement,
-  isUsingAdaptiveRadius,
-} from "./typeChecks";
-import { LinearElementEditor } from "./linearElementEditor";
 
 declare global {
   interface Window {

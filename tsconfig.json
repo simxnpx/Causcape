@@ -40,13 +40,5 @@
     }
   },
   "include": ["packages", "excalidraw-app"],
-  "exclude": [
-    "examples",
-    "**/build",
-    "**/dist",
-    "**/types",
-    "**/tests",
-    "**/__tests__",
-    "**/*.test.*"
-  ]
+  "exclude": ["examples", "**/build", "**/dist", "**/types", "**/tests", "**/__tests__", "**/*.test.*"]
 }

@@ -4,11 +4,12 @@ import {
   newCauscapeNodeElement,
 } from "@excalidraw/element";
 
+import { routeCauscapeEdge } from "@excalidraw/graph";
+
 import type { ExcalidrawElement } from "@excalidraw/element/types";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
 import { createGraphMCPHandlers } from "../mcp/graphMCP";
-import { routeCauscapeEdge } from "@excalidraw/graph";
 
 const createHarness = () => {
   const first = newCauscapeNodeElement({
@@ -200,7 +201,10 @@ describe("graph WebMCP handlers", () => {
       .find((element) => element.id === edge.id);
     expect(updatedNode).toBeDefined();
     expect(updatedEdge?.type).toBe("causcape-edge");
-    if (updatedNode?.type === "causcape-node" && updatedEdge?.type === "causcape-edge") {
+    if (
+      updatedNode?.type === "causcape-node" &&
+      updatedEdge?.type === "causcape-edge"
+    ) {
       const updatedStartX = updatedEdge.x + updatedEdge.points[0][0];
       expect(updatedStartX).toBeCloseTo(updatedNode.x + updatedNode.width);
       expect(updatedStartX).not.toBe(initialStartX);

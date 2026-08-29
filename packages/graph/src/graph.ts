@@ -13,13 +13,16 @@ import {
 } from "./types";
 import { validateGraph } from "./validate";
 
-const isCauscapeNodeElement = (el: ExcalidrawElement): el is ExcalidrawCauscapeNodeElement =>
-  el.type === "causcape-node";
-const isCauscapeEdgeElement = (el: ExcalidrawElement): el is ExcalidrawCauscapeEdgeElement =>
-  el.type === "causcape-edge";
+const isCauscapeNodeElement = (
+  el: ExcalidrawElement,
+): el is ExcalidrawCauscapeNodeElement => el.type === "causcape-node";
+const isCauscapeEdgeElement = (
+  el: ExcalidrawElement,
+): el is ExcalidrawCauscapeEdgeElement => el.type === "causcape-edge";
 
-
-const toElementArray = (elements: ElementsMapOrArray): readonly ExcalidrawElement[] => {
+const toElementArray = (
+  elements: ElementsMapOrArray,
+): readonly ExcalidrawElement[] => {
   if (Array.isArray(elements)) {
     return elements;
   }

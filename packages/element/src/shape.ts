@@ -34,8 +34,6 @@ import type { GlobalPoint } from "@excalidraw/math";
 
 import type { Mutable } from "@excalidraw/common/utility-types";
 
-import type { ExcalidrawArrowElement } from "./types";
-
 import type {
   AppState,
   EmbedsValidationStatus,
@@ -67,6 +65,8 @@ import {
   getElementAbsoluteCoords,
 } from "./bounds";
 import { shouldTestInside } from "./collision";
+
+import type { ExcalidrawArrowElement } from "./types";
 
 import type {
   ExcalidrawElement,

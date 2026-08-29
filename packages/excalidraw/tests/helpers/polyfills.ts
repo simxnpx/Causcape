@@ -4,17 +4,17 @@ class ClipboardEvent {
   constructor(
     type: "paste" | "copy",
     eventInitDict: {
-      clipboardData: DataTransfer;
-    },
+      clipboardData?: DataTransfer;
+    } = {},
   ) {
     return Object.assign(
-      new Event("paste", {
+      new Event(type, {
         bubbles: true,
         cancelable: true,
         composed: true,
       }),
       {
-        clipboardData: eventInitDict.clipboardData,
+        clipboardData: eventInitDict.clipboardData ?? null,
       },
     ) as any as ClipboardEvent;
   }

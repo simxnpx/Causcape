@@ -185,8 +185,13 @@ const assertValidArchitectureFields = (
       } catch {
         throw new Error(`Invalid architecture reference URL at index ${index}`);
       }
-      if (reference.label !== undefined && typeof reference.label !== "string") {
-        throw new Error(`Invalid architecture reference label at index ${index}`);
+      if (
+        reference.label !== undefined &&
+        typeof reference.label !== "string"
+      ) {
+        throw new Error(
+          `Invalid architecture reference label at index ${index}`,
+        );
       }
     });
   }
@@ -495,12 +500,16 @@ const createGraphNodeElement = (
     label: input.label as string,
     kind,
     github: input.github,
-    cache: input.cache as ElementGithubCache & { snapshotAt: string } | undefined,
+    cache: input.cache as
+      | (ElementGithubCache & { snapshotAt: string })
+      | undefined,
     environment: input.environment,
     health: input.health,
     description: input.description,
     technologies: input.technologies,
-    references: input.references as readonly ElementCauscapeReference[] | undefined,
+    references: input.references as
+      | readonly ElementCauscapeReference[]
+      | undefined,
     x,
     y,
   });
@@ -548,7 +557,9 @@ const restoreGraphEntities = (
   restored: readonly { id: string; value: ExcalidrawElement }[],
   touchedIds: readonly string[],
 ): ExcalidrawElement[] => {
-  const restoredById = new Map(restored.map((entity) => [entity.id, entity.value]));
+  const restoredById = new Map(
+    restored.map((entity) => [entity.id, entity.value]),
+  );
   const touched = new Set(touchedIds);
   const seen = new Set<string>();
   const next: ExcalidrawElement[] = [];
@@ -742,7 +753,10 @@ export const createGraphMCPHandlers = (ctx: GraphMCPContext) => {
       throw new Error("Excalidraw API not ready");
     }
     const current = api.getSceneElementsIncludingDeleted();
-    const result = provenance.rollback(graphEntities(current), input?.sessionId);
+    const result = provenance.rollback(
+      graphEntities(current),
+      input?.sessionId,
+    );
     if (result.rolledBack) {
       api.updateScene({
         elements: restoreGraphEntities(
@@ -1079,20 +1093,30 @@ export const createGraphMCPHandlers = (ctx: GraphMCPContext) => {
         applySceneUpdate(api, nextElems as unknown as ExcalidrawElement[]);
         // If we also need causcape patch, apply after
         if (needsPatch) {
-          updateNodeCacheInScene(api, existing.id, {
+          updateNodeCacheInScene(
+            api,
+            existing.id,
+            {
+              label: patch.label as string | undefined,
+              cache: patch.cache as
+                | (GithubCache & { snapshotAt: string })
+                | undefined,
+            },
+            recordSceneUpdate,
+          );
+        }
+      } else if (needsPatch) {
+        updateNodeCacheInScene(
+          api,
+          existing.id,
+          {
             label: patch.label as string | undefined,
             cache: patch.cache as
               | (GithubCache & { snapshotAt: string })
               | undefined,
-          }, recordSceneUpdate);
-        }
-      } else if (needsPatch) {
-        updateNodeCacheInScene(api, existing.id, {
-          label: patch.label as string | undefined,
-          cache: patch.cache as
-            | (GithubCache & { snapshotAt: string })
-            | undefined,
-        }, recordSceneUpdate);
+          },
+          recordSceneUpdate,
+        );
       }
 
       // If no explicit cache but element has no cache yet, trigger fetch
@@ -1167,13 +1191,7 @@ export const createGraphMCPHandlers = (ctx: GraphMCPContext) => {
     applySceneUpdate(api, [...currentElements, node]);
 
     // Trigger fetch to populate/update cache with snapshotAt (hybrid snapshot+ephemeral cache)
-    triggerFetchForNode(
-      api,
-      github,
-      node.id,
-      ownerDocument,
-      recordSceneUpdate,
-    );
+    triggerFetchForNode(api, github, node.id, ownerDocument, recordSceneUpdate);
 
     return { id: node.id, created: true, element: node };
   };
@@ -1343,7 +1361,12 @@ export const createGraphMCPHandlers = (ctx: GraphMCPContext) => {
       const data = resultMap.get(key);
       if (data) {
         const snap = withSnapshot(data);
-        updateNodeCacheInScene(api, node.id, { cache: snap }, recordSceneUpdate);
+        updateNodeCacheInScene(
+          api,
+          node.id,
+          { cache: snap },
+          recordSceneUpdate,
+        );
         refreshed += 1;
       }
     }
@@ -1415,7 +1438,9 @@ export const createGraphMCPHandlers = (ctx: GraphMCPContext) => {
         el.id === input.id ? { ...el, ...patch } : el,
       );
       const nextSceneElements =
-        dataChanged || input.patch.x !== undefined || input.patch.y !== undefined
+        dataChanged ||
+        input.patch.x !== undefined ||
+        input.patch.y !== undefined
           ? rerouteCauscapeEdges(
               nextElements as unknown as readonly ExcalidrawElement[],
             )
@@ -1449,7 +1474,10 @@ export const createGraphMCPHandlers = (ctx: GraphMCPContext) => {
       const nextElements = elements.map((el) =>
         el.id === input.id ? { ...el, ...patch } : el,
       );
-      applySceneUpdate(api, nextElements as unknown as readonly ExcalidrawElement[]);
+      applySceneUpdate(
+        api,
+        nextElements as unknown as readonly ExcalidrawElement[],
+      );
       return { id: input.id, element: { ...element, ...patch } };
     }
 
@@ -1647,9 +1675,9 @@ export type GraphMCPHandlers = {
     converged: boolean;
     changedNodeIds: readonly string[];
   }>;
-  beginAgentSession: (input?: { sessionId?: string }) => Promise<
-    import("@excalidraw/graph").AgentSessionInfo
-  >;
+  beginAgentSession: (input?: {
+    sessionId?: string;
+  }) => Promise<import("@excalidraw/graph").AgentSessionInfo>;
   getAgentSession: () => Promise<import("@excalidraw/graph").AgentSessionInfo>;
   rollbackAgentChanges: (input?: { sessionId?: string }) => Promise<{
     rolledBack: boolean;

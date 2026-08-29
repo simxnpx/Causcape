@@ -366,97 +366,6 @@ const getGithubIconPath2D = (): Path2D => {
   return _githubIconPath2D;
 };
 
-const getGithubBadgeColor = (
-  kind: string,
-  state: string | undefined,
-  isDark: boolean,
-): string => {
-  const s = (state ?? "").toLowerCase();
-  if (s === "open") {
-    return isDark ? "#3fb950" : "#1a7f37";
-  }
-  if (s === "merged") {
-    return isDark ? "#ab7ff2" : "#8250df";
-  }
-  if (s === "closed") {
-    return isDark ? "#f85149" : "#cf222e";
-  }
-  if (kind === "github-repo") {
-    return isDark ? "#8c959f" : "#656d76";
-  }
-  // fallback for unknown state / commit / generic github
-  return isDark ? "#8c959f" : "#656d76";
-};
-
-const truncateTwoLines = (
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  maxWidth: number,
-): readonly [string, string | null] => {
-  const raw = text.trim();
-  if (raw.length === 0) {
-    return ["", null] as const;
-  }
-  // fast path: fits in one line
-  if (ctx.measureText(raw).width <= maxWidth) {
-    return [raw, null] as const;
-  }
-  // need to split into words
-  const words = raw.split(/\s+/);
-  let line1 = "";
-  let line2 = "";
-  let idx = 0;
-  // build line1
-  for (; idx < words.length; idx++) {
-    const cand = line1 ? `${line1} ${words[idx]}` : words[idx];
-    if (ctx.measureText(cand).width > maxWidth) {
-      break;
-    }
-    line1 = cand;
-  }
-  if (line1.length === 0 && words.length > 0) {
-    // single long word exceeds width — truncate with ellipsis
-    const w = words[0];
-    let truncated = w;
-    while (
-      truncated.length > 1 &&
-      ctx.measureText(`${truncated}…`).width > maxWidth
-    ) {
-      truncated = truncated.slice(0, -1);
-    }
-    return [`${truncated}…`, null] as const;
-  }
-  if (idx >= words.length) {
-    return [line1, null] as const;
-  }
-  // build line2 from remaining words
-  for (; idx < words.length; idx++) {
-    const cand = line2 ? `${line2} ${words[idx]}` : words[idx];
-    // reserve space for ellipsis if not all words fit
-    const isLastCandidate = idx === words.length - 1;
-    const test = isLastCandidate ? cand : `${cand}…`;
-    if (ctx.measureText(test).width > maxWidth) {
-      break;
-    }
-    line2 = cand;
-  }
-  if (idx < words.length && line2.length === 0) {
-    // remaining word too long
-    const w = words[idx];
-    let truncated = w;
-    while (
-      truncated.length > 1 &&
-      ctx.measureText(`${truncated}…`).width > maxWidth
-    ) {
-      truncated = truncated.slice(0, -1);
-    }
-    line2 = `${truncated}…`;
-  } else if (idx < words.length && line2.length > 0) {
-    line2 = `${line2}…`;
-  }
-  return [line1, line2.length > 0 ? line2 : null] as const;
-};
-
 const drawRoundedRect = (
   context: CanvasRenderingContext2D,
   x: number,
@@ -818,7 +727,7 @@ const drawArchitectureCard = (
       horizontalPadding: 14,
     }) + 10;
   if (data.health) {
-    pillX += drawPill(context, data.health.label, pillX, pillY, {
+    drawPill(context, data.health.label, pillX, pillY, {
       color: data.health.color,
       background: `${data.health.color}15`,
       border: `${data.health.color}66`,
@@ -1045,7 +954,9 @@ export const drawCauscapeEdgeOnCanvas = (
 
   const isDark = renderConfig.theme === THEME.DARK;
   const textColor = applyDarkModeFilter(
-    isDark ? CAUSCAPE_NODE_STYLE.darkSecondary : CAUSCAPE_NODE_STYLE.lightSecondary,
+    isDark
+      ? CAUSCAPE_NODE_STYLE.darkSecondary
+      : CAUSCAPE_NODE_STYLE.lightSecondary,
     isDark,
   );
   const background = isDark
@@ -1058,12 +969,17 @@ export const drawCauscapeEdgeOnCanvas = (
   const lineHeight = 18;
   const horizontalPadding = 8;
   const verticalPadding = 5;
-  const maxChars = Math.max(14, Math.floor(Math.max(anchor.length - 16, 100) / 7));
+  const maxChars = Math.max(
+    14,
+    Math.floor(Math.max(anchor.length - 16, 100) / 7),
+  );
   const lines = wrapCauscapeEdgeLabel(label, maxChars);
 
   context.save();
   context.font = `500 ${fontSize}px system-ui, -apple-system, sans-serif`;
-  const textWidth = Math.max(...lines.map((line) => context.measureText(line).width));
+  const textWidth = Math.max(
+    ...lines.map((line) => context.measureText(line).width),
+  );
   const boxWidth = textWidth + horizontalPadding * 2;
   const boxHeight = lines.length * lineHeight + verticalPadding * 2;
   const labelX = anchor.x + anchor.normalX * 16;

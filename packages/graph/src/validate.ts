@@ -1,13 +1,10 @@
-import type {
-  CauscapeEdge,
-  CauscapeNode,
-  Diagnostic,
-} from "./types";
 import {
   ARCHITECTURE_REFERENCE_TYPES,
   ARCHITECTURE_RELATIONSHIP_TYPES,
   isArchitectureNodeKind,
 } from "./types";
+
+import type { CauscapeEdge, CauscapeNode, Diagnostic } from "./types";
 
 const isValidGithubRef = (node: CauscapeNode): boolean => {
   const ref = node.github;
@@ -27,7 +24,9 @@ const isValidGithubRef = (node: CauscapeNode): boolean => {
     return false;
   }
   if (ref.kind === "github-issue" || ref.kind === "github-pr") {
-    const n = (ref as Extract<typeof ref, { kind: "github-issue" | "github-pr" }>).number;
+    const n = (
+      ref as Extract<typeof ref, { kind: "github-issue" | "github-pr" }>
+    ).number;
     if (!Number.isInteger(n) || n <= 0) {
       return false;
     }
@@ -46,13 +45,17 @@ const isGithubNotFoundPlaceholder = (node: CauscapeNode): boolean => {
   if (!c) {
     return false;
   }
-  if (c["stale"] !== true) {
+  if (c.stale !== true) {
     return false;
   }
-  const title = c["title"];
-  const message = c["message"];
-  const description = c["description"];
-  return title === "Not found" || message === "Not found" || description === "Not found";
+  const title = c.title;
+  const message = c.message;
+  const description = c.description;
+  return (
+    title === "Not found" ||
+    message === "Not found" ||
+    description === "Not found"
+  );
 };
 
 const validateArchitectureMetadata = (node: CauscapeNode): Diagnostic[] => {
@@ -228,7 +231,9 @@ export const validateGraph = (
       diagnostics.push({
         level: "error",
         code: "EDGE_MISSING_ENDPOINT",
-        message: `Edge ${edge.id} references missing node(s): ${missingIds.join(", ")}`,
+        message: `Edge ${edge.id} references missing node(s): ${missingIds.join(
+          ", ",
+        )}`,
         elementIds: [edge.id, ...missingIds],
       });
     }
@@ -264,8 +269,14 @@ export const validateGraph = (
     edgeKeyCount.set(key, (edgeKeyCount.get(key) ?? 0) + 1);
 
     if (fromExists && toExists) {
-      incidentCount.set(edge.fromNodeId, (incidentCount.get(edge.fromNodeId) ?? 0) + 1);
-      incidentCount.set(edge.toNodeId, (incidentCount.get(edge.toNodeId) ?? 0) + 1);
+      incidentCount.set(
+        edge.fromNodeId,
+        (incidentCount.get(edge.fromNodeId) ?? 0) + 1,
+      );
+      incidentCount.set(
+        edge.toNodeId,
+        (incidentCount.get(edge.toNodeId) ?? 0) + 1,
+      );
     }
   }
 
@@ -364,5 +375,7 @@ export const hashDiagnostics = (diagnostics: readonly Diagnostic[]): string => {
       ? a.elementIds.join(",").localeCompare(b.elementIds.join(","))
       : a.code.localeCompare(b.code),
   );
-  return sorted.map((d) => `${d.level}:${d.code}:${d.elementIds.join(",")}`).join("|");
+  return sorted
+    .map((d) => `${d.level}:${d.code}:${d.elementIds.join(",")}`)
+    .join("|");
 };

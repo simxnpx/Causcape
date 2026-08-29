@@ -20,7 +20,8 @@ export type {
   CauscapeNodeData,
 } from "@excalidraw/element/types";
 
-export type GithubCacheWithSnapshot = GithubCacheImported & Readonly<{ snapshotAt: string }>;
+export type GithubCacheWithSnapshot = GithubCacheImported &
+  Readonly<{ snapshotAt: string }>;
 
 export type GithubCacheRecord = Readonly<{
   etag?: string;
@@ -58,5 +59,9 @@ export const isGithubCacheRecord = (v: unknown): v is GithubCacheRecord => {
     return false;
   }
   const r = v as Record<string, unknown>;
-  return typeof r.fetchedAt === "number" && typeof r.data === "object" && r.data !== null;
+  return (
+    typeof r.fetchedAt === "number" &&
+    typeof r.data === "object" &&
+    r.data !== null
+  );
 };

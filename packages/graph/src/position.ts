@@ -10,13 +10,15 @@ const doBoxesOverlap = (
   a: { x: number; y: number; w: number; h: number },
   b: { x: number; y: number; w: number; h: number },
 ): boolean =>
-  a.x < b.x + b.w &&
-  a.x + a.w > b.x &&
-  a.y < b.y + b.h &&
-  a.y + a.h > b.y;
+  a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 
 export const suggestPosition = (
-  existingNodes: readonly { x: number; y: number; width: number; height: number }[],
+  existingNodes: readonly {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }[],
   viewport?: ViewportBounds | null,
   opts?: {
     nodeWidth?: number;
@@ -89,13 +91,13 @@ const getTimelineTimestamp = (node: CauscapeNode): number => {
   let raw: string | undefined;
   if (c && typeof c === "object") {
     if ("date" in c) {
-      const v = (c as Record<string, unknown>)["date"];
+      const v = (c as Record<string, unknown>).date;
       if (typeof v === "string") {
         raw = v;
       }
     }
     if (!raw && "updatedAt" in c) {
-      const v = (c as Record<string, unknown>)["updatedAt"];
+      const v = (c as Record<string, unknown>).updatedAt;
       if (typeof v === "string") {
         raw = v;
       }
@@ -129,13 +131,13 @@ export const layoutGithubTimeline = (
   },
 ): Map<string, { x: number; y: number }> => {
   const nodeWidth = opts?.nodeWidth ?? DEFAULT_NODE_WIDTH;
-  const nodeHeight = opts?.nodeHeight ?? DEFAULT_NODE_HEIGHT;
   const gapX = opts?.gapX ?? DEFAULT_GAP_X;
-  const gapY = opts?.gapY ?? DEFAULT_GAP_Y;
   const originX = opts?.originX ?? 0;
   const originY = opts?.originY ?? 0;
 
-  const sorted = [...nodes].sort((a, b) => getTimelineTimestamp(a) - getTimelineTimestamp(b));
+  const sorted = [...nodes].sort(
+    (a, b) => getTimelineTimestamp(a) - getTimelineTimestamp(b),
+  );
 
   const stepX = nodeWidth + gapX;
   const result = new Map<string, { x: number; y: number }>();

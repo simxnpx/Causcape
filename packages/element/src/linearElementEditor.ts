@@ -23,15 +23,6 @@ import {
   getFeatureFlag,
 } from "@excalidraw/common";
 
-import {
-  deconstructLinearOrFreeDrawElement,
-  getSnapOutlineMidPoint,
-  isPathALoop,
-  projectFixedPointOntoDiagonal,
-} from "./utils";
-import { moveArrowAboveBindable } from "./zindex";
-import type { Store } from "./store";
-
 import type { Radians } from "@excalidraw/math";
 
 import type {
@@ -43,6 +34,14 @@ import type {
   Zoom,
 } from "@excalidraw/excalidraw/types";
 import type { Bounds } from "@excalidraw/common";
+
+import { moveArrowAboveBindable } from "./zindex";
+import {
+  deconstructLinearOrFreeDrawElement,
+  getSnapOutlineMidPoint,
+  isPathALoop,
+  projectFixedPointOntoDiagonal,
+} from "./utils";
 
 import {
   calculateFixedPointForNonElbowArrowBinding,
@@ -67,6 +66,8 @@ import { ShapeCache, toggleLinePolygonState } from "./shape";
 import { getLockedLinearCursorAlignSize } from "./sizeHelpers";
 
 import { isLineElement } from "./typeChecks";
+
+import type { Store } from "./store";
 
 import type { Scene } from "./Scene";
 

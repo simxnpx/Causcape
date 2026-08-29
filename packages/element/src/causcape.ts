@@ -369,7 +369,9 @@ export const getCauscapeEdgeLabelBounds = (
   );
   const lines = wrapCauscapeEdgeLabel(label, maxChars);
   const width = Math.max(
-    ...lines.map((line) => line.length * characterWidth + horizontalPadding * 2),
+    ...lines.map(
+      (line) => line.length * characterWidth + horizontalPadding * 2,
+    ),
   );
   const height = lines.length * lineHeight + verticalPadding * 2;
   const labelX = anchor.x + anchor.normalX * offset;
@@ -1095,26 +1097,35 @@ export const wrapCauscapeText = (
 ): readonly [string, string | null] => {
   const raw = text.trim();
   const limit = Math.max(1, maxChars);
-  if (!raw || raw.length <= limit) return [raw, null];
+  if (!raw || raw.length <= limit) {
+    return [raw, null];
+  }
   const words = raw.split(/\s+/);
   let first = "";
   let index = 0;
   while (index < words.length) {
     const candidate = first ? `${first} ${words[index]}` : words[index];
-    if (candidate.length > limit) break;
+    if (candidate.length > limit) {
+      break;
+    }
     first = candidate;
     index++;
   }
-  if (!first) return [`${words[0].slice(0, Math.max(1, limit - 1))}…`, null];
+  if (!first) {
+    return [`${words[0].slice(0, Math.max(1, limit - 1))}…`, null];
+  }
   let second = "";
   while (index < words.length) {
     const candidate = second ? `${second} ${words[index]}` : words[index];
-    if (candidate.length + (index < words.length - 1 ? 1 : 0) > limit) break;
+    if (candidate.length + (index < words.length - 1 ? 1 : 0) > limit) {
+      break;
+    }
     second = candidate;
     index++;
   }
-  if (index < words.length)
+  if (index < words.length) {
     second = `${second.slice(0, Math.max(1, limit - 1))}…`;
+  }
   return [first, second || null];
 };
 

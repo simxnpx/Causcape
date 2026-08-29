@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 
 import { buildGraph, getGraphHash } from "@excalidraw/graph";
+
 import type { CauscapeGraph } from "@excalidraw/graph";
 import type { ElementsMapOrArray } from "@excalidraw/element/types";
 
@@ -14,8 +15,12 @@ export const useGraph = (
   cacheKey?: string | number,
 ): CauscapeGraph => {
   const key = cacheKey != null ? String(cacheKey) : getGraphHash(elements);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  return useMemo(() => buildGraph(elements, { includeDiagnostics: true }), [key]);
+  return useMemo(() => {
+    // The caller's scene version must invalidate graphs even when the element
+    // collection is mutated in place and therefore keeps the same identity.
+    void key;
+    return buildGraph(elements, { includeDiagnostics: true });
+  }, [elements, key]);
 };
 
 /**

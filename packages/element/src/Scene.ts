@@ -8,16 +8,6 @@ import {
   isTestEnv,
   toArray,
 } from "@excalidraw/common";
-import {
-  syncInvalidIndices,
-  syncMovedIndices,
-  validateFractionalIndices,
-} from "./fractionalIndex";
-import { isNonDeletedElement } from "./elementHelpers";
-import { isFrameLikeElement } from "./typeChecks";
-import { getElementsInGroup } from "./groups";
-import { getSelectedElements } from "./selection";
-import { mutateElement, type ElementUpdate } from "./mutateElement";
 
 import type {
   ExcalidrawElement,
@@ -36,6 +26,17 @@ import type {
   Mutable,
   SameType,
 } from "@excalidraw/common/utility-types";
+
+import {
+  syncInvalidIndices,
+  syncMovedIndices,
+  validateFractionalIndices,
+} from "./fractionalIndex";
+import { isNonDeletedElement } from "./elementHelpers";
+import { isFrameLikeElement } from "./typeChecks";
+import { getElementsInGroup } from "./groups";
+import { getSelectedElements } from "./selection";
+import { mutateElement, type ElementUpdate } from "./mutateElement";
 
 import type { AppState } from "../../excalidraw/types";
 

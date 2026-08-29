@@ -1,8 +1,6 @@
 # Causcape WebMCP agent capability audit
 
-**Date:** 2026-08-26
-**Scope:** Current local WebMCP and graph surface for collaborative incident reconstruction
-**Application code changed:** None
+**Date:** 2026-08-26 **Scope:** Current local WebMCP and graph surface for collaborative incident reconstruction **Application code changed:** None
 
 ## Executive summary
 
@@ -135,7 +133,13 @@ Recommendation: add first-class evidence and claim metadata:
 type CauscapeEvidence = {
   id: string;
   sourceUrl: string;
-  sourceKind: "github" | "log" | "metric" | "trace" | "human-note" | "agent-note";
+  sourceKind:
+    | "github"
+    | "log"
+    | "metric"
+    | "trace"
+    | "human-note"
+    | "agent-note";
   capturedAt: string;
   observedAt?: { start: string; end?: string };
   snapshot?: unknown;
@@ -143,7 +147,13 @@ type CauscapeEvidence = {
 };
 
 type CauscapeClaim = {
-  relation: "caused" | "fixed-by" | "reverted" | "preceded" | "blocked" | "related";
+  relation:
+    | "caused"
+    | "fixed-by"
+    | "reverted"
+    | "preceded"
+    | "blocked"
+    | "related";
   confidence: number;
   status: "hypothesis" | "supported" | "rejected" | "confirmed";
   evidenceIds: string[];
