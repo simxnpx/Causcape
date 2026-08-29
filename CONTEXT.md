@@ -18,7 +18,7 @@ Causcape combines an engineering canvas and a structured explanation into a sing
 
 **Focus Mode**: The project view in which the canvas occupies the full viewport and retains the complete drawing experience. _Avoid_: Editor mode
 
-**Briefing Mode**: The project view in which a smaller sticky canvas remains above the scrolling document. _Avoid_: Split view, side-by-side view
+**Document Mode**: The project view in which the interactive canvas remains on the left while the independently scrolling project document opens in a right-side pane. _Avoid_: Briefing Mode, bottom document, vertical split
 
 **Prepared Engineering Shape**: A technology-neutral engineering shape assembled from existing drawing primitives and presented as one selectable canvas object. _Avoid_: New primitive, component type
 

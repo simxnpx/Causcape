@@ -153,4 +153,51 @@ describe("Causcape BlockNote adapter", () => {
     );
     vi.unstubAllGlobals();
   });
+
+  it("renders a structured document replaced outside the editor", async () => {
+    vi.stubGlobal(
+      "ClipboardEvent",
+      class ClipboardEvent extends Event {
+        clipboardData = null;
+      },
+    );
+    const onChange = vi.fn();
+    const { rerender } = render(
+      <CauscapeDocumentEditor
+        document={document}
+        editable={false}
+        objects={{}}
+        onChange={onChange}
+      />,
+    );
+    onChange.mockClear();
+
+    rerender(
+      <CauscapeDocumentEditor
+        document={{
+          schemaVersion: 1,
+          blocks: [
+            {
+              id: "agent-summary",
+              type: "paragraph",
+              props: {},
+              content: [
+                { type: "text", text: "Agent-authored incident summary" },
+              ],
+              children: [],
+            },
+          ],
+        }}
+        editable={false}
+        objects={{}}
+        onChange={onChange}
+      />,
+    );
+
+    expect(
+      await screen.findByText("Agent-authored incident summary"),
+    ).toBeVisible();
+    expect(onChange).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
 });

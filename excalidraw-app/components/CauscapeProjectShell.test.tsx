@@ -1,46 +1,10 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 
 import { CauscapeProjectShell } from "./CauscapeProjectShell";
 
-const installAnimationFrameHarness = () => {
-  vi.useFakeTimers();
-  let frameTime = 0;
-  let nextFrameId = 0;
-  const callbacks = new Map<number, FrameRequestCallback>();
-
-  vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
-    nextFrameId += 1;
-    callbacks.set(nextFrameId, callback);
-    return nextFrameId;
-  });
-  vi.spyOn(window, "cancelAnimationFrame").mockImplementation((frameId) => {
-    callbacks.delete(frameId);
-  });
-
-  return {
-    flush: () => {
-      while (callbacks.size > 0) {
-        const [frameId, callback] = callbacks.entries().next().value!;
-        callbacks.delete(frameId);
-        frameTime += 20;
-        callback(frameTime);
-      }
-    },
-    settle: () => {
-      vi.advanceTimersByTime(200);
-    },
-  };
-};
-
 describe("CauscapeProjectShell", () => {
-  afterEach(() => {
-    vi.useRealTimers();
-    vi.restoreAllMocks();
-  });
-
-  it("opens in Focus mode and reveals a sticky document briefing", () => {
-    const animation = installAnimationFrameHarness();
+  it("opens the project document as a right-side pane beside the canvas", () => {
     const onModeChange = vi.fn();
     render(
       <CauscapeProjectShell
@@ -50,170 +14,48 @@ describe("CauscapeProjectShell", () => {
       />,
     );
 
-    expect(screen.getByTestId("causcape-project-shell")).toHaveAttribute(
-      "data-mode",
-      "focus",
-    );
+    const shell = screen.getByTestId("causcape-project-shell");
+    const canvas = screen.getByTestId("causcape-canvas-region");
+    const document = screen.getByTestId("causcape-document-region");
+
+    expect(shell).toHaveAttribute("data-mode", "focus");
+    expect(document).toHaveAttribute("aria-hidden", "true");
 
     fireEvent.click(
       screen.getByRole("button", { name: "Open project document" }),
     );
 
-    expect(screen.getByTestId("causcape-project-shell")).toHaveAttribute(
-      "data-mode",
-      "briefing",
-    );
+    expect(shell).toHaveAttribute("data-mode", "document");
+    expect(canvas).toBeVisible();
+    expect(document).toHaveAttribute("data-pane-position", "right");
+    expect(document).toHaveAttribute("aria-hidden", "false");
     expect(screen.getByText("Project overview")).toBeVisible();
-    expect(onModeChange).toHaveBeenLastCalledWith("briefing");
+    expect(onModeChange).toHaveBeenLastCalledWith("document");
+  });
 
-    act(() => animation.flush());
+  it("returns to the full-width canvas from the document pane", () => {
+    const onModeChange = vi.fn();
+    render(
+      <CauscapeProjectShell
+        canvas={<div>Engineering canvas</div>}
+        document={<div>Project overview</div>}
+        onModeChange={onModeChange}
+      />,
+    );
 
+    fireEvent.click(
+      screen.getByRole("button", { name: "Open project document" }),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Focus canvas" }));
-    act(() => animation.flush());
+
     expect(screen.getByTestId("causcape-project-shell")).toHaveAttribute(
       "data-mode",
       "focus",
     );
-  });
-
-  it("shrinks the canvas progressively until the document owns the viewport remainder", () => {
-    const animation = installAnimationFrameHarness();
-    render(
-      <CauscapeProjectShell
-        canvas={<div>Engineering canvas</div>}
-        document={<div>Project overview</div>}
-      />,
+    expect(screen.getByTestId("causcape-document-region")).toHaveAttribute(
+      "aria-hidden",
+      "true",
     );
-
-    const canvasRegion = screen.getByTestId("causcape-canvas-region");
-    const canvasSurface = screen.getByTestId("causcape-canvas-surface");
-    const documentRegion = screen.getByTestId("causcape-document-region");
-
-    fireEvent.wheel(canvasRegion, {
-      deltaY: 120,
-    });
-
-    expect(screen.getByTestId("causcape-project-shell")).toHaveAttribute(
-      "data-mode",
-      "briefing",
-    );
-    expect(screen.getByTestId("causcape-project-shell")).toHaveAttribute(
-      "data-reveal-progress",
-      "0.2",
-    );
-    expect(canvasRegion).toHaveStyle({ height: "89dvh" });
-    expect(canvasSurface).toHaveStyle({ height: "100dvh" });
-
-    act(() => animation.flush());
-
-    expect(screen.getByTestId("causcape-project-shell")).toHaveAttribute(
-      "data-reveal-progress",
-      "0.2",
-    );
-    expect(canvasRegion).toHaveStyle({ height: "89dvh" });
-    expect(canvasSurface).toHaveStyle({ height: "100dvh" });
-
-    act(() => animation.settle());
-    expect(canvasSurface).toHaveStyle({ height: "89dvh" });
-    expect(documentRegion).toBeVisible();
-
-    fireEvent.wheel(canvasRegion, { deltaY: 480 });
-    act(() => animation.flush());
-    expect(canvasRegion).toHaveStyle({ height: "45dvh" });
-  });
-
-  it("scrolls inside the document and expands the canvas only from its top", () => {
-    const animation = installAnimationFrameHarness();
-    render(
-      <CauscapeProjectShell
-        canvas={<div>Engineering canvas</div>}
-        document={<div>Project overview</div>}
-      />,
-    );
-
-    const canvasRegion = screen.getByTestId("causcape-canvas-region");
-    const documentRegion = screen.getByTestId("causcape-document-region");
-    fireEvent.wheel(canvasRegion, { deltaY: 600 });
-    act(() => animation.flush());
-    expect(canvasRegion).toHaveStyle({ height: "45dvh" });
-
-    Object.defineProperty(documentRegion, "scrollTop", {
-      configurable: true,
-      value: 100,
-      writable: true,
-    });
-    fireEvent.wheel(documentRegion, { deltaY: -120 });
-    expect(canvasRegion).toHaveStyle({ height: "45dvh" });
-
-    documentRegion.scrollTop = 0;
-    fireEvent.wheel(documentRegion, { deltaY: -120 });
-    act(() => animation.flush());
-    expect(canvasRegion).toHaveStyle({ height: "56dvh" });
-
-    fireEvent.wheel(documentRegion, { deltaY: -480 });
-    act(() => animation.flush());
-    expect(canvasRegion).toHaveStyle({ height: "100dvh" });
-    expect(screen.getByTestId("causcape-project-shell")).toHaveAttribute(
-      "data-mode",
-      "focus",
-    );
-  });
-
-  it("hands leftover downward wheel distance to the document as soon as the canvas is fully revealed", () => {
-    const animation = installAnimationFrameHarness();
-    render(
-      <CauscapeProjectShell
-        canvas={<div>Engineering canvas</div>}
-        document={<div>Project overview</div>}
-      />,
-    );
-
-    const canvasRegion = screen.getByTestId("causcape-canvas-region");
-    const documentRegion = screen.getByTestId("causcape-document-region");
-    fireEvent.wheel(canvasRegion, { deltaY: 480 });
-    expect(screen.getByTestId("causcape-project-shell")).toHaveAttribute(
-      "data-reveal-progress",
-      "0.8",
-    );
-
-    Object.defineProperty(documentRegion, "scrollTop", {
-      configurable: true,
-      writable: true,
-      value: 0,
-    });
-
-    fireEvent.wheel(documentRegion, { deltaY: 240 });
-    act(() => animation.flush());
-
-    expect(canvasRegion).toHaveStyle({ height: "45dvh" });
-    expect(screen.getByTestId("causcape-project-shell")).toHaveAttribute(
-      "data-reveal-progress",
-      "1",
-    );
-    expect(documentRegion.scrollTop).toBe(120);
-  });
-
-  it("continues into the document when a canvas flick overshoots the briefing endpoint", () => {
-    const animation = installAnimationFrameHarness();
-    render(
-      <CauscapeProjectShell
-        canvas={<div>Engineering canvas</div>}
-        document={<div>Project overview</div>}
-      />,
-    );
-
-    const canvasRegion = screen.getByTestId("causcape-canvas-region");
-    const documentRegion = screen.getByTestId("causcape-document-region");
-    Object.defineProperty(documentRegion, "scrollTop", {
-      configurable: true,
-      writable: true,
-      value: 0,
-    });
-
-    fireEvent.wheel(canvasRegion, { deltaY: 720 });
-    act(() => animation.flush());
-
-    expect(canvasRegion).toHaveStyle({ height: "45dvh" });
-    expect(documentRegion.scrollTop).toBe(120);
+    expect(onModeChange).toHaveBeenLastCalledWith("focus");
   });
 });

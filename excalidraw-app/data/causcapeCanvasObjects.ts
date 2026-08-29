@@ -149,8 +149,40 @@ type CauscapeElementData = {
 
 const getCauscapeData = (
   element: OrderedExcalidrawElement,
-): CauscapeElementData =>
-  (element.customData?.causcape ?? {}) as CauscapeElementData;
+): CauscapeElementData => {
+  if (element.type === "causcape-node") {
+    const { label, kind } = element.causcape;
+    const environment =
+      typeof element.causcape.environment === "string"
+        ? element.causcape.environment
+        : undefined;
+    const health =
+      typeof element.causcape.health === "string"
+        ? element.causcape.health
+        : undefined;
+    return {
+      name: label,
+      kind,
+      metadata: {
+        kind,
+        ...(environment ? { environment } : {}),
+        ...(health ? { health } : {}),
+      },
+    };
+  }
+  if (element.type === "causcape-edge") {
+    return {
+      name: element.causcape.label,
+      kind: "relationship",
+      metadata: {
+        kind: "relationship",
+        fromNodeId: element.causcape.fromNodeId,
+        toNodeId: element.causcape.toNodeId,
+      },
+    };
+  }
+  return (element.customData?.causcape ?? {}) as CauscapeElementData;
+};
 
 const getObjectId = (
   element: OrderedExcalidrawElement,

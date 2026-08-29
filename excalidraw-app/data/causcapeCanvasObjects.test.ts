@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
 
+import {
+  newCauscapeEdgeElement,
+  newCauscapeNodeElement,
+} from "@excalidraw/element";
+
 import type { OrderedExcalidrawElement } from "@excalidraw/element/types";
 
 import {
@@ -142,6 +147,61 @@ describe("Causcape canvas objects", () => {
         elementIds: elements.map((element) => element.id),
         name: "Payment Service",
         metadata: { kind: "service" },
+        state: "active",
+      },
+    });
+  });
+
+  it("makes graph nodes and labelled relationships available to document references", () => {
+    const api = newCauscapeNodeElement({
+      id: "api-service",
+      kind: "service",
+      label: "Payments API",
+      x: 0,
+      y: 0,
+    });
+    const queue = newCauscapeNodeElement({
+      id: "payment-events",
+      kind: "queue",
+      label: "Payment events",
+      x: 600,
+      y: 0,
+    });
+    const publishes = newCauscapeEdgeElement({
+      id: "publishes-events",
+      fromNodeId: api.id,
+      toNodeId: queue.id,
+      label: "publishes",
+      x: 0,
+      y: 0,
+    });
+
+    expect(
+      deriveCanvasObjects(
+        [api, queue, publishes] as OrderedExcalidrawElement[],
+        {},
+      ),
+    ).toMatchObject({
+      "api-service": {
+        id: "api-service",
+        name: "Payments API",
+        metadata: { kind: "service" },
+        state: "active",
+      },
+      "payment-events": {
+        id: "payment-events",
+        name: "Payment events",
+        metadata: { kind: "queue" },
+        state: "active",
+      },
+      "publishes-events": {
+        id: "publishes-events",
+        name: "publishes",
+        metadata: {
+          kind: "relationship",
+          fromNodeId: "api-service",
+          toNodeId: "payment-events",
+        },
         state: "active",
       },
     });

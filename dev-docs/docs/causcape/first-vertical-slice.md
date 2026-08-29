@@ -1,14 +1,14 @@
 ---
-title: First desktop vertical slice
+title: First desktop project slice
 ---
 
-# First desktop vertical slice
+# First desktop project slice
 
 The first Causcape slice proves that one engineering project can be created and changed through both the browser and an external agent without splitting the canvas, document, or object identity into separate artifacts.
 
 ## Delivered contract
 
-A project contains exactly one infinite canvas, one structured document, a project-local canvas-object index, and provenance. It opens in Focus mode with the complete Excalidraw experience. Scrolling down progressively enters Briefing mode until the canvas occupies 45% of the viewport above the document's independent scroll region. Scrolling upward from the top of the document reverses that transition. The document handle remains as a direct shortcut between the two endpoints.
+A project contains exactly one infinite canvas, one structured document, a project-local canvas-object index, and provenance. It opens in Focus mode with the complete Excalidraw experience. The document handle opens Document mode, where the canvas remains interactive on the left and the document owns an independently scrolling pane on the right. Closing the pane returns the canvas to the full viewport.
 
 The document stores versioned Causcape JSON. BlockNote is a replaceable browser adapter. An inline canvas reference stores a stable object ID, not a text match. Selecting an object highlights its references; activating a reference selects and focuses every element belonging to that logical object. Deleted targets stay visible as explicit placeholders.
 
@@ -17,6 +17,8 @@ Projects autosave to IndexedDB and reopen from a recent-project dashboard. `.cau
 Prepared engineering shapes use only existing Excalidraw primitives. Group IDs provide one selectable logical identity and regenerate on copy, while embedded name and metadata survive copy and export. The initial vocabulary is Service, Database, Queue / Topic, External System, User / Actor, Network / Trust Boundary, and Generic Resource.
 
 The CLI creates, inspects, validates, previews or atomically applies patches, and renders SVG or PNG. Every patch names an expected revision and records agent provenance. ELK Layered produces deterministic coordinates; the Excalidraw exporter in explicitly provisioned Chromium produces render output.
+
+WebMCP exposes `getProjectDocument` and `replaceProjectDocument` from the owning browser document. The read result includes the current revision and project-local canvas-object index. Replacement uses the same project transaction validator as the CLI, so stale revisions and references to unknown object IDs are rejected. The browser editor stays synchronized with accepted external replacements without flattening canvas references into text.
 
 ## Feature commits
 
@@ -35,7 +37,7 @@ Each boundary is independently reviewable and uses the DOM-independent core inst
 ## Acceptance checks
 
 - A new Blank, Architecture, or Post-incident project opens and autosaves.
-- Focus mode occupies the viewport; scrolling progressively reveals Briefing mode until the canvas occupies 45% of the viewport above the independently scrolling document.
+- Focus mode occupies the viewport; Document mode keeps the canvas interactive beside an independently scrolling right-side document pane.
 - Any named canvas object can be inserted with `@`, focused from the document, and highlighted in the document from the canvas.
 - Renaming updates reference display; deleting leaves a deleted placeholder.
 - Prepared shapes behave as one object and copies receive a different stable ID.
@@ -43,6 +45,7 @@ Each boundary is independently reviewable and uses the DOM-independent core inst
 - The CLI rejects malformed or stale patches without modifying the input.
 - Equivalent engineering models create identical layouts.
 - SVG and PNG renders use the same Excalidraw scene representation as the app.
+- WebMCP reads the structured document and rejects stale or dangling-reference replacements without changing the project.
 
 Run the automated acceptance set from the repository root:
 
@@ -56,7 +59,9 @@ corepack yarn test:app --run \
   excalidraw-app/components/CauscapeProjectShell.test.tsx \
   excalidraw-app/components/CauscapeDocumentEditor.test.tsx \
   excalidraw-app/components/CauscapeProjectDashboard.test.tsx \
-  excalidraw-app/components/CauscapeEngineeringTools.test.tsx
+  excalidraw-app/components/CauscapeEngineeringTools.test.tsx \
+  excalidraw-app/tests/graphMCP.test.ts \
+  excalidraw-app/tests/projectMCP.test.ts
 corepack yarn test:typecheck
 corepack yarn build:app
 corepack yarn build:causcape-cli
@@ -64,4 +69,4 @@ corepack yarn build:causcape-cli
 
 ## Intentional boundaries
 
-This slice does not add accounts, server persistence, workspaces, multiple canvases per project, live incident response, real-time collaboration, an in-product agent chat, built-in cloud integrations, WebMCP, or full mobile optimization. Those systems should extend the project transaction and CLI contracts rather than bypassing them.
+This slice does not add accounts, server persistence, workspaces, multiple canvases per project, live incident response, real-time collaboration, an in-product agent chat, built-in cloud integrations, or full mobile optimization. Those systems should extend the project transaction, CLI, and WebMCP contracts rather than bypassing them.

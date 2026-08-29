@@ -1751,12 +1751,33 @@ export const registerGraphMCP = (
     ) => Promise<unknown>,
   };
 
-  // Expose for debugging / manual agent use (works without any flag)
-  (globalThis as unknown as Record<string, unknown>).CauscapeMCP = {
-    tools: CAUSCAPE_MCP_TOOLS,
-    handlers: toolMap,
+  // Expose the combined Causcape surface on the canvas' own window. The merge
+  // keeps independently mounted project-document tools available regardless
+  // of which bridge registers first.
+  const debugTarget = (ownerDocument?.defaultView ??
+    globalThis) as unknown as Record<string, unknown>;
+  const existingDebugApi = debugTarget.CauscapeMCP as
+    | {
+        tools?: readonly { name: string }[];
+        handlers?: Record<string, (input: unknown) => Promise<unknown>>;
+      }
+    | undefined;
+  const mergedHandlers = {
+    ...existingDebugApi?.handlers,
+    ...toolMap,
+  };
+  const mergedTools = [
+    ...(existingDebugApi?.tools ?? []),
+    ...CAUSCAPE_MCP_TOOLS,
+  ].filter(
+    (tool, index, tools) =>
+      tools.findIndex((candidate) => candidate.name === tool.name) === index,
+  );
+  debugTarget.CauscapeMCP = {
+    tools: mergedTools,
+    handlers: mergedHandlers,
     call: async (name: string, input: unknown) => {
-      const fn = toolMap[name];
+      const fn = mergedHandlers[name];
       if (!fn) {
         throw new Error(`Unknown tool ${name}`);
       }
