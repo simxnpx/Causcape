@@ -12,7 +12,7 @@ import { getSelectedElements } from "./selection";
 import { getBoundTextElement, getContainerElement } from "./textElement";
 import { getHoveredElementForBinding } from "./collision";
 
-import { getNonDeletedElements } from ".";
+import { getNonDeletedElements } from "./elementHelpers";
 
 import type { Scene } from "./Scene";
 import type {

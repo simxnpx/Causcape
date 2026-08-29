@@ -8,19 +8,16 @@ import {
   isTestEnv,
   toArray,
 } from "@excalidraw/common";
-import { isNonDeletedElement } from "@excalidraw/element";
-import { isFrameLikeElement } from "@excalidraw/element";
-import { getElementsInGroup } from "@excalidraw/element";
-
 import {
   syncInvalidIndices,
   syncMovedIndices,
   validateFractionalIndices,
-} from "@excalidraw/element";
-
-import { getSelectedElements } from "@excalidraw/element";
-
-import { mutateElement, type ElementUpdate } from "@excalidraw/element";
+} from "./fractionalIndex";
+import { isNonDeletedElement } from "./elementHelpers";
+import { isFrameLikeElement } from "./typeChecks";
+import { getElementsInGroup } from "./groups";
+import { getSelectedElements } from "./selection";
+import { mutateElement, type ElementUpdate } from "./mutateElement";
 
 import type {
   ExcalidrawElement,
@@ -278,11 +275,11 @@ export class Scene {
     const _nextElements = toArray(nextElements);
     const nextFrameLikes: ExcalidrawFrameLikeElement[] = [];
 
+    this.elements = syncInvalidIndices(_nextElements);
     if (!options?.skipValidation) {
-      validateIndicesThrottled(_nextElements);
+      validateIndicesThrottled(this.elements);
     }
 
-    this.elements = syncInvalidIndices(_nextElements);
     this.elementsMap.clear();
     this.elements.forEach((element) => {
       if (isFrameLikeElement(element)) {

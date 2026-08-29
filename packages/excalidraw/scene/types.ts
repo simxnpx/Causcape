@@ -173,4 +173,6 @@ export type ElementShapes = {
   image: null;
   frame: null;
   magicframe: null;
+  "causcape-node": Drawable;
+  "causcape-edge": Drawable[];
 };

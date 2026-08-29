@@ -1,10 +1,13 @@
 import {
   DEFAULT_ELEMENT_PROPS,
+  COLOR_PALETTE,
   DEFAULT_FONT_FAMILY,
   DEFAULT_FONT_SIZE,
   DEFAULT_TEXT_ALIGN,
   DEFAULT_VERTICAL_ALIGN,
   DEFAULT_STROKE_STREAMLINE,
+  getSizeFromPoints,
+  ROUNDNESS,
   VERTICAL_ALIGN,
   randomInteger,
   randomId,
@@ -13,7 +16,12 @@ import {
   getLineHeight,
 } from "@excalidraw/common";
 
-import type { Radians } from "@excalidraw/math";
+import {
+  isValidPoint,
+  pointFrom,
+  type LocalPoint,
+  type Radians,
+} from "@excalidraw/math";
 
 import type { MarkOptional, Merge } from "@excalidraw/common/utility-types";
 
@@ -25,6 +33,12 @@ import { newElementWith } from "./mutateElement";
 import { getBoundTextMaxWidth } from "./textElement";
 import { normalizeText, measureText } from "./textMeasurements";
 import { wrapText } from "./textWrapping";
+import {
+  getCauscapeNodeSize,
+  isCauscapeArchitectureNodeKind,
+  normalizeCauscapeEdgeData,
+  normalizeCauscapeNodeData,
+} from "./causcape";
 
 import { isLineElement } from "./typeChecks";
 
@@ -49,6 +63,12 @@ import type {
   ExcalidrawArrowElement,
   ExcalidrawElbowArrowElement,
   ExcalidrawLineElement,
+  ExcalidrawCauscapeNodeElement,
+  ExcalidrawCauscapeEdgeElement,
+  CauscapeNodeKind,
+  CauscapeArchitectureNodeMetadata,
+  GithubRef,
+  GithubCache,
 } from "./types";
 
 export type ElementConstructorOpts = MarkOptional<
@@ -576,5 +596,110 @@ export const newImageElement = (
     fileId: opts.fileId ?? null,
     scale: opts.scale ?? [1, 1],
     crop: opts.crop ?? null,
+  };
+};
+
+export const newCauscapeNodeElement = (
+  opts: {
+    label: string;
+    kind?: CauscapeNodeKind;
+    github?: GithubRef;
+    cache?: GithubCache & { snapshotAt: string };
+  } & CauscapeArchitectureNodeMetadata &
+    ElementConstructorOpts,
+): NonDeleted<ExcalidrawCauscapeNodeElement> => {
+  const {
+    label,
+    kind = "variable",
+    github,
+    cache,
+    environment,
+    health,
+    description,
+    technologies,
+    references,
+    ...elementOpts
+  } = opts;
+  const nodeData = normalizeCauscapeNodeData({
+    label,
+    kind,
+    github,
+    cache,
+    environment,
+    health,
+    description,
+    technologies,
+    references,
+  });
+  const defaultSize = getCauscapeNodeSize(nodeData);
+  const isArchitecture = isCauscapeArchitectureNodeKind(kind);
+
+  const base = _newElementBase<ExcalidrawCauscapeNodeElement>("causcape-node", {
+    ...elementOpts,
+    width: elementOpts.width ?? defaultSize.width,
+    height: elementOpts.height ?? defaultSize.height,
+    roundness: elementOpts.roundness ?? { type: ROUNDNESS.ADAPTIVE_RADIUS },
+    backgroundColor:
+      elementOpts.backgroundColor ??
+      (isArchitecture ? COLOR_PALETTE.white : COLOR_PALETTE.blue[0]),
+    strokeColor:
+      elementOpts.strokeColor ?? (isArchitecture ? "#9db6d8" : "#1e1e1e"),
+    fillStyle: elementOpts.fillStyle ?? "solid",
+    strokeWidth: elementOpts.strokeWidth ?? (isArchitecture ? 1 : 2),
+    roughness: elementOpts.roughness ?? (isArchitecture ? 0 : 1),
+  });
+
+  return {
+    ...base,
+    causcape: nodeData,
+  };
+};
+
+export const newCauscapeEdgeElement = (
+  opts: {
+    fromNodeId: string;
+    toNodeId: string;
+    label?: string;
+    points?: ExcalidrawCauscapeEdgeElement["points"];
+    startArrowhead?: Arrowhead | null;
+    endArrowhead?: Arrowhead | null;
+  } & ElementConstructorOpts,
+): NonDeleted<ExcalidrawCauscapeEdgeElement> => {
+  const {
+    fromNodeId,
+    toNodeId,
+    label,
+    points: requestedPoints,
+    startArrowhead = null,
+    endArrowhead = "arrow",
+    ...elementOpts
+  } = opts;
+  const fallbackPoints: LocalPoint[] = [
+    pointFrom<LocalPoint>(0, 0),
+    pointFrom<LocalPoint>(
+      Math.max(0, elementOpts.width ?? 100),
+      Math.max(0, elementOpts.height ?? 0),
+    ),
+  ];
+  const points = (
+    Array.isArray(requestedPoints)
+      ? requestedPoints.filter(isValidPoint)
+      : fallbackPoints
+  ) as LocalPoint[];
+  const safePoints = points.length >= 2 ? points : fallbackPoints;
+  const { width, height } = getSizeFromPoints(safePoints);
+  return {
+    ..._newElementBase<ExcalidrawCauscapeEdgeElement>("causcape-edge", {
+      ...elementOpts,
+      width,
+      height,
+    }),
+    points: safePoints,
+    startBinding: null,
+    endBinding: null,
+    startArrowhead,
+    endArrowhead,
+    elbowed: false,
+    causcape: normalizeCauscapeEdgeData({ fromNodeId, toNodeId, label }),
   };
 };

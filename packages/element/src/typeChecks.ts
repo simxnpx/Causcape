@@ -29,6 +29,10 @@ import type {
   ExcalidrawLineElement,
   ExcalidrawFlowchartNodeElement,
   ExcalidrawLinearElementSubType,
+  ExcalidrawCauscapeNodeElement,
+  ExcalidrawCauscapeEdgeElement,
+  ExcalidrawCauscapeElement,
+  CauscapeNodeKind,
 } from "./types";
 
 export const isInitializedImageElement = <T extends ExcalidrawElement>(
@@ -153,7 +157,9 @@ export const isLinearElementType = (
   elementType: ElementOrToolType,
 ): boolean => {
   return (
-    elementType === "arrow" || elementType === "line" // || elementType === "freedraw"
+    elementType === "arrow" ||
+    elementType === "line" ||
+    elementType === "causcape-edge"
   );
 };
 
@@ -189,6 +195,7 @@ export const isBindableElement = <T extends ExcalidrawElement>(
       element.type === "embeddable" ||
       element.type === "frame" ||
       element.type === "magicframe" ||
+      element.type === "causcape-node" ||
       (element.type === "text" && !element.containerId))
   );
 };
@@ -199,6 +206,7 @@ export const isRectanguloidElement = <T extends ExcalidrawElement>(
   return (
     element != null &&
     (element.type === "rectangle" ||
+      element.type === "causcape-node" ||
       element.type === "diamond" ||
       element.type === "image" ||
       element.type === "iframe" ||
@@ -217,6 +225,7 @@ export const isRectangularElement = <T extends ExcalidrawElement>(
   return (
     element != null &&
     (element.type === "rectangle" ||
+      element.type === "causcape-node" ||
       element.type === "image" ||
       element.type === "text" ||
       element.type === "iframe" ||
@@ -249,19 +258,21 @@ export const isExcalidrawElement = (
     return false;
   }
   switch (type) {
-    case "text":
-    case "diamond":
     case "rectangle":
-    case "iframe":
-    case "embeddable":
     case "ellipse":
+    case "diamond":
     case "arrow":
-    case "freedraw":
     case "line":
+    case "freedraw":
     case "frame":
     case "magicframe":
     case "image":
-    case "selection": {
+    case "embeddable":
+    case "iframe":
+    case "text":
+    case "selection":
+    case "causcape-node":
+    case "causcape-edge": {
       return true;
     }
     default: {
@@ -308,12 +319,13 @@ export const isArrowBoundToElement = (element: ExcalidrawArrowElement) => {
 
 export const isUsingAdaptiveRadius = (type: string) =>
   type === "rectangle" ||
+  type === "causcape-node" ||
   type === "embeddable" ||
   type === "iframe" ||
   type === "image";
 
 export const isUsingProportionalRadius = (type: string) =>
-  type === "line" || type === "arrow" || type === "diamond";
+  type === "line" || type === "arrow" || type === "causcape-edge" || type === "diamond";
 
 export const canApplyRoundnessTypeToElement = (
   roundnessType: RoundnessType,
@@ -405,11 +417,66 @@ export const isEligibleFrameChildType = (type: ElementOrToolType) => {
     case "text":
     case "image":
     case "frame":
-    case "embeddable": {
+    case "embeddable":
+    case "causcape-node":
+    case "causcape-edge": {
       return true;
     }
     default: {
       return false;
     }
   }
+};
+export const isCauscapeNodeElement = <T extends ExcalidrawElement>(
+  element: T | null | undefined,
+): element is T & ExcalidrawCauscapeNodeElement => {
+  return !!element && element.type === "causcape-node";
+};
+
+export const isCauscapeEdgeElement = <T extends ExcalidrawElement>(
+  element: T | null | undefined,
+): element is T & ExcalidrawCauscapeEdgeElement => {
+  return !!element && element.type === "causcape-edge";
+};
+
+export const isCauscapeElement = <T extends ExcalidrawElement>(
+  element: T | null | undefined,
+): element is T & ExcalidrawCauscapeElement => {
+  return isCauscapeNodeElement(element) || isCauscapeEdgeElement(element);
+};
+
+export const isGithubNode = <T extends ExcalidrawElement>(
+  element: T | null | undefined,
+): element is T & ExcalidrawCauscapeNodeElement => {
+  return isCauscapeNodeElement(element) && element.causcape.kind !== "variable";
+};
+
+export const isVariableNode = <T extends ExcalidrawElement>(
+  element: T | null | undefined,
+): element is T & ExcalidrawCauscapeNodeElement => {
+  return isCauscapeNodeElement(element) && element.causcape.kind === "variable";
+};
+
+export const isGithubIssueNode = <T extends ExcalidrawElement>(
+  element: T | null | undefined,
+): element is T & ExcalidrawCauscapeNodeElement => {
+  return isCauscapeNodeElement(element) && element.causcape.kind === "github-issue";
+};
+
+export const isGithubPrNode = <T extends ExcalidrawElement>(
+  element: T | null | undefined,
+): element is T & ExcalidrawCauscapeNodeElement => {
+  return isCauscapeNodeElement(element) && element.causcape.kind === "github-pr";
+};
+
+export const isGithubCommitNode = <T extends ExcalidrawElement>(
+  element: T | null | undefined,
+): element is T & ExcalidrawCauscapeNodeElement => {
+  return isCauscapeNodeElement(element) && element.causcape.kind === "github-commit";
+};
+
+export const isGithubRepoNode = <T extends ExcalidrawElement>(
+  element: T | null | undefined,
+): element is T & ExcalidrawCauscapeNodeElement => {
+  return isCauscapeNodeElement(element) && element.causcape.kind === "github-repo";
 };

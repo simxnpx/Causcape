@@ -68,7 +68,18 @@ export default defineConfig({
       },
       {
         find: /^@excalidraw\/laser-pointer\/(.*?)/,
-        replacement: path.resolve(__dirname, "./packages/laser-pointer/src/$1"),
+        replacement: path.resolve(
+          __dirname,
+          "./packages/laser-pointer/src/$1",
+        ),
+      },
+      {
+        find: /^@excalidraw\/graph$/,
+        replacement: path.resolve(__dirname, "./packages/graph/src/index.ts"),
+      },
+      {
+        find: /^@excalidraw\/graph\/(.*?)/,
+        replacement: path.resolve(__dirname, "./packages/graph/src/$1"),
       },
     ],
   },

@@ -33,6 +33,16 @@ import { getContainingFrame } from "@excalidraw/element";
 import { getCornerRadius, isPathALoop } from "@excalidraw/element";
 
 import { ShapeCache } from "@excalidraw/element";
+import {
+  CAUSCAPE_GITHUB_ICON_PATH,
+  CAUSCAPE_NODE_STYLE,
+  getCauscapeEdgeLabel,
+  getCauscapeEdgeLabelAnchor,
+  getCauscapeNodeRenderData,
+  getCauscapeReferenceLabel,
+  wrapCauscapeEdgeLabel,
+  wrapCauscapeText,
+} from "@excalidraw/element";
 
 import { getElementAbsoluteCoords } from "@excalidraw/element";
 
@@ -40,12 +50,27 @@ import type {
   ExcalidrawElement,
   ExcalidrawTextElementWithContainer,
   NonDeletedExcalidrawElement,
+  ExcalidrawCauscapeNodeElement,
+  ExcalidrawLinearElement,
 } from "@excalidraw/element/types";
 
 import type { RenderableElementsMap, SVGRenderConfig } from "../scene/types";
 import type { AppState, BinaryFiles } from "../types";
 import type { Drawable } from "roughjs/bin/core";
 import type { RoughSVG } from "roughjs/bin/svg";
+
+const orderGraphElementsForPainting = <T extends { type: string }>(
+  elements: readonly T[],
+): T[] => {
+  // Keep graph edges behind cards in exports as well as the live canvas.
+  return [...elements].sort((a, b) => {
+    const aIsEdge = a.type === "causcape-edge";
+    const bIsEdge = b.type === "causcape-edge";
+    const aIsNode = a.type === "causcape-node";
+    const bIsNode = b.type === "causcape-node";
+    return aIsEdge && bIsNode ? -1 : aIsNode && bIsEdge ? 1 : 0;
+  });
+};
 
 const roughSVGDrawWithPrecision = (
   rsvg: RoughSVG,
@@ -61,6 +86,74 @@ const roughSVGDrawWithPrecision = (
     options: { ...drawable.options, fixedDecimalPlaceDigits: precision },
   };
   return rsvg.draw(pshape);
+};
+const GITHUB_OCTICON_SVG_PATH =
+  "M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z";
+
+const getGithubBadgeColorSvg = (
+  kind: string,
+  state: string | undefined,
+  isDark: boolean,
+): string => {
+  const s = (state ?? "").toLowerCase();
+  if (s === "open") {
+    return isDark ? "#3fb950" : "#1a7f37";
+  }
+  if (s === "merged") {
+    return isDark ? "#ab7ff2" : "#8250df";
+  }
+  if (s === "closed") {
+    return isDark ? "#f85149" : "#cf222e";
+  }
+  if (kind === "github-repo") {
+    return isDark ? "#8c959f" : "#656d76";
+  }
+  return isDark ? "#8c959f" : "#656d76";
+};
+
+const truncateSvgTwoLines = (
+  text: string,
+  maxCharsPerLine: number,
+): readonly [string, string | null] => {
+  const raw = text.trim();
+  if (raw.length === 0) {
+    return ["", null] as const;
+  }
+  if (raw.length <= maxCharsPerLine) {
+    return [raw, null] as const;
+  }
+  const words = raw.split(/\s+/);
+  let line1 = "";
+  let line2 = "";
+  let idx = 0;
+  for (; idx < words.length; idx++) {
+    const cand = line1 ? `${line1} ${words[idx]}` : words[idx];
+    if (cand.length > maxCharsPerLine) {
+      break;
+    }
+    line1 = cand;
+  }
+  if (line1.length === 0 && words.length > 0) {
+    return [`${words[0].slice(0, maxCharsPerLine - 1)}…`, null] as const;
+  }
+  if (idx >= words.length) {
+    return [line1, null] as const;
+  }
+  for (; idx < words.length; idx++) {
+    const cand = line2 ? `${line2} ${words[idx]}` : words[idx];
+    const isLast = idx === words.length - 1;
+    const test = isLast ? cand : `${cand}…`;
+    if (test.length > maxCharsPerLine) {
+      break;
+    }
+    line2 = cand;
+  }
+  if (idx < words.length && line2.length === 0) {
+    line2 = `${words[idx].slice(0, maxCharsPerLine - 1)}…`;
+  } else if (idx < words.length && line2.length > 0) {
+    line2 = `${line2}…`;
+  }
+  return [line1, line2.length > 0 ? line2 : null] as const;
 };
 
 const maybeWrapNodesInFrameClipPath = (
@@ -147,7 +240,8 @@ const renderElementToSvg = (
     }
     case "rectangle":
     case "diamond":
-    case "ellipse": {
+    case "ellipse":
+    case "causcape-node": {
       const shape = ShapeCache.generateElementShape(element, renderConfig);
       const node = roughSVGDrawWithPrecision(
         rsvg,
@@ -165,6 +259,514 @@ const renderElementToSvg = (
           offsetY || 0
         }) rotate(${degree} ${cx} ${cy})`,
       );
+
+      // Causcape github overlay for SVG export — icon+dot+title, theme-aware
+      if (element.type === "causcape-node") {
+        const isDark = renderConfig.theme === THEME.DARK;
+        const nodeElSvg = element as ExcalidrawCauscapeNodeElement;
+        const causcape = nodeElSvg.causcape as unknown as Record<
+          string,
+          unknown
+        >;
+        const nodeData = getCauscapeNodeRenderData(
+          causcape,
+          renderConfig.theme,
+        );
+        if (nodeData.isArchitecture) {
+          const {
+            architecturePadding: pad,
+            architectureIconTileSize: iconTileSize,
+            architectureIconGap: gap,
+            architectureTitleFontSize: titleSize,
+            headerHeight,
+            sectionGap,
+            descriptionTopGap,
+            sectionRuleGap,
+            technologyChipTopPadding,
+            lineHeight,
+            metadataRowHeight,
+            metadataPanelPadding,
+            chipHeight,
+            architecturePillHeight,
+          } = CAUSCAPE_NODE_STYLE;
+          const foreground = applyDarkModeFilter(nodeData.foreground, isDark);
+          const secondary = applyDarkModeFilter(nodeData.secondary, isDark);
+          const accent = nodeData.kindAccent;
+          const surface = isDark ? CAUSCAPE_NODE_STYLE.darkSurface : "#ffffff";
+          const panel = isDark ? "#263449" : "#fbfcfe";
+          const rule = isDark
+            ? CAUSCAPE_NODE_STYLE.darkRule
+            : CAUSCAPE_NODE_STYLE.lightRule;
+          const architectureGroup = svgRoot.ownerDocument.createElementNS(
+            SVG_NS,
+            "g",
+          );
+          architectureGroup.setAttribute(
+            "transform",
+            `translate(${offsetX || 0} ${
+              offsetY || 0
+            }) rotate(${degree} ${cx} ${cy})`,
+          );
+          architectureGroup.appendChild(node);
+
+          const rect = (
+            x: number,
+            y: number,
+            width: number,
+            height: number,
+            fill: string,
+            stroke: string,
+            radius: number,
+          ) => {
+            const element = svgRoot.ownerDocument.createElementNS(
+              SVG_NS,
+              "rect",
+            );
+            element.setAttribute("x", `${x}`);
+            element.setAttribute("y", `${y}`);
+            element.setAttribute("width", `${width}`);
+            element.setAttribute("height", `${height}`);
+            element.setAttribute("rx", `${radius}`);
+            element.setAttribute("fill", fill);
+            element.setAttribute("stroke", stroke);
+            element.setAttribute("stroke-width", "1");
+            architectureGroup.appendChild(element);
+          };
+          const text = (
+            value: string,
+            x: number,
+            y: number,
+            size: number,
+            weight: string,
+            fill: string,
+          ) => {
+            const element = svgRoot.ownerDocument.createElementNS(
+              SVG_NS,
+              "text",
+            );
+            element.setAttribute("x", `${x}`);
+            element.setAttribute("y", `${y}`);
+            element.setAttribute(
+              "font-family",
+              "system-ui, -apple-system, sans-serif",
+            );
+            element.setAttribute("font-size", `${size}`);
+            element.setAttribute("font-weight", weight);
+            element.setAttribute("fill", fill);
+            element.textContent = value;
+            architectureGroup.appendChild(element);
+          };
+          const pill = (
+            value: string,
+            x: number,
+            y: number,
+            color: string,
+            prefix = "",
+          ): number => {
+            const content = `${prefix ? `${prefix} ` : ""}${value}`;
+            const width = Math.max(
+              architecturePillHeight + 2,
+              content.length * 8.5 + 28,
+            );
+            rect(
+              x,
+              y,
+              width,
+              architecturePillHeight,
+              `${color}15`,
+              `${color}66`,
+              9,
+            );
+            text(content, x + 14, y + 22, 15, "600", color);
+            return width;
+          };
+
+          rect(pad, pad, iconTileSize, iconTileSize, surface, `${accent}55`, 8);
+          const icon = svgRoot.ownerDocument.createElementNS(SVG_NS, "path");
+          const iconX = pad + (iconTileSize - 58) / 2;
+          const iconY = pad + (iconTileSize - 58) / 2;
+          icon.setAttribute(
+            "d",
+            `M ${iconX + 7} ${
+              iconY + 10
+            } h 44 a 3 3 0 0 1 3 3 v 32 a 3 3 0 0 1 -3 3 H ${
+              iconX + 7
+            } a 3 3 0 0 1 -3 -3 V ${iconY + 13} a 3 3 0 0 1 3 -3 Z M ${
+              iconX + 4
+            } ${iconY + 19} H ${iconX + 54} M ${iconX + 10} ${iconY + 14.5} H ${
+              iconX + 11
+            }`,
+          );
+          icon.setAttribute("fill", "none");
+          icon.setAttribute("stroke", accent);
+          icon.setAttribute("stroke-width", "2.5");
+          icon.setAttribute("stroke-linejoin", "round");
+          architectureGroup.appendChild(icon);
+          const titleX = pad + iconTileSize + gap;
+          const titleLines = wrapCauscapeText(
+            nodeData.title,
+            Math.floor((element.width - titleX - pad) / 14),
+          );
+          text(titleLines[0], titleX, pad + 38, titleSize, "700", foreground);
+          if (titleLines[1]) {
+            text(titleLines[1], titleX, pad + 69, titleSize, "700", foreground);
+          }
+          let pillX = titleX;
+          const pillY = pad + (titleLines[1] ? 80 : 58);
+          pillX +=
+            pill(nodeData.kindLabel ?? "Component", pillX, pillY, accent) + 10;
+          if (nodeData.health) {
+            pill(
+              nodeData.health.label,
+              pillX,
+              pillY,
+              nodeData.health.color,
+              nodeData.health.glyph,
+            );
+          }
+
+          const drawRule = (y: number) => {
+            const line = svgRoot.ownerDocument.createElementNS(SVG_NS, "line");
+            line.setAttribute("x1", `${pad}`);
+            line.setAttribute("x2", `${element.width - pad}`);
+            line.setAttribute("y1", `${y}`);
+            line.setAttribute("y2", `${y}`);
+            line.setAttribute("stroke", rule);
+            line.setAttribute("stroke-width", "1");
+            architectureGroup.appendChild(line);
+          };
+          const contentWidth = element.width - pad * 2;
+          let cursorY = pad + headerHeight;
+          if (nodeData.description) {
+            cursorY += descriptionTopGap;
+            const descriptionLines = wrapCauscapeText(
+              nodeData.description,
+              Math.floor(contentWidth / 8.2),
+            );
+            text(
+              descriptionLines[0],
+              pad,
+              cursorY + lineHeight,
+              16,
+              "500",
+              secondary,
+            );
+            if (descriptionLines[1]) {
+              text(
+                descriptionLines[1],
+                pad,
+                cursorY + lineHeight * 2,
+                16,
+                "500",
+                secondary,
+              );
+            }
+            cursorY += lineHeight * (descriptionLines[1] ? 2 : 1);
+          }
+          if (nodeData.environment || nodeData.references.length > 0) {
+            cursorY += sectionGap;
+            const rows = [
+              ...(nodeData.environment
+                ? [
+                    {
+                      label: "Environment",
+                      value: nodeData.environment,
+                      color: foreground,
+                    },
+                  ]
+                : []),
+              ...nodeData.references.map((reference) => ({
+                label:
+                  reference.type === "repository"
+                    ? "Repository"
+                    : reference.type === "dashboard"
+                    ? "Dashboard"
+                    : reference.type === "documentation"
+                    ? "Documentation"
+                    : "Runbook",
+                value: getCauscapeReferenceLabel(reference),
+                color: accent,
+                url: reference.url,
+              })),
+            ];
+            const panelHeight =
+              metadataPanelPadding * 2 + rows.length * metadataRowHeight;
+            rect(pad, cursorY, contentWidth, panelHeight, panel, rule, 12);
+            rows.forEach((row, index) => {
+              const rowTop =
+                cursorY + metadataPanelPadding + index * metadataRowHeight;
+              const baseline = rowTop + 30;
+              text(row.label, pad + 52, baseline, 16, "500", secondary);
+              if ("url" in row) {
+                const anchor = svgRoot.ownerDocument.createElementNS(
+                  SVG_NS,
+                  "a",
+                );
+                anchor.setAttribute("href", normalizeLink(toValidURL(row.url)));
+                const value = svgRoot.ownerDocument.createElementNS(
+                  SVG_NS,
+                  "text",
+                );
+                value.setAttribute("x", `${pad + 230}`);
+                value.setAttribute("y", `${baseline}`);
+                value.setAttribute(
+                  "font-family",
+                  "system-ui, -apple-system, sans-serif",
+                );
+                value.setAttribute("font-size", "16");
+                value.setAttribute("font-weight", "500");
+                value.setAttribute("fill", accent);
+                value.textContent = row.value;
+                anchor.appendChild(value);
+                architectureGroup.appendChild(anchor);
+              } else {
+                text(row.value, pad + 230, baseline, 16, "500", row.color);
+              }
+              if (index < rows.length - 1) {
+                drawRule(rowTop + metadataRowHeight);
+              }
+            });
+            cursorY += panelHeight;
+          }
+          if (nodeData.technologies.length > 0) {
+            if (nodeData.environment || nodeData.references.length > 0) {
+              drawRule(cursorY + sectionRuleGap);
+              cursorY += sectionRuleGap + 1 + sectionRuleGap;
+            } else {
+              cursorY += sectionGap;
+            }
+            let chipX = pad;
+            let chipY = cursorY + technologyChipTopPadding;
+            nodeData.technologies.forEach((technology, index) => {
+              const chipWidth = Math.max(74, technology.length * 8 + 24);
+              if (index > 0 && chipX + chipWidth > element.width - pad) {
+                chipX = pad;
+                chipY += chipHeight + CAUSCAPE_NODE_STYLE.technologyRowGap;
+              }
+              rect(chipX, chipY, chipWidth, chipHeight, surface, rule, 8);
+              text(technology, chipX + 12, chipY + 22, 14, "500", secondary);
+              chipX += chipWidth + CAUSCAPE_NODE_STYLE.technologyChipGap;
+            });
+          }
+          const clippedArchitecture = maybeWrapNodesInFrameClipPath(
+            element,
+            root,
+            [architectureGroup],
+            renderConfig.frameRendering,
+            elementsMap,
+          );
+          addToRoot(clippedArchitecture || architectureGroup, element);
+          break;
+        }
+        const kind = nodeData.kind;
+        const isGithub = nodeData.isGithub;
+        if (isGithub) {
+          const cacheVal: unknown = causcape["cache"];
+          const cache =
+            cacheVal && typeof cacheVal === "object"
+              ? (cacheVal as Record<string, unknown>)
+              : undefined;
+          const rawTitle = nodeData.title;
+          const stale = nodeData.stale;
+          const { padding: pad, iconSize, iconGap: gap } = CAUSCAPE_NODE_STYLE;
+          const textX = pad + iconSize + gap;
+          const isRepo = kind === "github-repo";
+          // wrapper group with same transform as shape, holding overlay
+          const overlayGroup = svgRoot.ownerDocument.createElementNS(
+            SVG_NS,
+            "g",
+          );
+          overlayGroup.setAttribute(
+            "transform",
+            `translate(${offsetX || 0} ${
+              offsetY || 0
+            }) rotate(${degree} ${cx} ${cy})`,
+          );
+          overlayGroup.appendChild(node);
+          // icon path
+          const iconPath = svgRoot.ownerDocument.createElementNS(
+            SVG_NS,
+            "path",
+          );
+          iconPath.setAttribute("d", CAUSCAPE_GITHUB_ICON_PATH);
+          iconPath.setAttribute("transform", `translate(${pad} ${pad})`);
+          iconPath.setAttribute("fill", applyDarkModeFilter("#24292f", isDark));
+          overlayGroup.appendChild(iconPath);
+          // badge circle
+          const badge = svgRoot.ownerDocument.createElementNS(SVG_NS, "circle");
+          badge.setAttribute("cx", `${pad + iconSize - 2}`);
+          badge.setAttribute("cy", `${pad + iconSize - 2}`);
+          badge.setAttribute("r", "5");
+          badge.setAttribute("fill", nodeData.badgeColor);
+          badge.setAttribute(
+            "stroke",
+            isDark ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.9)",
+          );
+          badge.setAttribute("stroke-width", "1");
+          overlayGroup.appendChild(badge);
+          // title / repo meta
+          const maxChars = Math.max(
+            10,
+            Math.floor((element.width - textX - pad - (stale ? 12 : 0)) / 6.5),
+          );
+          if (isRepo && cache) {
+            const starsVal: unknown = cache["stars"];
+            const stars = typeof starsVal === "number" ? starsVal : undefined;
+            const langVal: unknown = cache["language"];
+            const language = typeof langVal === "string" ? langVal : undefined;
+            const hasMeta = stars !== undefined || language !== undefined;
+            // title line
+            let titleLine = rawTitle.trim();
+            if (titleLine.length > maxChars) {
+              titleLine = `${titleLine.slice(0, maxChars - 1)}…`;
+            }
+            const t1 = svgRoot.ownerDocument.createElementNS(SVG_NS, "text");
+            t1.setAttribute("x", `${textX}`);
+            t1.setAttribute("y", `${pad + 10}`);
+            t1.setAttribute(
+              "font-family",
+              "system-ui, -apple-system, sans-serif",
+            );
+            t1.setAttribute("font-size", "11");
+            t1.setAttribute("font-weight", "600");
+            t1.setAttribute("fill", applyDarkModeFilter("#24292f", isDark));
+            t1.textContent = titleLine;
+            overlayGroup.appendChild(t1);
+            if (hasMeta) {
+              const parts: string[] = [];
+              if (stars !== undefined) {
+                parts.push(`★ ${stars}`);
+              }
+              if (language) {
+                parts.push(language);
+              }
+              let meta = parts.join(" · ");
+              if (meta.length > maxChars) {
+                meta = `${meta.slice(0, maxChars - 1)}…`;
+              }
+              const t2 = svgRoot.ownerDocument.createElementNS(SVG_NS, "text");
+              t2.setAttribute("x", `${textX}`);
+              t2.setAttribute("y", `${pad + 23}`);
+              t2.setAttribute(
+                "font-family",
+                "system-ui, -apple-system, sans-serif",
+              );
+              t2.setAttribute("font-size", "10");
+              t2.setAttribute("fill", applyDarkModeFilter("#656d76", isDark));
+              t2.textContent = meta;
+              overlayGroup.appendChild(t2);
+            }
+          } else {
+            const lines = wrapCauscapeText(rawTitle, maxChars);
+            const t1 = svgRoot.ownerDocument.createElementNS(SVG_NS, "text");
+            t1.setAttribute("x", `${textX}`);
+            t1.setAttribute("y", `${pad + 11}`);
+            t1.setAttribute(
+              "font-family",
+              "system-ui, -apple-system, sans-serif",
+            );
+            t1.setAttribute("font-size", "12");
+            t1.setAttribute("font-weight", "600");
+            t1.setAttribute("fill", applyDarkModeFilter("#24292f", isDark));
+            t1.textContent = lines[0];
+            overlayGroup.appendChild(t1);
+            if (lines[1] !== null) {
+              const t2 = svgRoot.ownerDocument.createElementNS(SVG_NS, "text");
+              t2.setAttribute("x", `${textX}`);
+              t2.setAttribute("y", `${pad + 25}`);
+              t2.setAttribute(
+                "font-family",
+                "system-ui, -apple-system, sans-serif",
+              );
+              t2.setAttribute("font-size", "12");
+              t2.setAttribute("font-weight", "600");
+              t2.setAttribute("fill", applyDarkModeFilter("#24292f", isDark));
+              t2.textContent = lines[1];
+              overlayGroup.appendChild(t2);
+            }
+          }
+          if (stale) {
+            const staleText = svgRoot.ownerDocument.createElementNS(
+              SVG_NS,
+              "text",
+            );
+            staleText.setAttribute("x", `${element.width - pad - 8}`);
+            staleText.setAttribute("y", `${pad + 11}`);
+            staleText.setAttribute("font-size", "16");
+            staleText.setAttribute("font-weight", "700");
+            staleText.setAttribute("fill", "#ffab00");
+            staleText.textContent = "•";
+            overlayGroup.appendChild(staleText);
+          }
+          const g = maybeWrapNodesInFrameClipPath(
+            element,
+            root,
+            [overlayGroup],
+            renderConfig.frameRendering,
+            elementsMap,
+          );
+          addToRoot(g || overlayGroup, element);
+          break;
+        }
+        // variable fallback — still distinct (no icon), just shape + small badge
+        const badgeGroup = svgRoot.ownerDocument.createElementNS(SVG_NS, "g");
+        badgeGroup.setAttribute(
+          "transform",
+          `translate(${offsetX || 0} ${
+            offsetY || 0
+          }) rotate(${degree} ${cx} ${cy})`,
+        );
+        badgeGroup.appendChild(node);
+        const badgeR = 6;
+        const badgeDot = svgRoot.ownerDocument.createElementNS(
+          SVG_NS,
+          "circle",
+        );
+        badgeDot.setAttribute("cx", `${element.width - badgeR * 1.5}`);
+        badgeDot.setAttribute("cy", `${badgeR * 1.5}`);
+        badgeDot.setAttribute("r", `${badgeR}`);
+        badgeDot.setAttribute("fill", applyDarkModeFilter("#6b7cff", isDark));
+        badgeGroup.appendChild(badgeDot);
+        const label2 = nodeData.title;
+        if (label2) {
+          const maxCharsLbl = Math.max(
+            8,
+            Math.floor((element.width - 16) / 6.5),
+          );
+          let txt = label2;
+          if (txt.length > maxCharsLbl) {
+            txt = `${txt.slice(0, maxCharsLbl - 1)}…`;
+          }
+          const labelText = svgRoot.ownerDocument.createElementNS(
+            SVG_NS,
+            "text",
+          );
+          labelText.setAttribute("x", `${element.width / 2}`);
+          labelText.setAttribute("y", `${element.height / 2 + 4}`);
+          labelText.setAttribute("text-anchor", "middle");
+          labelText.setAttribute(
+            "font-family",
+            "system-ui, -apple-system, sans-serif",
+          );
+          labelText.setAttribute("font-size", "12");
+          labelText.setAttribute("font-weight", "500");
+          labelText.setAttribute(
+            "fill",
+            applyDarkModeFilter("#1e1e1e", isDark),
+          );
+          labelText.textContent = txt;
+          badgeGroup.appendChild(labelText);
+        }
+        const g2 = maybeWrapNodesInFrameClipPath(
+          element,
+          root,
+          [badgeGroup],
+          renderConfig.frameRendering,
+          elementsMap,
+        );
+        addToRoot(g2 || badgeGroup, element);
+        break;
+      }
 
       const g = maybeWrapNodesInFrameClipPath(
         element,
@@ -279,8 +881,12 @@ const renderElementToSvg = (
       break;
     }
     case "line":
-    case "arrow": {
-      const boundText = getBoundTextElement(element, elementsMap);
+    case "arrow":
+    case "causcape-edge": {
+      const boundText = getBoundTextElement(
+        element as unknown as ExcalidrawLinearElement,
+        elementsMap,
+      );
       const maskPath = svgRoot.ownerDocument.createElementNS(SVG_NS, "mask");
       if (boundText) {
         maskPath.setAttribute("id", `mask-${element.id}`);
@@ -316,7 +922,7 @@ const renderElementToSvg = (
           "rect",
         );
         const boundTextCoords = LinearElementEditor.getBoundTextElementPosition(
-          element,
+          element as unknown as ExcalidrawLinearElement,
           boundText,
           elementsMap,
         );
@@ -357,13 +963,94 @@ const renderElementToSvg = (
         );
         if (
           element.type === "line" &&
-          isPathALoop(element.points) &&
+          isPathALoop((element as unknown as ExcalidrawLinearElement).points) &&
           element.backgroundColor !== "transparent"
         ) {
           node.setAttribute("fill-rule", "evenodd");
         }
         group.appendChild(node);
       });
+
+      if (element.type === "causcape-edge") {
+        const label = getCauscapeEdgeLabel(element.causcape);
+        const anchor = getCauscapeEdgeLabelAnchor(
+          element.points.map(([x, y]) => [x, y] as [number, number]),
+        );
+        if (label && anchor) {
+          const isDark = renderConfig.theme === THEME.DARK;
+          const textColor = applyDarkModeFilter(
+            isDark
+              ? CAUSCAPE_NODE_STYLE.darkSecondary
+              : CAUSCAPE_NODE_STYLE.lightSecondary,
+            isDark,
+          );
+          const background = isDark
+            ? CAUSCAPE_NODE_STYLE.darkSurface
+            : CAUSCAPE_NODE_STYLE.lightSurface;
+          const border = isDark
+            ? CAUSCAPE_NODE_STYLE.darkRule
+            : CAUSCAPE_NODE_STYLE.lightRule;
+          const fontSize = 13;
+          const lineHeight = 18;
+          const horizontalPadding = 8;
+          const verticalPadding = 5;
+          const maxChars = Math.max(
+            14,
+            Math.floor(Math.max(anchor.length - 16, 100) / 7),
+          );
+          const lines = wrapCauscapeEdgeLabel(label, maxChars);
+          const textWidth = Math.max(
+            ...lines.map((line) => line.length * fontSize * 0.51),
+          );
+          const boxWidth = textWidth + horizontalPadding * 2;
+          const boxHeight = lines.length * lineHeight + verticalPadding * 2;
+          const labelX = anchor.x + anchor.normalX * 16;
+          const labelY = anchor.y + anchor.normalY * 16;
+          const labelGroup = svgRoot.ownerDocument.createElementNS(
+            SVG_NS,
+            "g",
+          );
+          labelGroup.setAttribute(
+            "transform",
+            `translate(${offsetX || 0} ${
+              offsetY || 0
+            }) rotate(${degree} ${cx} ${cy})`,
+          );
+          const labelRect = svgRoot.ownerDocument.createElementNS(
+            SVG_NS,
+            "rect",
+          );
+          labelRect.setAttribute("x", `${labelX - boxWidth / 2}`);
+          labelRect.setAttribute("y", `${labelY - boxHeight / 2}`);
+          labelRect.setAttribute("width", `${boxWidth}`);
+          labelRect.setAttribute("height", `${boxHeight}`);
+          labelRect.setAttribute("rx", "6");
+          labelRect.setAttribute("fill", background);
+          labelRect.setAttribute("stroke", border);
+          labelRect.setAttribute("stroke-width", "1");
+          labelGroup.appendChild(labelRect);
+          lines.forEach((line, index) => {
+            const labelText = svgRoot.ownerDocument.createElementNS(
+              SVG_NS,
+              "text",
+            );
+            labelText.setAttribute("x", `${labelX}`);
+            labelText.setAttribute(
+              "y",
+              `${labelY + (index - (lines.length - 1) / 2) * lineHeight}`,
+            );
+            labelText.setAttribute("text-anchor", "middle");
+            labelText.setAttribute("dominant-baseline", "middle");
+            labelText.setAttribute("font-family", "system-ui, -apple-system, sans-serif");
+            labelText.setAttribute("font-size", `${fontSize}`);
+            labelText.setAttribute("font-weight", "500");
+            labelText.setAttribute("fill", textColor);
+            labelText.textContent = line;
+            labelGroup.appendChild(labelText);
+          });
+          group.appendChild(labelGroup);
+        }
+      }
 
       const g = maybeWrapNodesInFrameClipPath(
         element,
@@ -728,7 +1415,7 @@ export const renderSceneToSvg = (
   }
 
   // render elements
-  elements
+  orderGraphElementsForPainting(elements)
     .filter((el) => !isIframeLikeElement(el))
     .forEach((element) => {
       if (!element.isDeleted) {

@@ -64,6 +64,12 @@ import { refreshTextDimensions } from "@excalidraw/element";
 import { getNormalizedDimensions } from "@excalidraw/element";
 
 import { isInvisiblySmallElement } from "@excalidraw/element";
+import {
+  getCauscapeNodeSize,
+  isCauscapeArchitectureNodeKind,
+  normalizeCauscapeEdgeData,
+  normalizeCauscapeNodeData,
+} from "@excalidraw/element";
 
 import type { LocalPoint, Radians } from "@excalidraw/math";
 
@@ -702,15 +708,85 @@ export const restoreElement = (
     case "iframe":
     case "embeddable":
       return restoreElementWithProperties(element, {});
+    case "causcape-node": {
+      const causcape = normalizeCauscapeNodeData(
+        (element as unknown as { causcape?: unknown }).causcape,
+      );
+      const size = isCauscapeArchitectureNodeKind(causcape.kind)
+        ? getCauscapeNodeSize(causcape)
+        : null;
+      return restoreElementWithProperties(element, {
+        causcape,
+        ...(size ?? {}),
+      });
+    }
+    case "causcape-edge": {
+      const startArrowhead = normalizeArrowhead(
+        (
+          element as unknown as import("@excalidraw/element/types").ExcalidrawCauscapeEdgeElement
+        ).startArrowhead,
+      );
+      const endArrowhead =
+        (
+          element as unknown as import("@excalidraw/element/types").ExcalidrawCauscapeEdgeElement
+        ).endArrowhead === undefined
+          ? "arrow"
+          : normalizeArrowhead(
+              (
+                element as unknown as import("@excalidraw/element/types").ExcalidrawCauscapeEdgeElement
+              ).endArrowhead,
+            );
+      const edgeElement =
+        element as unknown as import("@excalidraw/element/types").ExcalidrawCauscapeEdgeElement;
+      const points = restoreLinearElementPoints(
+        edgeElement.points,
+        edgeElement.width,
+        edgeElement.height,
+      );
+      const x = edgeElement.x ?? 0;
+      const y = edgeElement.y ?? 0;
+      const causcape = normalizeCauscapeEdgeData(edgeElement.causcape);
+      return restoreElementWithProperties(edgeElement, {
+        type: "causcape-edge",
+        points,
+        x,
+        y,
+        startBinding: repairBinding(
+          {
+            ...edgeElement,
+            points,
+            x,
+            y,
+          } as unknown as import("@excalidraw/element/types").ExcalidrawArrowElement,
+          edgeElement.startBinding,
+          targetElementsMap,
+          existingElementsMap,
+          "start",
+        ),
+        endBinding: repairBinding(
+          {
+            ...edgeElement,
+            points,
+            x,
+            y,
+          } as unknown as import("@excalidraw/element/types").ExcalidrawArrowElement,
+          edgeElement.endBinding,
+          targetElementsMap,
+          existingElementsMap,
+          "end",
+        ),
+        startArrowhead,
+        endArrowhead,
+        elbowed: edgeElement.elbowed ?? false,
+        causcape,
+        ...getSizeFromPoints(points),
+      });
+    }
     case "magicframe":
     case "frame":
       return restoreElementWithProperties(element, {
         name: element.name ?? null,
       });
-
-    // Don't use default case so as to catch a missing an element type case.
-    // We also don't want to throw, but instead return void so we filter
-    // out these unsupported elements from the restored array.
   }
   return null;
 };

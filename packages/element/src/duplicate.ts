@@ -38,7 +38,7 @@ import { getBoundTextElement, getContainerElement } from "./textElement";
 
 import { fixDuplicatedBindingsAfterDuplication } from "./binding";
 
-import { isNonDeletedElement } from ".";
+import { isNonDeletedElement } from "./elementHelpers";
 
 import type {
   ElementsMap,

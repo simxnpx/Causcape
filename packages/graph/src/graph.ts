@@ -5,7 +5,12 @@ import type {
   ExcalidrawElement,
 } from "@excalidraw/element/types";
 
-import type { CauscapeEdge, CauscapeGraph, CauscapeNode } from "./types";
+import {
+  isArchitectureNodeKind,
+  type CauscapeEdge,
+  type CauscapeGraph,
+  type CauscapeNode,
+} from "./types";
 import { validateGraph } from "./validate";
 
 const isCauscapeNodeElement = (el: ExcalidrawElement): el is ExcalidrawCauscapeNodeElement =>
@@ -40,19 +45,56 @@ export const buildGraph = (
       const causcape = nodeEl.causcape as unknown as {
         label: string;
         kind: CauscapeNode["kind"];
+        architectureKind?: CauscapeNode["kind"];
+        architecture?: CauscapeNode["architecture"];
+        environment?: string;
+        health?: "healthy" | "degraded" | "failed" | "unknown";
+        description?: string;
+        technologies?: readonly string[];
+        references?: CauscapeNode["architecture"] extends {
+          references?: infer V;
+        }
+          ? V
+          : never;
         github?: CauscapeNode["github"];
         cache?: CauscapeNode["cache"];
       };
+      const nodeKind = causcape.architectureKind ?? causcape.kind;
+      const architecture =
+        causcape.architecture ??
+        (isArchitectureNodeKind(nodeKind)
+          ? {
+              ...(causcape.environment !== undefined
+                ? { environment: causcape.environment }
+                : {}),
+              ...(causcape.health !== undefined
+                ? { health: causcape.health }
+                : {}),
+              ...(causcape.description !== undefined
+                ? { description: causcape.description }
+                : {}),
+              ...(causcape.technologies !== undefined
+                ? { technologies: causcape.technologies }
+                : {}),
+              ...(causcape.references !== undefined
+                ? { references: causcape.references }
+                : {}),
+            }
+          : undefined);
       nodes.push({
         id: nodeEl.id,
         label: causcape.label,
-        kind: causcape.kind,
+        // `architectureKind` is a persistence-safe escape hatch for the
+        // legacy element normalizer. The graph surface owns the richer
+        // architecture vocabulary until the renderer catches up.
+        kind: nodeKind,
         x: nodeEl.x,
         y: nodeEl.y,
         width: nodeEl.width,
         height: nodeEl.height,
         github: causcape.github,
         cache: causcape.cache,
+        architecture,
         element: nodeEl,
       });
     } else if (isCauscapeEdgeElement(el)) {
@@ -62,6 +104,11 @@ export const buildGraph = (
         fromNodeId: edgeEl.causcape.fromNodeId,
         toNodeId: edgeEl.causcape.toNodeId,
         label: edgeEl.causcape.label,
+        relationship: (
+          edgeEl.causcape as unknown as {
+            relationship?: CauscapeEdge["relationship"];
+          }
+        ).relationship,
         element: edgeEl,
       });
     }

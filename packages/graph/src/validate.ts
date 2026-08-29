@@ -3,6 +3,11 @@ import type {
   CauscapeNode,
   Diagnostic,
 } from "./types";
+import {
+  ARCHITECTURE_REFERENCE_TYPES,
+  ARCHITECTURE_RELATIONSHIP_TYPES,
+  isArchitectureNodeKind,
+} from "./types";
 
 const isValidGithubRef = (node: CauscapeNode): boolean => {
   const ref = node.github;
@@ -50,6 +55,107 @@ const isGithubNotFoundPlaceholder = (node: CauscapeNode): boolean => {
   return title === "Not found" || message === "Not found" || description === "Not found";
 };
 
+const validateArchitectureMetadata = (node: CauscapeNode): Diagnostic[] => {
+  if (!isArchitectureNodeKind(node.kind)) {
+    return [];
+  }
+
+  const diagnostics: Diagnostic[] = [];
+  const metadata = node.architecture;
+  if (!metadata) {
+    return diagnostics;
+  }
+
+  if (
+    metadata.environment !== undefined &&
+    (typeof metadata.environment !== "string" ||
+      metadata.environment.trim().length === 0)
+  ) {
+    diagnostics.push({
+      level: "error",
+      code: "ARCHITECTURE_INVALID_ENVIRONMENT",
+      message: `Node ${node.id} has an invalid environment`,
+      elementIds: [node.id],
+    });
+  }
+
+  if (
+    metadata.health !== undefined &&
+    !["healthy", "degraded", "failed", "unknown"].includes(metadata.health)
+  ) {
+    diagnostics.push({
+      level: "error",
+      code: "ARCHITECTURE_INVALID_HEALTH",
+      message: `Node ${node.id} has an invalid health value`,
+      elementIds: [node.id],
+    });
+  }
+
+  if (
+    metadata.description !== undefined &&
+    typeof metadata.description !== "string"
+  ) {
+    diagnostics.push({
+      level: "error",
+      code: "ARCHITECTURE_INVALID_DESCRIPTION",
+      message: `Node ${node.id} has an invalid description`,
+      elementIds: [node.id],
+    });
+  }
+
+  if (
+    metadata.technologies !== undefined &&
+    (!Array.isArray(metadata.technologies) ||
+      metadata.technologies.some(
+        (technology) =>
+          typeof technology !== "string" || technology.trim().length === 0,
+      ))
+  ) {
+    diagnostics.push({
+      level: "error",
+      code: "ARCHITECTURE_INVALID_TECHNOLOGIES",
+      message: `Node ${node.id} has invalid technologies`,
+      elementIds: [node.id],
+    });
+  }
+
+  if (metadata.references !== undefined) {
+    if (!Array.isArray(metadata.references)) {
+      diagnostics.push({
+        level: "error",
+        code: "ARCHITECTURE_INVALID_REFERENCES",
+        message: `Node ${node.id} has invalid references`,
+        elementIds: [node.id],
+      });
+    } else {
+      metadata.references.forEach((reference, index) => {
+        const validType = ARCHITECTURE_REFERENCE_TYPES.includes(
+          reference?.type,
+        );
+        let validUrl = false;
+        if (typeof reference?.url === "string") {
+          try {
+            const url = new URL(reference.url);
+            validUrl = url.protocol === "http:" || url.protocol === "https:";
+          } catch {
+            validUrl = false;
+          }
+        }
+        if (!validType || !validUrl) {
+          diagnostics.push({
+            level: "error",
+            code: "ARCHITECTURE_INVALID_REFERENCE",
+            message: `Node ${node.id} has an invalid reference at index ${index}`,
+            elementIds: [node.id],
+          });
+        }
+      });
+    }
+  }
+
+  return diagnostics;
+};
+
 export const validateGraph = (
   nodes: readonly CauscapeNode[],
   edges: readonly CauscapeEdge[],
@@ -67,6 +173,19 @@ export const validateGraph = (
         elementIds: [node.id],
       });
     }
+    if (
+      node.kind !== "variable" &&
+      !node.kind.startsWith("github-") &&
+      !isArchitectureNodeKind(node.kind)
+    ) {
+      diagnostics.push({
+        level: "error",
+        code: "NODE_INVALID_KIND",
+        message: `Node ${node.id} has unsupported kind ${node.kind}`,
+        elementIds: [node.id],
+      });
+    }
+    diagnostics.push(...validateArchitectureMetadata(node));
     // Github-specific validation
     if (node.kind.startsWith("github")) {
       const ref = node.github as unknown as Record<string, unknown> | undefined;
@@ -123,7 +242,25 @@ export const validateGraph = (
       });
     }
 
-    const key = `${edge.fromNodeId}->${edge.toNodeId}`;
+    if (
+      edge.relationship !== undefined &&
+      !ARCHITECTURE_RELATIONSHIP_TYPES.includes(edge.relationship)
+    ) {
+      diagnostics.push({
+        level: "error",
+        code: "EDGE_INVALID_RELATIONSHIP",
+        message: `Edge ${edge.id} has unsupported relationship ${edge.relationship}`,
+        elementIds: [edge.id],
+      });
+    }
+
+    // Different typed relationships between the same pair are meaningful in
+    // an architecture graph (for example, a service can both read and write
+    // a datastore). Only identical endpoint + relationship pairs are
+    // duplicates.
+    const key = `${edge.fromNodeId}->${edge.toNodeId}::${
+      edge.relationship ?? ""
+    }`;
     edgeKeyCount.set(key, (edgeKeyCount.get(key) ?? 0) + 1);
 
     if (fromExists && toExists) {
@@ -134,9 +271,14 @@ export const validateGraph = (
 
   for (const [key, count] of edgeKeyCount) {
     if (count > 1) {
-      const [from, to] = key.split("->");
+      const [endpoints] = key.split("::");
+      const [from, to] = endpoints.split("->");
+      const relationship = key.slice(key.indexOf("::") + 2);
       const dupEdges = edges.filter(
-        (e) => e.fromNodeId === from && e.toNodeId === to,
+        (e) =>
+          e.fromNodeId === from &&
+          e.toNodeId === to &&
+          (e.relationship ?? "") === relationship,
       );
       diagnostics.push({
         level: "warning",
@@ -199,9 +341,10 @@ export const validateGraph = (
   }
 
   const hasGithubNode = nodes.some((n) => n.kind.startsWith("github"));
+  const hasArchitectureNode = nodes.some((n) => isArchitectureNodeKind(n.kind));
   for (const cycle of cycles) {
     diagnostics.push({
-      level: hasGithubNode ? "info" : "warning",
+      level: hasGithubNode || hasArchitectureNode ? "info" : "warning",
       code: "CYCLE_DETECTED",
       message: `Cycle detected: ${cycle.join(" -> ")}`,
       elementIds: [...new Set(cycle)],

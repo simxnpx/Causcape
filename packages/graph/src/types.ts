@@ -16,12 +16,70 @@ export type Diagnostic = Readonly<{
   elementIds: readonly string[];
 }>;
 
+export const ARCHITECTURE_NODE_KINDS = [
+  "service",
+  "datastore",
+  "queue",
+  "external-system",
+  "user",
+] as const;
+
+export type ArchitectureNodeKind = (typeof ARCHITECTURE_NODE_KINDS)[number];
+
+export const ARCHITECTURE_RELATIONSHIP_TYPES = [
+  "calls",
+  "depends-on",
+  "reads",
+  "writes",
+  "publishes",
+  "subscribes",
+] as const;
+
+export type ArchitectureRelationshipType =
+  (typeof ARCHITECTURE_RELATIONSHIP_TYPES)[number];
+
+export const ARCHITECTURE_REFERENCE_TYPES = [
+  "repository",
+  "documentation",
+  "runbook",
+  "dashboard",
+] as const;
+
+export type ArchitectureReferenceType =
+  (typeof ARCHITECTURE_REFERENCE_TYPES)[number];
+
+export type ArchitectureHealth =
+  | "healthy"
+  | "degraded"
+  | "failed"
+  | "unknown";
+
+export type CauscapeReference = Readonly<{
+  type: ArchitectureReferenceType;
+  url: string;
+  label?: string;
+}>;
+
+export type CauscapeArchitectureMetadata = Readonly<{
+  environment?: string;
+  health?: ArchitectureHealth;
+  description?: string;
+  technologies?: readonly string[];
+  references?: readonly CauscapeReference[];
+}>;
+
 export type CauscapeNodeKind =
   | "variable"
   | "github-issue"
   | "github-pr"
   | "github-commit"
-  | "github-repo";
+  | "github-repo"
+  | ArchitectureNodeKind;
+
+export const isArchitectureNodeKind = (
+  kind: CauscapeNodeKind | string,
+): kind is ArchitectureNodeKind =>
+  (ARCHITECTURE_NODE_KINDS as readonly string[]).includes(kind);
 
 export type GithubRef =
   | { kind: "github-issue"; owner: string; repo: string; number: number; url: string }
@@ -85,6 +143,7 @@ export type CauscapeNode = Readonly<{
   height: number;
   github?: GithubRef;
   cache?: GithubCache | GithubCacheWithSnapshot;
+  architecture?: CauscapeArchitectureMetadata;
   element: ExcalidrawCauscapeNodeElement;
 }>;
 
@@ -93,6 +152,7 @@ export type CauscapeEdge = Readonly<{
   fromNodeId: string;
   toNodeId: string;
   label?: string;
+  relationship?: ArchitectureRelationshipType;
   element: ExcalidrawCauscapeEdgeElement;
 }>;
 

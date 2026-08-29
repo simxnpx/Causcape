@@ -359,7 +359,9 @@
     "magicframe": "Wireframe to code",
     "embeddable": "Web Embed",
     "selection": "Selection",
-    "iframe": "IFrame"
+    "iframe": "IFrame",
+    "causcape-node": "Causcape Node",
+    "causcape-edge": "Causcape Edge"
   },
   "headings": {
     "canvasActions": "Canvas actions",

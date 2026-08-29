@@ -4,7 +4,7 @@ import { updateBoundElements } from "./binding";
 import { getCommonBoundingBox } from "./bounds";
 import { getSelectedElementsByGroup } from "./groups";
 
-import { getNonDeletedElements } from ".";
+import { getNonDeletedElements } from "./elementHelpers";
 
 import type { Scene } from "./Scene";
 

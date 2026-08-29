@@ -34,6 +34,8 @@ import type { GlobalPoint } from "@excalidraw/math";
 
 import type { Mutable } from "@excalidraw/common/utility-types";
 
+import type { ExcalidrawArrowElement } from "./types";
+
 import type {
   AppState,
   EmbedsValidationStatus,
@@ -71,6 +73,7 @@ import type {
   ExcalidrawSelectionElement,
   ExcalidrawLinearElement,
   ExcalidrawFreeDrawElement,
+  ExcalidrawCauscapeEdgeElement,
   ElementsMap,
   ExcalidrawLineElement,
   Arrowhead,
@@ -226,6 +229,7 @@ export const generateRoughOptions = (
 
   switch (element.type) {
     case "rectangle":
+    case "causcape-node":
     case "iframe":
     case "embeddable":
     case "diamond":
@@ -251,6 +255,7 @@ export const generateRoughOptions = (
       return options;
     }
     case "arrow":
+    case "causcape-edge":
       return options;
     default: {
       throw new Error(`Unimplemented type ${element.type}`);
@@ -576,7 +581,10 @@ const getArrowheadShapes = (
 };
 
 export const generateLinearCollisionShape = (
-  element: ExcalidrawLinearElement | ExcalidrawFreeDrawElement,
+  element:
+    | ExcalidrawLinearElement
+    | ExcalidrawFreeDrawElement
+    | ExcalidrawCauscapeEdgeElement,
   elementsMap: ElementsMap,
 ): {
   op: string;
@@ -594,27 +602,37 @@ export const generateLinearCollisionShape = (
 
   switch (element.type) {
     case "line":
-    case "arrow": {
+    case "arrow":
+    case "causcape-edge": {
+      // Causcape edges use the same point/arrow geometry as Excalidraw
+      // linear elements, but have their own element type for graph metadata.
+      const linearElement = element as ExcalidrawLinearElement;
       // points array can be empty in the beginning, so it is important to add
       // initial position to it
-      const points = element.points.length
-        ? element.points
+      const points = linearElement.points.length
+        ? linearElement.points
         : [pointFrom<LocalPoint>(0, 0)];
 
-      if (isElbowArrow(element)) {
+      if (isElbowArrow(linearElement)) {
         return generator.path(generateElbowArrowShape(points, 16), options)
           .sets[0].ops;
-      } else if (!element.roundness) {
+      } else if (!linearElement.roundness) {
         return points.map((point, idx) => {
           const p = pointRotateRads(
-            pointFrom<GlobalPoint>(element.x + point[0], element.y + point[1]),
+            pointFrom<GlobalPoint>(
+              linearElement.x + point[0],
+              linearElement.y + point[1],
+            ),
             center,
-            element.angle,
+            linearElement.angle,
           );
 
           return {
             op: idx === 0 ? "move" : "lineTo",
-            data: pointFrom<LocalPoint>(p[0] - element.x, p[1] - element.y),
+            data: pointFrom<LocalPoint>(
+              p[0] - linearElement.x,
+              p[1] - linearElement.y,
+            ),
           };
         });
       }
@@ -626,16 +644,19 @@ export const generateLinearCollisionShape = (
           if (i === 0) {
             const p = pointRotateRads<GlobalPoint>(
               pointFrom<GlobalPoint>(
-                element.x + op.data[0],
-                element.y + op.data[1],
+                linearElement.x + op.data[0],
+                linearElement.y + op.data[1],
               ),
               center,
-              element.angle,
+              linearElement.angle,
             );
 
             return {
               op: "move",
-              data: pointFrom<LocalPoint>(p[0] - element.x, p[1] - element.y),
+              data: pointFrom<LocalPoint>(
+                p[0] - linearElement.x,
+                p[1] - linearElement.y,
+              ),
             };
           }
 
@@ -644,31 +665,34 @@ export const generateLinearCollisionShape = (
             data: [
               pointRotateRads(
                 pointFrom<GlobalPoint>(
-                  element.x + op.data[0],
-                  element.y + op.data[1],
+                  linearElement.x + op.data[0],
+                  linearElement.y + op.data[1],
                 ),
                 center,
-                element.angle,
+                linearElement.angle,
               ),
               pointRotateRads(
                 pointFrom<GlobalPoint>(
-                  element.x + op.data[2],
-                  element.y + op.data[3],
+                  linearElement.x + op.data[2],
+                  linearElement.y + op.data[3],
                 ),
                 center,
-                element.angle,
+                linearElement.angle,
               ),
               pointRotateRads(
                 pointFrom<GlobalPoint>(
-                  element.x + op.data[4],
-                  element.y + op.data[5],
+                  linearElement.x + op.data[4],
+                  linearElement.y + op.data[5],
                 ),
                 center,
-                element.angle,
+                linearElement.angle,
               ),
             ]
               .map((p) =>
-                pointFrom<LocalPoint>(p[0] - element.x, p[1] - element.y),
+                pointFrom<LocalPoint>(
+                  p[0] - linearElement.x,
+                  p[1] - linearElement.y,
+                ),
               )
               .flat(),
           };
@@ -767,6 +791,7 @@ const _generateElementShape = (
   const isDarkMode = theme === THEME.DARK;
   switch (element.type) {
     case "rectangle":
+    case "causcape-node":
     case "iframe":
     case "embeddable": {
       let shape: ElementShapes[typeof element.type];
@@ -870,7 +895,8 @@ const _generateElementShape = (
       return shape;
     }
     case "line":
-    case "arrow": {
+    case "arrow":
+    case "causcape-edge": {
       let shape: ElementShapes[typeof element.type];
       const options = generateRoughOptions(element, false, isDarkMode);
 
@@ -917,13 +943,14 @@ const _generateElementShape = (
         shape = [generator.curve(points as unknown as RoughPoint[], options)];
       }
 
-      // add lines only in arrow
-      if (element.type === "arrow") {
-        const { startArrowhead = null, endArrowhead = "arrow" } = element;
+      // add arrowheads for arrow and causcape-edge
+      if (element.type === "arrow" || element.type === "causcape-edge") {
+        const arrowLike = element as unknown as ExcalidrawArrowElement;
+        const { startArrowhead = null, endArrowhead = "arrow" } = arrowLike;
 
         if (startArrowhead !== null) {
           const shapes = getArrowheadShapes(
-            element,
+            arrowLike,
             shape,
             "start",
             startArrowhead,
@@ -941,7 +968,7 @@ const _generateElementShape = (
           }
 
           const shapes = getArrowheadShapes(
-            element,
+            arrowLike,
             shape,
             "end",
             endArrowhead,
@@ -1074,6 +1101,7 @@ export const getElementShape = <Point extends GlobalPoint | LocalPoint>(
   switch (element.type) {
     case "rectangle":
     case "diamond":
+    case "causcape-node":
     case "frame":
     case "magicframe":
     case "embeddable":
@@ -1081,15 +1109,23 @@ export const getElementShape = <Point extends GlobalPoint | LocalPoint>(
     case "iframe":
     case "text":
     case "selection":
-      return getPolygonShape(element);
+      return getPolygonShape(
+        element as unknown as import("./types").ExcalidrawRectangleElement,
+      );
     case "arrow":
+    case "causcape-edge":
     case "line": {
-      const roughShape = ShapeCache.generateElementShape(element, null)[0];
+      const roughShape = ShapeCache.generateElementShape(
+        element as unknown as import("./types").ExcalidrawLinearElement,
+        null,
+      )[0];
       const [, , , , cx, cy] = getElementAbsoluteCoords(element, elementsMap);
 
-      return shouldTestInside(element)
+      return shouldTestInside(
+        element as unknown as import("./types").ExcalidrawLinearElement,
+      )
         ? getClosedCurveShape<Point>(
-            element,
+            element as unknown as import("./types").ExcalidrawLinearElement,
             roughShape,
             pointFrom<Point>(element.x, element.y),
             element.angle,

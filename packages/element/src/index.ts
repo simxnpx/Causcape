@@ -1,13 +1,15 @@
 import { toIterable } from "@excalidraw/common";
 
+import { isNonDeletedElement } from "./elementHelpers";
 import { isInvisiblySmallElement } from "./sizeHelpers";
 
 import type {
   ExcalidrawElement,
   NonDeletedExcalidrawElement,
-  NonDeleted,
   ElementsMapOrArray,
 } from "./types";
+
+export { getNonDeletedElements, isNonDeletedElement } from "./elementHelpers";
 
 /**
  * @deprecated unsafe, use hashElementsVersion instead
@@ -40,10 +42,6 @@ export const hashString = (s: string): number => {
   return hash >>> 0; // Ensure unsigned 32-bit integer
 };
 
-export const isNonDeletedElement = <T extends ExcalidrawElement>(
-  element: T,
-): element is NonDeleted<T> => !element.isDeleted;
-
 export const getVisibleElements = (
   elements: readonly ExcalidrawElement[],
 ): readonly NonDeletedExcalidrawElement[] =>
@@ -52,15 +50,12 @@ export const getVisibleElements = (
       isNonDeletedElement(el) && !isInvisiblySmallElement(el),
   );
 
-export const getNonDeletedElements = <T extends ExcalidrawElement>(
-  elements: readonly T[],
-): readonly NonDeleted<T>[] => elements.filter(isNonDeletedElement);
-
 export * from "./align";
 export * from "./arrowEndpointText";
 export * from "./binding";
 export * from "./bounds";
 export * from "./bucketFill";
+export * from "./causcape";
 export * from "./collision";
 export * from "./comparisons";
 export * from "./containerCache";

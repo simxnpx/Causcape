@@ -17,6 +17,12 @@ export default defineConfig(({ mode }) => {
       port: Number(envVars.VITE_APP_PORT || 3000),
       // open the browser
       open: true,
+      headers: {
+        // WebMCP requires origin-isolated document (spec). Enables document.modelContext
+        "Origin-Agent-Cluster": "?1",
+        // Default is self, but being explicit helps cross-origin iframes
+        "Permissions-Policy": "tools=(self)",
+      },
     },
     // We need to specify the envDir since now there are no
     //more located in parallel with the vite.config.ts file but in parent dir
@@ -89,6 +95,24 @@ export default defineConfig(({ mode }) => {
             "../packages/laser-pointer/src/index.ts",
           ),
         },
+        {
+          find: /^@excalidraw\/laser-pointer\/(.*?)/,
+          replacement: path.resolve(
+            __dirname,
+            "../packages/laser-pointer/src/$1",
+          ),
+        },
+        {
+          find: /^@excalidraw\/graph$/,
+          replacement: path.resolve(
+            __dirname,
+            "../packages/graph/src/index.ts",
+          ),
+        },
+        {
+          find: /^@excalidraw\/graph\/(.*?)/,
+          replacement: path.resolve(__dirname, "../packages/graph/src/$1"),
+        },
       ],
     },
     build: {
@@ -142,11 +166,20 @@ export default defineConfig(({ mode }) => {
       woff2BrowserPlugin(),
       react(),
       checker({
-        typescript: true,
+        // TypeScript's monorepo watch graph is expensive; allow lightweight
+        // dev sessions to opt out and run `yarn test:typecheck` separately.
+        typescript:
+          envVars.VITE_APP_ENABLE_TYPESCRIPT === "false" ? false : true,
         eslint:
           envVars.VITE_APP_ENABLE_ESLINT === "false"
             ? undefined
-            : { lintCommand: 'eslint "./**/*.{js,ts,tsx}"' },
+            : {
+                // The checker runs with `excalidraw-app` as its cwd, so the
+                // repository-level .eslintignore is not applied. Keep Vite
+                // from linting its generated production bundles.
+                lintCommand:
+                  'eslint "./**/*.{js,ts,tsx}" --ignore-pattern "build/**"',
+              },
         overlay: {
           initialIsOpen: envVars.VITE_APP_COLLAPSE_OVERLAY === "false",
           badgeStyle: "margin-bottom: 4rem; margin-left: 1rem",

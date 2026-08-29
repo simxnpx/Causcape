@@ -5,6 +5,11 @@
  * No publish required; file stays app-local.
  */
 
+import type {
+  GithubRef as GithubRefImported,
+  GithubCache as GithubCacheImported,
+} from "@excalidraw/element/types";
+
 export type {
   CauscapeNodeKind,
   GithubRef,
@@ -14,9 +19,6 @@ export type {
   GithubCache,
   CauscapeNodeData,
 } from "@excalidraw/element/types";
-
-// Local helpers for cache layer.
-import type { GithubRef as GithubRefImported, GithubCache as GithubCacheImported } from "@excalidraw/element/types";
 
 export type GithubCacheWithSnapshot = GithubCacheImported & Readonly<{ snapshotAt: string }>;
 

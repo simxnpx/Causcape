@@ -13,6 +13,8 @@ import {
 
 import {
   newArrowElement,
+  newCauscapeEdgeElement,
+  newCauscapeNodeElement,
   newElement,
   newEmbeddableElement,
   newFrameElement,
@@ -378,6 +380,27 @@ export class API {
         break;
       case "magicframe":
         element = newMagicFrameElement({ ...base, width, height });
+        break;
+      case "causcape-node":
+        element = newCauscapeNodeElement({
+          label: (rest as unknown as { label?: string }).label ?? "node",
+          ...base,
+          width,
+          height,
+        });
+        break;
+      case "causcape-edge":
+        element = newCauscapeEdgeElement({
+          fromNodeId: (rest as unknown as { fromNodeId?: string }).fromNodeId ?? "",
+          toNodeId: (rest as unknown as { toNodeId?: string }).toNodeId ?? "",
+          label: (rest as unknown as { label?: string }).label,
+          ...base,
+          width,
+          height,
+          points:
+            (rest as unknown as { points?: import("@excalidraw/element/types").ExcalidrawCauscapeEdgeElement["points"] }).points ??
+            ([[0, 0], [100, 0]] as unknown as import("@excalidraw/element/types").ExcalidrawCauscapeEdgeElement["points"]),
+        });
         break;
       default:
         assertNever(

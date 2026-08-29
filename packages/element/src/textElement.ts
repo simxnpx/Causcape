@@ -28,7 +28,7 @@ import {
   isTextElement,
 } from "./typeChecks";
 
-import { isNonDeletedElement } from ".";
+import { isNonDeletedElement } from "./elementHelpers";
 
 import type { Scene } from "./Scene";
 

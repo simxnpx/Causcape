@@ -21,20 +21,24 @@ export const GraphMCPBridge = () => {
     // Expose api for e2e agents — use ownerWindow when possible
     try {
       const maybeApp = api as unknown as {
-        app?: { ownerWindow?: Window & typeof globalThis };
+        app?: {
+          ownerDocument?: Document;
+          ownerWindow?: Window & typeof globalThis;
+        };
         ownerWindow?: Window & typeof globalThis;
       };
       const ownerWindow =
         maybeApp.app?.ownerWindow ??
         maybeApp.ownerWindow ??
-        (typeof window !== "undefined" ? (window as unknown as Window & typeof globalThis) : null);
+        maybeApp.app?.ownerDocument?.defaultView ??
+        null;
       if (ownerWindow) {
         (ownerWindow as unknown as Record<string, unknown>).excalidrawAPI = api;
-      } else {
-        (globalThis as unknown as Record<string, unknown>).excalidrawAPI = api;
       }
     } catch {
-      (globalThis as unknown as Record<string, unknown>).excalidrawAPI = api;
+      // The API may be hosted by a document without an exposed owner window.
+      // In that case, leave the debug hook unset rather than leaking it onto
+      // this realm's global object.
     }
     if (registeredRef.current) {
       return;
@@ -43,12 +47,14 @@ export const GraphMCPBridge = () => {
       try {
         const maybeApp = api as unknown as {
           app?: { ownerDocument?: Document };
-          excalidrawContainerRef?: { current?: { ownerDocument?: Document } | null };
+          excalidrawContainerRef?: {
+            current?: { ownerDocument?: Document } | null;
+          };
         };
         const d =
           maybeApp.app?.ownerDocument ??
           maybeApp.excalidrawContainerRef?.current?.ownerDocument ??
-          (typeof document !== "undefined" ? (document as unknown as Document) : null);
+          null;
         return d ?? null;
       } catch {
         return null;
@@ -58,7 +64,7 @@ export const GraphMCPBridge = () => {
       getApi: () => api,
       getOwnerDocument,
     });
-    registerGraphMCP(handlers);
+    registerGraphMCP(handlers, getOwnerDocument());
     registeredRef.current = true;
   }, [api]);
 

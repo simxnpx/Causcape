@@ -19,7 +19,7 @@ import { getFrameChildren } from "./frame";
 import { LinearElementEditor } from "./linearElementEditor";
 import { selectGroupsForSelectedElements } from "./groups";
 
-import { isNonDeletedElement } from ".";
+import { isNonDeletedElement } from "./elementHelpers";
 
 import type {
   ElementsMap,

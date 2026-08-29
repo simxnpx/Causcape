@@ -34,6 +34,7 @@ export const distanceToElement = (
   switch (element.type) {
     case "selection":
     case "rectangle":
+    case "causcape-node":
     case "image":
     case "text":
     case "iframe":
@@ -48,8 +49,14 @@ export const distanceToElement = (
     case "line":
     case "arrow":
     case "freedraw":
-      return distanceToLinearOrFreeDraElement(element, elementsMap, p);
+    case "causcape-edge":
+      return distanceToLinearOrFreeDraElement(
+        element as unknown as import("./types").ExcalidrawLinearElement,
+        elementsMap,
+        p,
+      );
   }
+  return 0;
 };
 
 /**
