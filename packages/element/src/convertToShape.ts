@@ -1,12 +1,12 @@
 import {
   getBoundsFromPoints,
   getElementAbsoluteCoords,
-} from "@excalidraw/element/bounds";
+} from "./bounds";
 import {
   newArrowElement,
   newElement,
   newLinearElement,
-} from "@excalidraw/element/newElement";
+} from "./newElement";
 import {
   ELEMENT_PENDING_DRAW_SHAPE_OPACITY,
   getStrokeWidthByKey,
@@ -43,7 +43,7 @@ import type {
   NonDeletedExcalidrawElement,
   NonDeleted,
   ExcalidrawLineElement,
-} from "@excalidraw/element/types";
+} from "./types";
 
 import { getFrameLikeElements } from "./frame";
 import {

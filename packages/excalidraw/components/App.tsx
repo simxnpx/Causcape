@@ -17,6 +17,8 @@ import {
   vectorNormalize,
 } from "@excalidraw/math";
 
+import { buildGraph, layoutCauscapeGraph } from "@excalidraw/graph";
+
 import {
   COLOR_PALETTE,
   CODES,
@@ -197,6 +199,8 @@ import {
   cropElement,
   wrapText,
   isElementLink,
+  getCauscapeReferenceAtPoint,
+  isCauscapeArchitectureNodeKind,
   isMeasureTextSupported,
   normalizeText,
   measureText,
@@ -286,6 +290,7 @@ import type {
   SceneElementsMap,
   NonDeletedSceneElementsMap,
   ExcalidrawBindableElement,
+  ExcalidrawCauscapeNodeElement,
 } from "@excalidraw/element/types";
 
 import type { ArrowEndpoint } from "@excalidraw/element";
@@ -442,6 +447,7 @@ import { activeEyeDropperAtom } from "./EyeDropper";
 import { ViewportStatusBorder } from "./ViewportStatusFrame/ViewportStatusFrame";
 import LayerUI from "./LayerUI";
 import { ElementCanvasButton } from "./MagicButton";
+import { CauscapeNodeOverlay } from "./CauscapeNodeOverlay";
 import { SVGLayer } from "./SVGLayer";
 import Spinner from "./Spinner";
 import { searchItemInFocusAtom } from "./SearchMenu";
@@ -2061,6 +2067,82 @@ class App extends React.Component<AppProps, AppState> {
     );
   }
 
+  /**
+   * Architecture nodes use a DOM projection for their rich card presentation.
+   * The scene still owns the element, bounds, z-order, history, and canvas/SVG
+   * fallback; this layer only makes the card's layout and links native HTML.
+   */
+  private renderCauscapeNodes() {
+    const scale = this.state.zoom.value;
+    const nodeElements = this.scene
+      .getNonDeletedElements()
+      .filter(
+        (element): element is Ordered<NonDeleted<ExcalidrawCauscapeNodeElement>> =>
+          element.type === "causcape-node" &&
+          isCauscapeArchitectureNodeKind(element.causcape.kind),
+      );
+
+    return (
+      <>
+        {nodeElements.map((element) => {
+          const { x, y } = sceneCoordsToViewportCoords(
+            { sceneX: element.x, sceneY: element.y },
+            this.state,
+          );
+          const isVisible = isElementInViewport(
+            element,
+            this.state.width,
+            this.state.height,
+            this.state,
+            this.scene.getNonDeletedElementsMap(),
+          );
+
+          return (
+            <div
+              key={element.id}
+              className="excalidraw__causcape-node-container"
+              style={{
+                transform: isVisible
+                  ? `translate(${x - this.state.offsetLeft}px, ${
+                      y - this.state.offsetTop
+                    }px) scale(${scale})`
+                  : "none",
+                display: isVisible ? "block" : "none",
+                opacity: getRenderOpacity(
+                  element,
+                  getContainingFrame(
+                    element,
+                    this.scene.getNonDeletedElementsMap(),
+                  ),
+                  this.elementsPendingErasure,
+                  null,
+                  this.state.openDialog?.name === "elementLinkSelector"
+                    ? DEFAULT_REDUCED_GLOBAL_ALPHA
+                    : 1,
+                ),
+              }}
+            >
+              <div
+                className="excalidraw__causcape-node-container__inner"
+                style={{
+                  width: `${element.width}px`,
+                  height: `${element.height}px`,
+                  transform: `rotate(${element.angle}rad)`,
+                }}
+              >
+                <CauscapeNodeOverlay
+                  element={element}
+                  theme={this.state.theme}
+                  linksEnabled={this.isLinksEnabled()}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </>
+    );
+  }
+
   private getFrameNameDOMId = (frameElement: ExcalidrawElement) => {
     return `${this.id}-frame-name-${frameElement.id}`;
   };
@@ -2679,6 +2761,7 @@ class App extends React.Component<AppProps, AppState> {
                               <ConvertElementTypePopup app={this} />
                             )}
                         </ExcalidrawActionManagerContext.Provider>
+                        {this.renderCauscapeNodes()}
                         {this.renderEmbeddables()}
                       </ExcalidrawElementsContext.Provider>
                     </ExcalidrawAppStateContext.Provider>
@@ -7274,6 +7357,20 @@ class App extends React.Component<AppProps, AppState> {
       return undefined;
     }
 
+    if (
+      hitElementMightBeLocked?.type === "causcape-node" &&
+      !this.state.selectedElementIds[hitElementMightBeLocked.id]
+    ) {
+      const reference = getCauscapeReferenceAtPoint(
+        hitElementMightBeLocked,
+        scenePointer,
+        this.state.theme,
+      );
+      if (reference) {
+        return { ...hitElementMightBeLocked, link: reference.url };
+      }
+    }
+
     const elements = this.scene.getNonDeletedElements();
     let hitElementIndex = -1;
 
@@ -7333,6 +7430,15 @@ class App extends React.Component<AppProps, AppState> {
       this.lastPointerUpEvent!,
       this.state,
     );
+    const isCauscapeReferenceHit = (
+      point: Readonly<{ x: number; y: number }>,
+    ): boolean =>
+      this.hitLinkElement?.type === "causcape-node" &&
+      getCauscapeReferenceAtPoint(
+        this.hitLinkElement,
+        point,
+        this.state.theme,
+      )?.url === this.hitLinkElement.link;
     const lastPointerUpHittingLinkIcon = isPointHittingLink(
       this.hitLinkElement,
       elementsMap,
@@ -7340,7 +7446,11 @@ class App extends React.Component<AppProps, AppState> {
       pointFrom(lastPointerUpCoords.x, lastPointerUpCoords.y),
       this.editorInterface.formFactor === "phone",
     );
-    if (lastPointerDownHittingLinkIcon && lastPointerUpHittingLinkIcon) {
+    if (
+      (lastPointerDownHittingLinkIcon ||
+        isCauscapeReferenceHit(lastPointerDownCoords)) &&
+      (lastPointerUpHittingLinkIcon || isCauscapeReferenceHit(lastPointerUpCoords))
+    ) {
       hideHyperlinkToolip();
       let url = this.hitLinkElement.link;
       if (url) {
@@ -11596,6 +11706,8 @@ class App extends React.Component<AppProps, AppState> {
         bindMode: "orbit",
       });
 
+      this.rerouteMovedCauscapeEdges(pointerDownState);
+
       if (
         pointerDownState.drag.hasOccurred &&
         pointerDownState.hit?.element?.id
@@ -12504,6 +12616,74 @@ class App extends React.Component<AppProps, AppState> {
       }
     });
   }
+
+  private rerouteMovedCauscapeEdges = (
+    pointerDownState: PointerDownState,
+  ): void => {
+    const originalNodeIds = new Set(
+      [...pointerDownState.originalElements.values()]
+        .filter((element) => element.type === "causcape-node")
+        .filter((element) => {
+          const current = this.scene.getElement(element.id);
+          return (
+            current?.type === "causcape-node" &&
+            (current.x !== element.x || current.y !== element.y)
+          );
+        })
+        .map((element) => element.id),
+    );
+    if (originalNodeIds.size === 0) {
+      return;
+    }
+
+    const elements = this.scene.getNonDeletedElements();
+    const graph = buildGraph(elements, { includeDiagnostics: false });
+    if (graph.edges.length === 0) {
+      return;
+    }
+    const result = layoutCauscapeGraph(graph, {
+      pinnedNodeIds: new Set(graph.nodes.map((node) => node.id)),
+      respectLocked: false,
+      maxIterations: 1,
+    });
+    let didChange = false;
+    for (const element of elements) {
+      if (element.type !== "causcape-edge") {
+        continue;
+      }
+      const geometry = result.edges.get(element.id);
+      if (
+        !geometry ||
+        (element.x === geometry.x &&
+          element.y === geometry.y &&
+          element.width === geometry.width &&
+          element.height === geometry.height &&
+          element.points.length === geometry.points.length &&
+          element.points.every(
+            (point, index) =>
+              point[0] === geometry.points[index][0] &&
+              point[1] === geometry.points[index][1],
+          ))
+      ) {
+        continue;
+      }
+      this.scene.mutateElement(
+        element,
+        {
+          x: geometry.x,
+          y: geometry.y,
+          width: geometry.width,
+          height: geometry.height,
+          points: geometry.points as never,
+        } as never,
+        { informMutation: false, isDragging: false },
+      );
+      didChange = true;
+    }
+    if (didChange) {
+      this.scene.triggerUpdate();
+    }
+  };
 
   private restoreReadyToEraseElements = () => {
     this.elementsPendingErasure = new Set();

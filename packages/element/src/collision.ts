@@ -467,6 +467,7 @@ export const intersectElementWithLineSegment = (
   // Do the actual intersection test against the element's shape
   switch (element.type) {
     case "rectangle":
+    case "causcape-node":
     case "image":
     case "text":
     case "iframe":
@@ -499,13 +500,15 @@ export const intersectElementWithLineSegment = (
     case "line":
     case "freedraw":
     case "arrow":
+    case "causcape-edge":
       return intersectLinearOrFreeDrawWithLineSegment(
-        element,
+        element as unknown as import("./types").ExcalidrawLinearElement,
         line,
         elementsMap,
         onlyFirst,
       );
   }
+  return [];
 };
 
 const curveIntersections = (

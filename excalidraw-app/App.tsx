@@ -123,6 +123,7 @@ import Collab, {
 import { AppFooter } from "./components/AppFooter";
 import { AppMainMenu } from "./components/AppMainMenu";
 import { AppWelcomeScreen } from "./components/AppWelcomeScreen";
+import { GraphMCPBridge } from "./mcp/GraphMCPBridge";
 import {
   ExportToExcalidrawPlus,
   exportToExcalidrawPlus,
@@ -1165,6 +1166,7 @@ const ExcalidrawWrapper = ({
         {excalidrawAPI && !isCollabDisabled && (
           <Collab excalidrawAPI={excalidrawAPI} />
         )}
+        {excalidrawAPI && <GraphMCPBridge />}
 
         <ShareDialog
           collabAPI={collabAPI}

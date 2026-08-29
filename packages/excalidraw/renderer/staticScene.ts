@@ -54,6 +54,21 @@ const GridLineColor = {
   },
 } as const;
 
+const orderGraphElementsForPainting = <T extends { type: string }>(
+  elements: readonly T[],
+): T[] => {
+  // Graph edges are a background layer. Keeping them behind cards prevents
+  // arrow shafts and labels from painting over the node content, regardless
+  // of the order in which an agent or collaborator created the elements.
+  return [...elements].sort((a, b) => {
+    const aIsEdge = a.type === "causcape-edge";
+    const bIsEdge = b.type === "causcape-edge";
+    const aIsNode = a.type === "causcape-node";
+    const bIsNode = b.type === "causcape-node";
+    return aIsEdge && bIsNode ? -1 : aIsNode && bIsEdge ? 1 : 0;
+  });
+};
+
 const strokeGrid = (
   context: CanvasRenderingContext2D,
   /** grid cell pixel size */
@@ -305,7 +320,7 @@ const _renderStaticScene = ({
   const inFrameGroupsMap = new Map<string, boolean>();
 
   // Paint visible elements
-  visibleElements
+  orderGraphElementsForPainting(visibleElements)
     .filter((el) => !isIframeLikeElement(el))
     .forEach((element) => {
       try {

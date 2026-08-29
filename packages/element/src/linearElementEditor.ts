@@ -27,10 +27,10 @@ import {
   deconstructLinearOrFreeDrawElement,
   getSnapOutlineMidPoint,
   isPathALoop,
-  moveArrowAboveBindable,
   projectFixedPointOntoDiagonal,
-  type Store,
-} from "@excalidraw/element";
+} from "./utils";
+import { moveArrowAboveBindable } from "./zindex";
+import type { Store } from "./store";
 
 import type { Radians } from "@excalidraw/math";
 

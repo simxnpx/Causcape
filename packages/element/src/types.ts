@@ -170,6 +170,119 @@ export type ExcalidrawMagicFrameElement = _ExcalidrawElementBase & {
   name: string | null;
 };
 
+export type CauscapeArchitectureNodeKind =
+  | "service"
+  | "datastore"
+  | "queue"
+  | "external-system"
+  | "user";
+
+export type CauscapeNodeHealth = "healthy" | "degraded" | "failed" | "unknown";
+
+export type CauscapeReferenceType =
+  | "repository"
+  | "dashboard"
+  | "documentation"
+  | "runbook";
+
+export type CauscapeReference = Readonly<{
+  type: CauscapeReferenceType;
+  url: string;
+  label?: string;
+}>;
+
+export type CauscapeArchitectureNodeMetadata = Readonly<{
+  environment?: string;
+  health?: CauscapeNodeHealth;
+  description?: string;
+  technologies?: readonly string[];
+  references?: readonly CauscapeReference[];
+}>;
+
+export type CauscapeNodeKind =
+  | CauscapeArchitectureNodeKind
+  | "variable"
+  | "github-issue"
+  | "github-pr"
+  | "github-commit"
+  | "github-repo";
+
+export type GithubRef =
+  | {
+      kind: "github-issue";
+      owner: string;
+      repo: string;
+      number: number;
+      url: string;
+    }
+  | {
+      kind: "github-pr";
+      owner: string;
+      repo: string;
+      number: number;
+      url: string;
+    }
+  | {
+      kind: "github-commit";
+      owner: string;
+      repo: string;
+      sha: string;
+      url: string;
+    }
+  | { kind: "github-repo"; owner: string; repo: string; url: string };
+
+export type GithubIssuePrCache = {
+  title: string;
+  state: "open" | "closed" | "merged" | string;
+  updatedAt: string;
+  labels?: string[];
+  author?: string;
+  stale?: boolean;
+};
+
+export type GithubCommitCache = {
+  message: string;
+  author: string;
+  date: string;
+  stats?: { add: number; del: number };
+  updatedAt: string;
+  stale?: boolean;
+};
+
+export type GithubRepoCache = {
+  stars: number;
+  language: string;
+  description: string;
+  updatedAt: string;
+  stale?: boolean;
+};
+
+export type GithubCache =
+  | GithubIssuePrCache
+  | GithubCommitCache
+  | GithubRepoCache;
+
+export type CauscapeNodeData =
+  | { schemaVersion: 1; kind: "variable"; label: string }
+  | ({
+      schemaVersion: 1;
+      kind: CauscapeArchitectureNodeKind;
+      label: string;
+    } & CauscapeArchitectureNodeMetadata)
+  | {
+      schemaVersion: 1;
+      kind: "github-issue" | "github-pr" | "github-commit" | "github-repo";
+      label: string;
+      github?: GithubRef;
+      cache?: GithubCache & { snapshotAt: string };
+    };
+
+export type ExcalidrawCauscapeNodeElement = _ExcalidrawElementBase &
+  Readonly<{
+    type: "causcape-node";
+    causcape: CauscapeNodeData & Record<string, unknown>;
+  }>;
+
 export type ExcalidrawFrameLikeElement =
   | ExcalidrawFrameElement
   | ExcalidrawMagicFrameElement;
@@ -190,6 +303,7 @@ export type ExcalidrawFlowchartNodeElement =
 
 export type ExcalidrawRectanguloidElement =
   | ExcalidrawRectangleElement
+  | ExcalidrawCauscapeNodeElement
   | ExcalidrawImageElement
   | ExcalidrawTextElement
   | ExcalidrawFreeDrawElement
@@ -213,7 +327,9 @@ export type ExcalidrawElement =
   | ExcalidrawFrameElement
   | ExcalidrawMagicFrameElement
   | ExcalidrawIframeElement
-  | ExcalidrawEmbeddableElement;
+  | ExcalidrawEmbeddableElement
+  | ExcalidrawCauscapeNodeElement
+  | ExcalidrawCauscapeEdgeElement;
 
 export type ExcalidrawNonSelectionElement = Exclude<
   ExcalidrawElement,
@@ -265,7 +381,8 @@ export type ExcalidrawBindableElement =
   | ExcalidrawIframeElement
   | ExcalidrawEmbeddableElement
   | ExcalidrawFrameElement
-  | ExcalidrawMagicFrameElement;
+  | ExcalidrawMagicFrameElement
+  | ExcalidrawCauscapeNodeElement;
 
 export type ExcalidrawTextContainer =
   | ExcalidrawRectangleElement
@@ -383,6 +500,27 @@ export type ExcalidrawElbowArrowElement = Merge<
     endIsSpecial: boolean | null;
   }
 >;
+
+export type ExcalidrawCauscapeEdgeElement = _ExcalidrawElementBase &
+  Readonly<{
+    type: "causcape-edge";
+    points: readonly LocalPoint[];
+    startBinding: FixedPointBinding | null;
+    endBinding: FixedPointBinding | null;
+    startArrowhead: Arrowhead | null;
+    endArrowhead: Arrowhead | null;
+    elbowed: boolean;
+    causcape: {
+      schemaVersion: 1;
+      fromNodeId: string;
+      toNodeId: string;
+      label?: string;
+    } & Record<string, unknown>;
+  }>;
+
+export type ExcalidrawCauscapeElement =
+  | ExcalidrawCauscapeNodeElement
+  | ExcalidrawCauscapeEdgeElement;
 
 export type StrokeVariability = "variable" | "constant";
 

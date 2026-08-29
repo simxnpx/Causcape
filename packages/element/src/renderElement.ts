@@ -67,6 +67,16 @@ import { getContainingFrame } from "./frame";
 import { getCornerRadius } from "./utils";
 
 import { ShapeCache } from "./shape";
+import {
+  CAUSCAPE_NODE_STYLE,
+  getCauscapeEdgeLabel,
+  getCauscapeEdgeLabelBounds,
+  getCauscapeEdgeLabelAnchor,
+  getCauscapeNodeRenderData,
+  getCauscapeReferenceLabel,
+  wrapCauscapeEdgeLabel,
+  wrapCauscapeText,
+} from "./causcape";
 
 import type {
   ExcalidrawElement,
@@ -79,6 +89,8 @@ import type {
   ExcalidrawFrameLikeElement,
   NonDeletedSceneElementsMap,
   ElementsMap,
+  ExcalidrawCauscapeNodeElement,
+  ExcalidrawCauscapeEdgeElement,
 } from "./types";
 
 import type { RoughCanvas } from "roughjs/bin/canvas";
@@ -89,6 +101,28 @@ const isPendingImageElement = (
 ) =>
   isInitializedImageElement(element) &&
   !renderConfig.imageCache.has(element.fileId);
+
+const getCauscapeEdgeLabelPadding = (
+  element: ExcalidrawCauscapeEdgeElement,
+): number => {
+  const bounds = getCauscapeEdgeLabelBounds(
+    element.points.map(([x, y]) => [x, y] as [number, number]),
+    element.causcape,
+    // Use a conservative estimate here because the element canvas is clipped
+    // before the real font metrics are available to drawCauscapeEdgeOnCanvas.
+    { offset: 16, characterWidth: 8 },
+  );
+  if (!bounds) {
+    return 20;
+  }
+  return Math.max(
+    20,
+    -bounds.x,
+    bounds.x + bounds.width - element.width,
+    -bounds.y,
+    bounds.y + bounds.height - element.height,
+  );
+};
 
 const getCanvasPadding = (element: ExcalidrawElement) => {
   switch (element.type) {
@@ -101,6 +135,8 @@ const getCanvasPadding = (element: ExcalidrawElement) => {
         return 40;
       }
       return 20;
+    case "causcape-edge":
+      return getCauscapeEdgeLabelPadding(element);
     default:
       return 20;
   }
@@ -315,6 +351,749 @@ const drawImagePlaceholder = (
   );
 };
 
+// ---------------------------------------------------------------------------
+// Causcape node github rendering — cache Path2D, no per-frame allocation
+// ---------------------------------------------------------------------------
+const GITHUB_OCTICON_PATH =
+  "M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z";
+
+let _githubIconPath2D: Path2D | null = null;
+const getGithubIconPath2D = (): Path2D => {
+  if (_githubIconPath2D) {
+    return _githubIconPath2D;
+  }
+  _githubIconPath2D = new Path2D(GITHUB_OCTICON_PATH);
+  return _githubIconPath2D;
+};
+
+const getGithubBadgeColor = (
+  kind: string,
+  state: string | undefined,
+  isDark: boolean,
+): string => {
+  const s = (state ?? "").toLowerCase();
+  if (s === "open") {
+    return isDark ? "#3fb950" : "#1a7f37";
+  }
+  if (s === "merged") {
+    return isDark ? "#ab7ff2" : "#8250df";
+  }
+  if (s === "closed") {
+    return isDark ? "#f85149" : "#cf222e";
+  }
+  if (kind === "github-repo") {
+    return isDark ? "#8c959f" : "#656d76";
+  }
+  // fallback for unknown state / commit / generic github
+  return isDark ? "#8c959f" : "#656d76";
+};
+
+const truncateTwoLines = (
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+): readonly [string, string | null] => {
+  const raw = text.trim();
+  if (raw.length === 0) {
+    return ["", null] as const;
+  }
+  // fast path: fits in one line
+  if (ctx.measureText(raw).width <= maxWidth) {
+    return [raw, null] as const;
+  }
+  // need to split into words
+  const words = raw.split(/\s+/);
+  let line1 = "";
+  let line2 = "";
+  let idx = 0;
+  // build line1
+  for (; idx < words.length; idx++) {
+    const cand = line1 ? `${line1} ${words[idx]}` : words[idx];
+    if (ctx.measureText(cand).width > maxWidth) {
+      break;
+    }
+    line1 = cand;
+  }
+  if (line1.length === 0 && words.length > 0) {
+    // single long word exceeds width — truncate with ellipsis
+    const w = words[0];
+    let truncated = w;
+    while (
+      truncated.length > 1 &&
+      ctx.measureText(`${truncated}…`).width > maxWidth
+    ) {
+      truncated = truncated.slice(0, -1);
+    }
+    return [`${truncated}…`, null] as const;
+  }
+  if (idx >= words.length) {
+    return [line1, null] as const;
+  }
+  // build line2 from remaining words
+  for (; idx < words.length; idx++) {
+    const cand = line2 ? `${line2} ${words[idx]}` : words[idx];
+    // reserve space for ellipsis if not all words fit
+    const isLastCandidate = idx === words.length - 1;
+    const test = isLastCandidate ? cand : `${cand}…`;
+    if (ctx.measureText(test).width > maxWidth) {
+      break;
+    }
+    line2 = cand;
+  }
+  if (idx < words.length && line2.length === 0) {
+    // remaining word too long
+    const w = words[idx];
+    let truncated = w;
+    while (
+      truncated.length > 1 &&
+      ctx.measureText(`${truncated}…`).width > maxWidth
+    ) {
+      truncated = truncated.slice(0, -1);
+    }
+    line2 = `${truncated}…`;
+  } else if (idx < words.length && line2.length > 0) {
+    line2 = `${line2}…`;
+  }
+  return [line1, line2.length > 0 ? line2 : null] as const;
+};
+
+const drawRoundedRect = (
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number,
+) => {
+  context.beginPath();
+  if (context.roundRect) {
+    context.roundRect(x, y, width, height, radius);
+    return;
+  }
+  const r = Math.min(radius, width / 2, height / 2);
+  context.moveTo(x + r, y);
+  context.lineTo(x + width - r, y);
+  context.quadraticCurveTo(x + width, y, x + width, y + r);
+  context.lineTo(x + width, y + height - r);
+  context.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+  context.lineTo(x + r, y + height);
+  context.quadraticCurveTo(x, y + height, x, y + height - r);
+  context.lineTo(x, y + r);
+  context.quadraticCurveTo(x, y, x + r, y);
+  context.closePath();
+};
+
+const drawPill = (
+  context: CanvasRenderingContext2D,
+  label: string,
+  x: number,
+  y: number,
+  options: {
+    color: string;
+    background: string;
+    border?: string;
+    prefix?: string;
+    height?: number;
+    radius?: number;
+    horizontalPadding?: number;
+  },
+): number => {
+  const prefix = options.prefix ? `${options.prefix} ` : "";
+  const text = `${prefix}${label}`;
+  const height = options.height ?? 19;
+  const horizontalPadding = options.horizontalPadding ?? 9;
+  const width = Math.max(
+    height + 2,
+    context.measureText(text).width + horizontalPadding * 2,
+  );
+  drawRoundedRect(context, x, y, width, height, options.radius ?? 6);
+  context.fillStyle = options.background;
+  context.fill();
+  context.strokeStyle = options.border ?? options.color;
+  context.lineWidth = 1;
+  context.stroke();
+  context.fillStyle = options.color;
+  context.fillText(
+    text,
+    x + horizontalPadding,
+    y + height / 2 + (height >= 28 ? 5 : 4),
+  );
+  return width;
+};
+
+const drawArchitectureIcon = (
+  context: CanvasRenderingContext2D,
+  kind: ExcalidrawCauscapeNodeElement["causcape"]["kind"],
+  x: number,
+  y: number,
+  size: number,
+  color: string,
+) => {
+  context.save();
+  context.strokeStyle = color;
+  context.fillStyle = color;
+  context.lineWidth = 1.8;
+  context.lineJoin = "round";
+  context.lineCap = "round";
+  const cx = x + size / 2;
+  const cy = y + size / 2;
+
+  switch (kind) {
+    case "service": {
+      drawRoundedRect(context, x + 7, y + 10, size - 14, size - 20, 3);
+      context.stroke();
+      context.beginPath();
+      context.moveTo(x + 7, y + 19);
+      context.lineTo(x + size - 7, y + 19);
+      context.moveTo(x + 13, y + 14.5);
+      context.lineTo(x + 14, y + 14.5);
+      context.stroke();
+      break;
+    }
+    case "datastore": {
+      context.beginPath();
+      context.ellipse(cx, y + 8, size / 2 - 6, 4, 0, 0, Math.PI * 2);
+      context.moveTo(x + 6, y + 8);
+      context.lineTo(x + 6, y + size - 8);
+      context.moveTo(x + size - 6, y + 8);
+      context.lineTo(x + size - 6, y + size - 8);
+      context.ellipse(cx, y + size - 8, size / 2 - 6, 4, 0, 0, Math.PI * 2);
+      context.stroke();
+      break;
+    }
+    case "queue": {
+      for (let index = 0; index < 3; index += 1) {
+        drawRoundedRect(context, x + 5, y + 6 + index * 8, size - 10, 5, 2);
+        context.stroke();
+      }
+      break;
+    }
+    case "external-system": {
+      context.beginPath();
+      context.arc(cx, cy, size / 2 - 6, 0, Math.PI * 2);
+      context.moveTo(x + 7, cy);
+      context.lineTo(x + size - 7, cy);
+      context.moveTo(cx, y + 6);
+      context.bezierCurveTo(
+        x + 8,
+        y + 12,
+        x + 8,
+        y + size - 12,
+        cx,
+        y + size - 6,
+      );
+      context.moveTo(cx, y + 6);
+      context.bezierCurveTo(
+        x + size - 8,
+        y + 12,
+        x + size - 8,
+        y + size - 12,
+        cx,
+        y + size - 6,
+      );
+      context.stroke();
+      break;
+    }
+    case "user": {
+      context.beginPath();
+      context.arc(cx, y + 10, 4, 0, Math.PI * 2);
+      context.moveTo(x + 7, y + size - 6);
+      context.bezierCurveTo(
+        x + 8,
+        y + 18,
+        x + size - 8,
+        y + 18,
+        x + size - 7,
+        y + size - 6,
+      );
+      context.stroke();
+      break;
+    }
+    default:
+      break;
+  }
+  context.restore();
+};
+
+const drawArchitectureChips = (
+  context: CanvasRenderingContext2D,
+  labels: readonly string[],
+  x: number,
+  y: number,
+  availableWidth: number,
+  color: string,
+  background: string,
+  border: string,
+  prefix?: string,
+) => {
+  let cursorX = x;
+  let cursorY = y;
+  const chipHeight = CAUSCAPE_NODE_STYLE.chipHeight;
+  context.font = `500 ${CAUSCAPE_NODE_STYLE.badgeFontSize}px system-ui, -apple-system, sans-serif`;
+  for (const label of labels) {
+    const maxLabelWidth = Math.max(42, availableWidth - 24);
+    let visibleLabel = label;
+    while (
+      visibleLabel.length > 1 &&
+      context.measureText(`${prefix ? `${prefix} ` : ""}${visibleLabel}`)
+        .width +
+        18 >
+        maxLabelWidth
+    ) {
+      visibleLabel = `${visibleLabel.slice(0, -2)}…`;
+    }
+    const chipWidth = Math.min(
+      availableWidth,
+      Math.max(
+        74,
+        context.measureText(`${prefix ? `${prefix} ` : ""}${visibleLabel}`)
+          .width + 24,
+      ),
+    );
+    if (cursorX !== x && cursorX + chipWidth > x + availableWidth) {
+      cursorX = x;
+      cursorY += chipHeight + CAUSCAPE_NODE_STYLE.technologyRowGap;
+    }
+    drawPill(context, visibleLabel, cursorX, cursorY, {
+      color,
+      background,
+      border,
+      prefix,
+      height: chipHeight,
+      radius: 8,
+      horizontalPadding: 12,
+    });
+    cursorX += chipWidth + CAUSCAPE_NODE_STYLE.technologyChipGap;
+  }
+};
+
+type ArchitectureMetadataIcon =
+  | "environment"
+  | "repository"
+  | "dashboard"
+  | "documentation"
+  | "runbook";
+
+const drawArchitectureMetadataIcon = (
+  context: CanvasRenderingContext2D,
+  kind: ArchitectureMetadataIcon,
+  x: number,
+  y: number,
+  color: string,
+) => {
+  context.save();
+  context.strokeStyle = color;
+  context.fillStyle = color;
+  context.lineWidth = 1.8;
+  context.lineJoin = "round";
+  context.lineCap = "round";
+  switch (kind) {
+    case "environment": {
+      drawRoundedRect(context, x + 4, y + 4, 12, 12, 1);
+      context.stroke();
+      break;
+    }
+    case "repository": {
+      context.beginPath();
+      context.moveTo(x + 5, y + 15);
+      context.lineTo(x + 15, y + 5);
+      context.moveTo(x + 8, y + 5);
+      context.lineTo(x + 15, y + 5);
+      context.lineTo(x + 15, y + 12);
+      context.stroke();
+      break;
+    }
+    case "dashboard": {
+      context.beginPath();
+      context.moveTo(x + 5, y + 15);
+      context.lineTo(x + 15, y + 5);
+      context.moveTo(x + 8, y + 5);
+      context.lineTo(x + 15, y + 5);
+      context.lineTo(x + 15, y + 12);
+      context.stroke();
+      break;
+    }
+    case "documentation": {
+      context.beginPath();
+      context.moveTo(x + 5, y + 15);
+      context.lineTo(x + 15, y + 5);
+      context.moveTo(x + 8, y + 5);
+      context.lineTo(x + 15, y + 5);
+      context.lineTo(x + 15, y + 12);
+      context.stroke();
+      break;
+    }
+    case "runbook": {
+      context.beginPath();
+      context.moveTo(x + 5, y + 15);
+      context.lineTo(x + 15, y + 5);
+      context.moveTo(x + 8, y + 5);
+      context.lineTo(x + 15, y + 5);
+      context.lineTo(x + 15, y + 12);
+      context.stroke();
+      break;
+    }
+  }
+  context.restore();
+};
+
+const drawArchitectureCard = (
+  element: ExcalidrawCauscapeNodeElement,
+  context: CanvasRenderingContext2D,
+  data: ReturnType<typeof getCauscapeNodeRenderData>,
+  isDark: boolean,
+) => {
+  const {
+    architecturePadding: padding,
+    architectureIconSize: iconSize,
+    architectureIconTileSize: iconTileSize,
+    architectureIconGap: iconGap,
+    architectureTitleFontSize: titleFontSize,
+    headerHeight,
+    sectionGap,
+    lineHeight,
+    descriptionTopGap,
+    metadataRowHeight,
+    metadataPanelPadding,
+    technologyChipTopPadding,
+    sectionRuleGap,
+    architecturePillHeight,
+  } = CAUSCAPE_NODE_STYLE;
+  const foreground = applyDarkModeFilter(data.foreground, isDark);
+  const secondary = applyDarkModeFilter(data.secondary, isDark);
+  const accent = data.isArchitecture ? data.kindAccent : secondary;
+  const surface = isDark
+    ? CAUSCAPE_NODE_STYLE.darkSurface
+    : CAUSCAPE_NODE_STYLE.lightSurface;
+  const panel = isDark ? "#263449" : "#fbfcfe";
+  const rule = isDark
+    ? CAUSCAPE_NODE_STYLE.darkRule
+    : CAUSCAPE_NODE_STYLE.lightRule;
+  const chipBackground = isDark ? "#33445d" : "#ffffff";
+  const contentWidth = element.width - padding * 2;
+  const titleX = padding + iconTileSize + iconGap;
+  const titleMaxWidth = Math.max(60, element.width - titleX - padding);
+  let cursorY = padding + headerHeight;
+
+  context.save();
+  context.textBaseline = "alphabetic";
+  context.fillStyle = surface;
+  context.globalAlpha = 0.96;
+  drawRoundedRect(context, padding, padding, iconTileSize, iconTileSize, 8);
+  context.fill();
+  context.globalAlpha = 1;
+  context.strokeStyle = `${accent}55`;
+  context.lineWidth = 1;
+  context.stroke();
+  drawArchitectureIcon(
+    context,
+    data.kind as ExcalidrawCauscapeNodeElement["causcape"]["kind"],
+    padding + (iconTileSize - iconSize) / 2,
+    padding + (iconTileSize - iconSize) / 2,
+    iconSize,
+    accent,
+  );
+
+  context.font = `700 ${titleFontSize}px system-ui, -apple-system, sans-serif`;
+  context.fillStyle = foreground;
+  const titleLines = wrapCauscapeText(
+    data.title,
+    Math.floor(titleMaxWidth / 14),
+  );
+  context.fillText(titleLines[0], titleX, padding + 38);
+  if (titleLines[1]) {
+    context.fillText(titleLines[1], titleX, padding + 69);
+  }
+
+  context.font = `600 ${CAUSCAPE_NODE_STYLE.kindFontSize}px system-ui, -apple-system, sans-serif`;
+  let pillX = titleX;
+  const pillY = padding + (titleLines[1] ? 80 : 58);
+  pillX +=
+    drawPill(context, data.kindLabel ?? "Component", pillX, pillY, {
+      color: accent,
+      background: `${accent}15`,
+      border: `${accent}66`,
+      height: architecturePillHeight,
+      radius: 9,
+      horizontalPadding: 14,
+    }) + 10;
+  if (data.health) {
+    pillX += drawPill(context, data.health.label, pillX, pillY, {
+      color: data.health.color,
+      background: `${data.health.color}15`,
+      border: `${data.health.color}66`,
+      prefix: data.health.glyph,
+      height: architecturePillHeight,
+      radius: 9,
+      horizontalPadding: 14,
+    });
+  }
+
+  const drawRule = (y: number) => {
+    context.beginPath();
+    context.moveTo(padding, y);
+    context.lineTo(element.width - padding, y);
+    context.strokeStyle = rule;
+    context.lineWidth = 1;
+    context.stroke();
+  };
+
+  if (data.description) {
+    cursorY += descriptionTopGap;
+    context.font = `500 ${CAUSCAPE_NODE_STYLE.bodyFontSize}px system-ui, -apple-system, sans-serif`;
+    context.fillStyle = secondary;
+    const descriptionLines = wrapCauscapeText(
+      data.description,
+      Math.floor(contentWidth / 8.2),
+    );
+    context.fillText(descriptionLines[0], padding, cursorY + lineHeight);
+    if (descriptionLines[1]) {
+      context.fillText(descriptionLines[1], padding, cursorY + lineHeight * 2);
+    }
+    cursorY += lineHeight * (descriptionLines[1] ? 2 : 1);
+  }
+
+  if (data.environment || data.references.length > 0) {
+    cursorY += sectionGap;
+    const rows = [
+      ...(data.environment
+        ? [
+            {
+              label: "Environment",
+              value: data.environment,
+              icon: "environment" as const,
+            },
+          ]
+        : []),
+      ...data.references.map((reference) => ({
+        label:
+          reference.type === "repository"
+            ? "Repository"
+            : reference.type === "dashboard"
+            ? "Dashboard"
+            : reference.type === "documentation"
+            ? "Documentation"
+            : "Runbook",
+        value: getCauscapeReferenceLabel(reference),
+        icon: reference.type,
+      })),
+    ];
+    const panelHeight =
+      metadataPanelPadding * 2 + rows.length * metadataRowHeight;
+    drawRoundedRect(context, padding, cursorY, contentWidth, panelHeight, 12);
+    context.fillStyle = panel;
+    context.fill();
+    context.strokeStyle = rule;
+    context.lineWidth = 1;
+    context.stroke();
+
+    context.font = `500 ${CAUSCAPE_NODE_STYLE.bodyFontSize}px system-ui, -apple-system, sans-serif`;
+    rows.forEach((row, index) => {
+      const rowTop = cursorY + metadataPanelPadding + index * metadataRowHeight;
+      const baseline = rowTop + 30;
+      drawArchitectureMetadataIcon(
+        context,
+        row.icon,
+        padding + 16,
+        baseline - 16,
+        accent,
+      );
+      context.fillStyle = secondary;
+      context.font = `500 ${CAUSCAPE_NODE_STYLE.bodyFontSize}px system-ui, -apple-system, sans-serif`;
+      context.fillText(row.label, padding + 52, baseline);
+      if (row.label !== "Environment") {
+        context.fillStyle = accent;
+        context.fillText(row.value, padding + 230, baseline);
+      } else {
+        context.fillStyle = foreground;
+        context.fillText(row.value, padding + 230, baseline);
+      }
+      if (index < rows.length - 1) {
+        context.beginPath();
+        context.moveTo(padding + 16, rowTop + metadataRowHeight);
+        context.lineTo(padding + contentWidth - 16, rowTop + metadataRowHeight);
+        context.strokeStyle = rule;
+        context.lineWidth = 1;
+        context.stroke();
+      }
+    });
+    cursorY += panelHeight;
+  }
+
+  if (data.technologies.length > 0) {
+    if (data.environment || data.references.length > 0) {
+      drawRule(cursorY + sectionRuleGap);
+      cursorY += sectionRuleGap + 1 + sectionRuleGap;
+    } else {
+      cursorY += sectionGap;
+    }
+    drawArchitectureChips(
+      context,
+      data.technologies,
+      padding,
+      cursorY + technologyChipTopPadding,
+      contentWidth,
+      secondary,
+      chipBackground,
+      rule,
+    );
+  }
+  context.restore();
+};
+
+export const drawCauscapeNodeOnCanvas = (
+  element: ExcalidrawCauscapeNodeElement,
+  context: CanvasRenderingContext2D,
+  renderConfig: StaticCanvasRenderConfig,
+): void => {
+  const data = getCauscapeNodeRenderData(element.causcape, renderConfig.theme);
+  const isDark = renderConfig.theme === THEME.DARK;
+  const foreground = applyDarkModeFilter(data.foreground, isDark);
+  const secondary = applyDarkModeFilter(data.secondary, isDark);
+  const { padding, iconSize, iconGap, staleColor, variableAccent } =
+    CAUSCAPE_NODE_STYLE;
+
+  context.save();
+  context.textBaseline = "alphabetic";
+
+  if (data.isArchitecture) {
+    drawArchitectureCard(element, context, data, isDark);
+  } else if (data.isGithub) {
+    const textX = padding + iconSize + iconGap;
+    const maxWidth = Math.max(1, element.width - textX - padding);
+
+    context.save();
+    context.translate(padding, padding);
+    context.scale(iconSize / 16, iconSize / 16);
+    context.fillStyle = foreground;
+    context.fill(getGithubIconPath2D());
+    context.restore();
+
+    context.beginPath();
+    context.arc(
+      padding + iconSize - 2,
+      padding + iconSize - 2,
+      5,
+      0,
+      Math.PI * 2,
+    );
+    context.fillStyle = data.badgeColor;
+    context.fill();
+
+    context.font = `600 ${
+      data.meta ? 11 : 12
+    }px system-ui, -apple-system, sans-serif`;
+    const titleLines = wrapCauscapeText(data.title, Math.floor(maxWidth / 6.5));
+    context.fillStyle = foreground;
+    context.fillText(titleLines[0], textX, padding + 11);
+    if (data.meta) {
+      context.font = "10px system-ui, -apple-system, sans-serif";
+      context.fillStyle = secondary;
+      context.fillText(
+        wrapCauscapeText(data.meta, Math.floor(maxWidth / 6))[0],
+        textX,
+        padding + 23,
+      );
+    } else if (titleLines[1]) {
+      context.fillText(titleLines[1], textX, padding + 25);
+    }
+
+    if (data.stale) {
+      context.fillStyle = staleColor;
+      context.font = "700 16px system-ui, -apple-system, sans-serif";
+      context.fillText("•", element.width - padding - 8, padding + 11);
+    }
+  } else if (data.title) {
+    const maxWidth = element.width - padding * 2;
+    context.font = `500 ${CAUSCAPE_NODE_STYLE.variableFontSize}px system-ui, -apple-system, sans-serif`;
+    const lines = wrapCauscapeText(data.title, Math.floor(maxWidth / 6.5));
+    context.textAlign = "center";
+    context.fillStyle = foreground;
+    const firstBaseline = lines[1]
+      ? element.height / 2 - 3
+      : element.height / 2 + 4;
+    context.fillText(lines[0], element.width / 2, firstBaseline);
+    if (lines[1]) {
+      context.fillText(lines[1], element.width / 2, firstBaseline + 14);
+    }
+    context.textAlign = "start";
+
+    context.beginPath();
+    context.arc(element.width - 9, 9, 6, 0, Math.PI * 2);
+    context.fillStyle = applyDarkModeFilter(variableAccent, isDark);
+    context.fill();
+  }
+
+  context.restore();
+};
+
+/** Paints the relationship text on the edge while keeping the line selectable as one element. */
+export const drawCauscapeEdgeOnCanvas = (
+  element: ExcalidrawCauscapeEdgeElement,
+  context: CanvasRenderingContext2D,
+  renderConfig: StaticCanvasRenderConfig,
+): void => {
+  const label = getCauscapeEdgeLabel(element.causcape);
+  if (!label) {
+    return;
+  }
+  const points = element.points.map(([x, y]) => [x, y] as [number, number]);
+  const anchor = getCauscapeEdgeLabelAnchor(points);
+  if (!anchor) {
+    return;
+  }
+
+  const isDark = renderConfig.theme === THEME.DARK;
+  const textColor = applyDarkModeFilter(
+    isDark ? CAUSCAPE_NODE_STYLE.darkSecondary : CAUSCAPE_NODE_STYLE.lightSecondary,
+    isDark,
+  );
+  const background = isDark
+    ? CAUSCAPE_NODE_STYLE.darkSurface
+    : CAUSCAPE_NODE_STYLE.lightSurface;
+  const border = isDark
+    ? CAUSCAPE_NODE_STYLE.darkRule
+    : CAUSCAPE_NODE_STYLE.lightRule;
+  const fontSize = 13;
+  const lineHeight = 18;
+  const horizontalPadding = 8;
+  const verticalPadding = 5;
+  const maxChars = Math.max(14, Math.floor(Math.max(anchor.length - 16, 100) / 7));
+  const lines = wrapCauscapeEdgeLabel(label, maxChars);
+
+  context.save();
+  context.font = `500 ${fontSize}px system-ui, -apple-system, sans-serif`;
+  const textWidth = Math.max(...lines.map((line) => context.measureText(line).width));
+  const boxWidth = textWidth + horizontalPadding * 2;
+  const boxHeight = lines.length * lineHeight + verticalPadding * 2;
+  const labelX = anchor.x + anchor.normalX * 16;
+  const labelY = anchor.y + anchor.normalY * 16;
+  drawRoundedRect(
+    context,
+    labelX - boxWidth / 2,
+    labelY - boxHeight / 2,
+    boxWidth,
+    boxHeight,
+    6,
+  );
+  context.fillStyle = background;
+  context.fill();
+  context.strokeStyle = border;
+  context.lineWidth = 1;
+  context.stroke();
+  context.fillStyle = textColor;
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  lines.forEach((line, index) => {
+    context.fillText(
+      line,
+      labelX,
+      labelY + (index - (lines.length - 1) / 2) * lineHeight,
+    );
+  });
+  context.restore();
+};
+
 const drawElementOnCanvas = (
   element: NonDeletedExcalidrawElement,
   rc: RoughCanvas,
@@ -326,15 +1105,19 @@ const drawElementOnCanvas = (
     case "iframe":
     case "embeddable":
     case "diamond":
-    case "ellipse": {
+    case "ellipse":
+    case "causcape-node": {
       context.lineJoin = "round";
       context.lineCap = "round";
-
       rc.draw(ShapeCache.generateElementShape(element, renderConfig));
+      if (element.type === "causcape-node") {
+        drawCauscapeNodeOnCanvas(element, context, renderConfig);
+      }
       break;
     }
     case "arrow":
-    case "line": {
+    case "line":
+    case "causcape-edge": {
       context.lineJoin = "round";
       context.lineCap = "round";
 
@@ -343,6 +1126,9 @@ const drawElementOnCanvas = (
           rc.draw(shape);
         },
       );
+      if (element.type === "causcape-edge") {
+        drawCauscapeEdgeOnCanvas(element, context, renderConfig);
+      }
       break;
     }
     case "freedraw": {
@@ -814,6 +1600,8 @@ export const renderElement = (
       break;
     }
     case "rectangle":
+    case "causcape-node":
+    case "causcape-edge":
     case "diamond":
     case "ellipse":
     case "line":

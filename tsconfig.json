@@ -34,9 +34,19 @@
       "@excalidraw/math": ["./packages/math/src/index.ts"],
       "@excalidraw/math/*": ["./packages/math/src/*"],
       "@excalidraw/utils": ["./packages/utils/src/index.ts"],
-      "@excalidraw/utils/*": ["./packages/utils/src/*"]
+      "@excalidraw/utils/*": ["./packages/utils/src/*"],
+      "@excalidraw/graph": ["./packages/graph/src/index.ts"],
+      "@excalidraw/graph/*": ["./packages/graph/src/*"]
     }
   },
   "include": ["packages", "excalidraw-app"],
-  "exclude": ["examples", "dist", "types", "tests"]
+  "exclude": [
+    "examples",
+    "**/build",
+    "**/dist",
+    "**/types",
+    "**/tests",
+    "**/__tests__",
+    "**/*.test.*"
+  ]
 }

@@ -1,5 +1,9 @@
 import { arrayToMap, reseed } from "@excalidraw/common";
 import { type GlobalPoint, type LocalPoint, pointFrom } from "@excalidraw/math";
+import {
+  newCauscapeEdgeElement,
+  newCauscapeNodeElement,
+} from "@excalidraw/element";
 import { Excalidraw } from "@excalidraw/excalidraw";
 import { API } from "@excalidraw/excalidraw/tests/helpers/api";
 import { UI } from "@excalidraw/excalidraw/tests/helpers/ui";
@@ -7,7 +11,30 @@ import "@excalidraw/utils/test-utils";
 import { render } from "@excalidraw/excalidraw/tests/test-utils";
 
 import * as distance from "../src/distance";
-import { hitElementItself } from "../src/collision";
+import { hitElementItself, shouldTestInside } from "../src/collision";
+
+describe("Causcape node interior interaction", () => {
+  it("allows dragging from painted content instead of only the border", () => {
+    const node = newCauscapeNodeElement({
+      x: 40,
+      y: 60,
+      label: "Booking API",
+      kind: "service",
+      health: "healthy",
+    });
+    const elementsMap = arrayToMap([node]);
+
+    expect(shouldTestInside(node)).toBe(true);
+    expect(
+      hitElementItself({
+        point: pointFrom<GlobalPoint>(node.x + node.width / 2, node.y + 80),
+        element: node,
+        threshold: 0,
+        elementsMap,
+      }),
+    ).toBe(true);
+  });
+});
 
 describe("check rotated elements can be hit:", () => {
   beforeEach(async () => {
@@ -36,6 +63,27 @@ describe("check rotated elements can be hit:", () => {
       elementsMap: window.h.scene.getNonDeletedElementsMap(),
     });
     expect(hit).toBe(true);
+  });
+});
+
+describe("Causcape edge hit testing", () => {
+  it("does not throw when the pointer is near a graph edge", () => {
+    const edge = newCauscapeEdgeElement({
+      fromNodeId: "from",
+      toNodeId: "to",
+      x: 0,
+      y: 0,
+      points: [pointFrom<LocalPoint>(0, 0), pointFrom<LocalPoint>(100, 0)],
+    });
+    const elementsMap = arrayToMap([edge]);
+
+    expect(() =>
+      distance.distanceToElement(
+        edge,
+        elementsMap,
+        pointFrom<GlobalPoint>(50, 0),
+      ),
+    ).not.toThrow();
   });
 });
 

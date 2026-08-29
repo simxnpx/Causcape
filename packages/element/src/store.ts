@@ -21,11 +21,9 @@ import { ElementsDelta, AppStateDelta, Delta } from "./delta";
 
 import {
   syncInvalidIndicesImmutable,
-  hashElementsVersion,
-  hashString,
-  isInitializedImageElement,
-  isImageElement,
-} from "./index";
+} from "./fractionalIndex";
+import { hashElementsVersion, hashString } from "./elementHelpers";
+import { isInitializedImageElement, isImageElement } from "./typeChecks";
 
 import type { ApplyToOptions } from "./delta";
 

@@ -1,0 +1,40 @@
+{
+  "name": "@excalidraw/graph",
+  "version": "0.1.0",
+  "type": "module",
+  "types": "./dist/types/graph/src/index.d.ts",
+  "main": "./dist/prod/index.js",
+  "module": "./dist/prod/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/types/graph/src/index.d.ts",
+      "development": "./dist/dev/index.js",
+      "production": "./dist/prod/index.js",
+      "default": "./dist/prod/index.js"
+    },
+    "./*": {
+      "types": "./dist/types/graph/src/*.d.ts",
+      "development": "./dist/dev/index.js",
+      "production": "./dist/prod/index.js",
+      "default": "./dist/prod/index.js"
+    }
+  },
+  "files": [
+    "dist/*"
+  ],
+  "description": "Causcape graph engine - causal graph foundations",
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "MIT",
+  "scripts": {
+    "gen:types": "rimraf types && tsc",
+    "build:esm": "rimraf dist && node ../../scripts/buildBase.js && yarn gen:types"
+  },
+  "dependencies": {
+    "@excalidraw/common": "0.18.0",
+    "@excalidraw/element": "0.18.0",
+    "@excalidraw/math": "0.18.0",
+    "@excalidraw/fractional-indexing": "3.3.0"
+  }
+}
