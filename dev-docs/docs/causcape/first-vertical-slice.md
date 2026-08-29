@@ -18,6 +18,8 @@ Prepared engineering shapes use only existing Excalidraw primitives. Group IDs p
 
 The CLI creates, inspects, validates, previews or atomically applies patches, and renders SVG or PNG. Every patch names an expected revision and records agent provenance. ELK Layered produces deterministic coordinates; the Excalidraw exporter in explicitly provisioned Chromium produces render output.
 
+WebMCP exposes `getProjectDocument` and `replaceProjectDocument` from the owning browser document. The read result includes the current revision and project-local canvas-object index. Replacement uses the same project transaction validator as the CLI, so stale revisions and references to unknown object IDs are rejected. The browser editor stays synchronized with accepted external replacements without flattening canvas references into text.
+
 ## Feature commits
 
 | Commit     | Boundary                                                   |
@@ -43,6 +45,7 @@ Each boundary is independently reviewable and uses the DOM-independent core inst
 - The CLI rejects malformed or stale patches without modifying the input.
 - Equivalent engineering models create identical layouts.
 - SVG and PNG renders use the same Excalidraw scene representation as the app.
+- WebMCP reads the structured document and rejects stale or dangling-reference replacements without changing the project.
 
 Run the automated acceptance set from the repository root:
 
@@ -56,7 +59,9 @@ corepack yarn test:app --run \
   excalidraw-app/components/CauscapeProjectShell.test.tsx \
   excalidraw-app/components/CauscapeDocumentEditor.test.tsx \
   excalidraw-app/components/CauscapeProjectDashboard.test.tsx \
-  excalidraw-app/components/CauscapeEngineeringTools.test.tsx
+  excalidraw-app/components/CauscapeEngineeringTools.test.tsx \
+  excalidraw-app/tests/graphMCP.test.ts \
+  excalidraw-app/tests/projectMCP.test.ts
 corepack yarn test:typecheck
 corepack yarn build:app
 corepack yarn build:causcape-cli
@@ -64,4 +69,4 @@ corepack yarn build:causcape-cli
 
 ## Intentional boundaries
 
-This slice does not add accounts, server persistence, workspaces, multiple canvases per project, live incident response, real-time collaboration, an in-product agent chat, built-in cloud integrations, WebMCP, or full mobile optimization. Those systems should extend the project transaction and CLI contracts rather than bypassing them.
+This slice does not add accounts, server persistence, workspaces, multiple canvases per project, live incident response, real-time collaboration, an in-product agent chat, built-in cloud integrations, or full mobile optimization. Those systems should extend the project transaction, CLI, and WebMCP contracts rather than bypassing them.

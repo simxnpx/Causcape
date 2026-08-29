@@ -75,6 +75,7 @@ import {
 
 import {
   createProjectFromTemplate,
+  transactProject,
   type CanvasObject,
   type CauscapeDocument,
   type MetadataValue,
@@ -124,6 +125,7 @@ import { AppFooter } from "./components/AppFooter";
 import { AppMainMenu } from "./components/AppMainMenu";
 import { AppWelcomeScreen } from "./components/AppWelcomeScreen";
 import { GraphMCPBridge } from "./mcp/GraphMCPBridge";
+import { ProjectMCPBridge } from "./mcp/ProjectMCPBridge";
 import {
   ExportToExcalidrawPlus,
   exportToExcalidrawPlus,
@@ -1433,6 +1435,18 @@ const CauscapeProjectWorkspace = () => {
   );
   const [isDocumentEditable, setIsDocumentEditable] = useState(true);
   const [projectError, setProjectError] = useState("");
+  const projectRef = useRef(project);
+  projectRef.current = project;
+
+  const getProjectForMCP = useCallback(() => projectRef.current, []);
+  const setProjectFromMCP = useCallback((nextProject: Project) => {
+    projectRef.current = nextProject;
+    setProject(nextProject);
+  }, []);
+  const getWorkspaceOwnerDocument = useCallback(
+    () => workspaceRef.current?.ownerDocument ?? null,
+    [],
+  );
 
   const refreshProjects = useCallback(async () => {
     if (repositoryRef.current) {
@@ -1533,11 +1547,18 @@ const CauscapeProjectWorkspace = () => {
       ) {
         return currentProject;
       }
-      return {
-        ...currentProject,
-        document,
-        updatedAt: new Date().toISOString(),
-      };
+      const result = transactProject(currentProject, {
+        id: `browser-document-${randomId()}`,
+        expectedRevision: currentProject.revision,
+        occurredAt: new Date().toISOString(),
+        provenance: {
+          actor: { type: "human", id: "local-user" },
+          channel: "browser",
+          summary: "Edited the structured project document",
+        },
+        operations: [{ type: "document.replace", document }],
+      });
+      return result.ok ? result.value : currentProject;
     });
   }, []);
 
@@ -1830,6 +1851,11 @@ const CauscapeProjectWorkspace = () => {
             </Suspense>
           </article>
         }
+      />
+      <ProjectMCPBridge
+        getProject={getProjectForMCP}
+        setProject={setProjectFromMCP}
+        getOwnerDocument={getWorkspaceOwnerDocument}
       />
       {projectError ? (
         <p className="causcape-project-error" role="alert">
