@@ -73,4 +73,72 @@ describe("CauscapeProjectShell", () => {
     );
     expect(onModeChange).toHaveBeenLastCalledWith("focus");
   });
+
+  it("resizes the document pane with pointer and keyboard controls", () => {
+    render(
+      <CauscapeProjectShell
+        canvas={<div>Engineering canvas</div>}
+        document={<div>Project overview</div>}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Open project document" }),
+    );
+    const shell = screen.getByTestId("causcape-project-shell");
+    const resizer = screen.getByRole("separator", {
+      name: "Resize project document",
+    });
+
+    expect(resizer).toHaveAttribute("aria-orientation", "vertical");
+    expect(resizer).toHaveAttribute("aria-valuemin", "320");
+    const initialWidth = Number(resizer.getAttribute("aria-valuenow"));
+
+    fireEvent(
+      resizer,
+      new MouseEvent("pointerdown", {
+        bubbles: true,
+        button: 0,
+        clientX: 800,
+      }),
+    );
+    expect(shell).toHaveAttribute("data-resizing", "true");
+    fireEvent(
+      resizer.ownerDocument,
+      new MouseEvent("pointermove", { bubbles: true, clientX: 700 }),
+    );
+    fireEvent(
+      resizer.ownerDocument,
+      new MouseEvent("pointerup", { bubbles: true }),
+    );
+    expect(shell).not.toHaveAttribute("data-resizing");
+
+    expect(shell.style.getPropertyValue("--causcape-document-pane-width")).toBe(
+      `${initialWidth + 100}px`,
+    );
+    expect(resizer).toHaveAttribute(
+      "aria-valuenow",
+      String(initialWidth + 100),
+    );
+
+    fireEvent.keyDown(resizer, { key: "ArrowLeft" });
+    expect(shell.style.getPropertyValue("--causcape-document-pane-width")).toBe(
+      `${initialWidth + 124}px`,
+    );
+    expect(
+      resizer.ownerDocument.defaultView?.localStorage.getItem(
+        "causcape.documentPaneWidth",
+      ),
+    ).toBe(String(initialWidth + 124));
+
+    fireEvent.doubleClick(resizer);
+    expect(shell.style.getPropertyValue("--causcape-document-pane-width")).toBe(
+      "",
+    );
+    expect(
+      resizer.ownerDocument.defaultView?.localStorage.getItem(
+        "causcape.documentPaneWidth",
+      ),
+    ).toBeNull();
+  });
 });
