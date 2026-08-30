@@ -69,6 +69,7 @@ import type {
   CauscapeArchitectureNodeMetadata,
   GithubRef,
   GithubCache,
+  FixedPointBinding,
 } from "./types";
 
 export type ElementConstructorOpts = MarkOptional<
@@ -661,6 +662,8 @@ export const newCauscapeEdgeElement = (
     toNodeId: string;
     label?: string;
     points?: CauscapeEdgeElement["points"];
+    startBinding?: FixedPointBinding | null;
+    endBinding?: FixedPointBinding | null;
     startArrowhead?: Arrowhead | null;
     endArrowhead?: Arrowhead | null;
   } & ElementConstructorOpts,
@@ -670,6 +673,8 @@ export const newCauscapeEdgeElement = (
     toNodeId,
     label,
     points: requestedPoints,
+    startBinding = null,
+    endBinding = null,
     startArrowhead = null,
     endArrowhead = "arrow",
     ...elementOpts
@@ -695,8 +700,8 @@ export const newCauscapeEdgeElement = (
       height,
     }),
     points: safePoints,
-    startBinding: null,
-    endBinding: null,
+    startBinding,
+    endBinding,
     startArrowhead,
     endArrowhead,
     elbowed: false,

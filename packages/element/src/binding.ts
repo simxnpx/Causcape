@@ -51,6 +51,7 @@ import {
   isArrowElement,
   isBindableElement,
   isBoundToContainer,
+  isCauscapeEdgeElement,
   isElbowArrow,
   isRectangularElement,
   isRectanguloidElement,
@@ -76,6 +77,7 @@ import type {
   CauscapeArrowElement,
   CauscapeBindableElement,
   CauscapeElbowArrowElement,
+  CauscapeEdgeElement,
   CauscapeElement,
   CauscapeRectanguloidElement,
   CauscapeTextElement,
@@ -1237,7 +1239,10 @@ export const updateBoundElements = (
       );
     }
 
-    if (!isArrowElement(element) || !isNonDeletedElement(element)) {
+    if (
+      (!isArrowElement(element) && !isCauscapeEdgeElement(element)) ||
+      !isNonDeletedElement(element)
+    ) {
       return;
     }
 
@@ -1277,7 +1282,7 @@ export const updateBoundElements = (
               ]?.elementId)
         ) {
           const point = updateBoundPoint(
-            element,
+            element as unknown as NonDeleted<CauscapeArrowElement>,
             bindingProp,
             element[bindingProp],
             bindableElement,
@@ -1298,11 +1303,18 @@ export const updateBoundElements = (
       (update): update is MapEntry<PointsPositionUpdates> => update !== null,
     );
 
-    LinearElementEditor.movePoints(element, scene, new Map(updates), {
-      moveMidPointsWithElement:
-        !!startBindingElement &&
-        startBindingElement?.id === endBindingElement?.id,
-    });
+    LinearElementEditor.movePoints(
+      element as unknown as NonDeleted<
+        CauscapeArrowElement & { type: "arrow" }
+      >,
+      scene,
+      new Map(updates),
+      {
+        moveMidPointsWithElement:
+          !!startBindingElement &&
+          startBindingElement?.id === endBindingElement?.id,
+      },
+    );
 
     const boundText = getBoundTextElement(element, elementsMap);
     if (boundText && !boundText.isDeleted) {
@@ -1415,7 +1427,7 @@ export const updateBindings = (
 };
 
 const doesNeedUpdate = (
-  boundElement: NonDeleted<CauscapeArrowElement>,
+  boundElement: NonDeleted<CauscapeArrowElement | CauscapeEdgeElement>,
   changedElement: CauscapeBindableElement,
 ) => {
   return (
@@ -2314,6 +2326,7 @@ const newBoundElements = (
       (x) =>
         ({ id: x.id, type: x.type } as
           | CauscapeArrowElement
+          | CauscapeEdgeElement
           | CauscapeTextElement),
     ),
   );
@@ -2388,7 +2401,7 @@ const bindableElementsVisitor = <T>(
     result.push(visit(elements.get(id), "containerId", id));
   }
 
-  if (isArrowElement(element)) {
+  if (isArrowElement(element) || isCauscapeEdgeElement(element)) {
     if (element.startBinding) {
       const id = element.startBinding.elementId;
       result.push(visit(elements.get(id), "startBinding", id));
@@ -2488,7 +2501,10 @@ export class BoundElement {
           return;
         }
 
-        if (isArrowElement(boundElement)) {
+        if (
+          isArrowElement(boundElement) ||
+          isCauscapeEdgeElement(boundElement)
+        ) {
           // rebind if not found!
           updateElementWith(bindableElement, {
             boundElements: newBoundElements(

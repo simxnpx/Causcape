@@ -186,6 +186,96 @@ describe("graph quality pipeline", () => {
     expect(report.metrics.score).toBeLessThan(100);
   });
 
+  it("connects partially aligned cards at the middle of each available side", () => {
+    const source = node("source", 0, 0, { width: 120, height: 80 });
+    const target = node("target", 260, 40, { width: 120, height: 80 });
+
+    const route = routeCauscapeEdge(source, target);
+    const points = route.points.map(
+      ([x, y]) => [x + route.x, y + route.y] as const,
+    );
+
+    expect(points[0]).toEqual([120, 40]);
+    expect(points.at(-1)).toEqual([260, 80]);
+    expect(
+      points.slice(1).every((point, index) => {
+        const previous = points[index];
+        return point[0] === previous[0] || point[1] === previous[1];
+      }),
+    ).toBe(true);
+  });
+
+  it("detects when an edge route crosses another edge label", () => {
+    const labeledSource = node("labeled-source", 0, 0, {
+      width: 100,
+      height: 80,
+    });
+    const labeledTarget = node("labeled-target", 300, 0, {
+      width: 100,
+      height: 80,
+    });
+    const verticalSource = node("vertical-source", 150, -180, {
+      width: 80,
+      height: 80,
+    });
+    const verticalTarget = node("vertical-target", 150, 180, {
+      width: 80,
+      height: 80,
+    });
+    const report = analyzeGraphQuality(
+      graph(
+        [labeledSource, labeledTarget, verticalSource, verticalTarget],
+        [
+          edge("labeled", "labeled-source", "labeled-target", {
+            relationship: "calls",
+            label: "checkout request",
+          }),
+          edge("vertical", "vertical-source", "vertical-target"),
+        ],
+      ),
+      {
+        routes: new Map([
+          [
+            "labeled",
+            {
+              x: 100,
+              y: 40,
+              width: 200,
+              height: 1,
+              points: [
+                [0, 0],
+                [200, 0],
+              ],
+            },
+          ],
+          [
+            "vertical",
+            {
+              x: 190,
+              y: -100,
+              width: 1,
+              height: 280,
+              points: [
+                [0, 0],
+                [0, 280],
+              ],
+            },
+          ],
+        ]),
+      },
+    );
+
+    expect(report.metrics.edgeLabelOverlapCount).toBeGreaterThan(0);
+    expect(report.diagnostics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "EDGE_LABEL_ROUTE_OVERLAP",
+          elementIds: ["labeled", "vertical"],
+        }),
+      ]),
+    );
+  });
+
   it("uses runtime flow direction for subscriptions and keeps the primary spine first", () => {
     const user = node("user", 900, 480, { width: 120, height: 80 });
     const gateway = node("gateway", 700, 120, { width: 120, height: 80 });

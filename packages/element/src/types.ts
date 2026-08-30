@@ -34,7 +34,7 @@ export type FractionalIndex = string & { _brand: "franctionalIndex" };
 
 export type BoundElement = Readonly<{
   id: CauscapeLinearElement["id"];
-  type: "arrow" | "text";
+  type: "arrow" | "causcape-edge" | "text";
 }>;
 
 type _CauscapeElementBase = Readonly<{

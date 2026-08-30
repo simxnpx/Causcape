@@ -13,6 +13,10 @@ import { act, fireEvent, render } from "@causcape/causcape/tests/test-utils";
 import { defaultLang, setLanguage } from "@causcape/causcape/i18n";
 
 import { bindBindingElement, updateBoundElements } from "../src/binding";
+import {
+  newCauscapeEdgeElement,
+  newCauscapeNodeElement,
+} from "../src/newElement";
 import { getTransformHandles } from "../src/transformHandles";
 import {
   getTextEditor,
@@ -752,6 +756,68 @@ describe("binding for simple arrows", () => {
       expect(document.querySelector(TEXT_EDITOR_SELECTOR)).toBe(null);
       expect(arrow.endBinding).toBe(null);
     });
+  });
+});
+
+describe("binding for Causcape flows", () => {
+  beforeEach(async () => {
+    mouse.reset();
+    await act(() => setLanguage(defaultLang));
+    await render(<Causcape handleKeyboardGlobally={true} />);
+  });
+
+  it("keeps a bound endpoint attached when its node moves", () => {
+    const source = newCauscapeNodeElement({
+      id: "source-node",
+      label: "Source",
+      x: 100,
+      y: 100,
+      width: 200,
+      height: 100,
+      boundElements: [{ id: "flow", type: "causcape-edge" }],
+    });
+    const target = newCauscapeNodeElement({
+      id: "target-node",
+      label: "Target",
+      x: 500,
+      y: 100,
+      width: 200,
+      height: 100,
+      boundElements: [{ id: "flow", type: "causcape-edge" }],
+    });
+    const flow = newCauscapeEdgeElement({
+      id: "flow",
+      fromNodeId: source.id,
+      toNodeId: target.id,
+      x: 300,
+      y: 150,
+      points: [pointFrom(0, 0), pointFrom(200, 0)],
+      startBinding: {
+        elementId: source.id,
+        focus: 0,
+        gap: 0,
+        fixedPoint: [1, 0.5],
+        mode: "inside",
+      },
+      endBinding: {
+        elementId: target.id,
+        focus: 0,
+        gap: 0,
+        fixedPoint: [0, 0.5],
+        mode: "inside",
+      },
+    });
+    API.setElements([source, target, flow]);
+
+    act(() => {
+      h.scene.mutateElement(source, { x: 160, y: 140 });
+      updateBoundElements(source, h.scene);
+    });
+
+    expect(flow.x + flow.points[0][0]).toBeCloseTo(360);
+    expect(flow.y + flow.points[0][1]).toBeCloseTo(190, 1);
+    expect(flow.x + flow.points.at(-1)![0]).toBeCloseTo(500);
+    expect(flow.y + flow.points.at(-1)![1]).toBeCloseTo(150, 1);
   });
 });
 

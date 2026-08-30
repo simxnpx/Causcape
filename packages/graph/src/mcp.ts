@@ -107,7 +107,8 @@ export const CAUSCPE_MCP_TOOLS: readonly MCPToolDefinition[] = [
   },
   {
     name: "createEdge",
-    description: "Create a directed edge between two causcape nodes.",
+    description:
+      "Create a directed edge bound to the middle of the best available sides of two Causcape nodes.",
     inputSchema: {
       type: "object",
       properties: {
@@ -248,7 +249,7 @@ export const CAUSCPE_MCP_TOOLS: readonly MCPToolDefinition[] = [
   {
     name: "validateGraph",
     description:
-      "Validate the current graph and return diagnostics (errors/warnings).",
+      "Inspect the stored graph geometry and bindings for detached edges, node or label overlaps, route crossings, and other quality problems. When repair is recommended, call autoLayout and validate again until the report is clean.",
     inputSchema: {
       type: "object",
       properties: {},

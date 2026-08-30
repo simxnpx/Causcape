@@ -1019,14 +1019,14 @@ export const restoreElements = <T extends CauscapeElement>(
       if (
         element.startBinding &&
         (!restoredElementsMap.has(element.startBinding.elementId) ||
-          !isArrowElement(element))
+          element.type === "line")
       ) {
         (element as Mutable<CauscapeLinearElement>).startBinding = null;
       }
       if (
         element.endBinding &&
         (!restoredElementsMap.has(element.endBinding.elementId) ||
-          !isArrowElement(element))
+          element.type === "line")
       ) {
         (element as Mutable<CauscapeLinearElement>).endBinding = null;
       }

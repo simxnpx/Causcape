@@ -3,7 +3,11 @@ import { vi } from "vitest";
 
 import { DEFAULT_SIDEBAR, FONT_FAMILY, ROUNDNESS } from "@causcape/common";
 
-import { newElementWith } from "@causcape/element";
+import {
+  newCauscapeEdgeElement,
+  newCauscapeNodeElement,
+  newElementWith,
+} from "@causcape/element";
 import * as sizeHelpers from "@causcape/element";
 
 import type { LocalPoint } from "@causcape/math";
@@ -41,6 +45,62 @@ describe("restoreElements", () => {
 
     const restoredElements = restore.restoreElements(elements, null);
     expect(restoredElements.length).toBe(elements.length);
+  });
+
+  it("preserves valid Causcape edge bindings when repairing imported data", () => {
+    const source = newCauscapeNodeElement({
+      id: "source",
+      label: "Source",
+      x: 0,
+      y: 0,
+      boundElements: [{ id: "flow", type: "causcape-edge" }],
+    });
+    const target = newCauscapeNodeElement({
+      id: "target",
+      label: "Target",
+      x: 300,
+      y: 0,
+      boundElements: [{ id: "flow", type: "causcape-edge" }],
+    });
+    const edge = newCauscapeEdgeElement({
+      id: "flow",
+      fromNodeId: source.id,
+      toNodeId: target.id,
+      x: source.x + source.width,
+      y: source.y + source.height / 2,
+      points: [pointFrom(0, 0), pointFrom(100, 0)],
+      startBinding: {
+        elementId: source.id,
+        focus: 0,
+        gap: 0,
+        fixedPoint: [1, 0.5],
+        mode: "inside",
+      },
+      endBinding: {
+        elementId: target.id,
+        focus: 0,
+        gap: 0,
+        fixedPoint: [0, 0.5],
+        mode: "inside",
+      },
+    });
+
+    const restored = restore.restoreElements([source, target, edge], null, {
+      repairBindings: true,
+    });
+    const restoredEdge = restored.find((element) => element.id === edge.id);
+
+    expect(restoredEdge).toMatchObject({
+      startBinding: { elementId: source.id, mode: "inside" },
+      endBinding: { elementId: target.id, mode: "inside" },
+    });
+    if (restoredEdge?.type !== "causcape-edge") {
+      throw new Error("Expected the restored flow element");
+    }
+    expect(restoredEdge.startBinding?.fixedPoint[0]).toBeCloseTo(1);
+    expect(restoredEdge.startBinding?.fixedPoint[1]).toBeCloseTo(0.5);
+    expect(restoredEdge.endBinding?.fixedPoint[0]).toBeCloseTo(0);
+    expect(restoredEdge.endBinding?.fixedPoint[1]).toBeCloseTo(0.5);
   });
 
   it("when imported data state is null it should return an empty array of elements", () => {

@@ -17,7 +17,12 @@ import {
   vectorNormalize,
 } from "@causcape/math";
 
-import { buildGraph, layoutCauscapeGraph } from "@causcape/graph";
+import {
+  buildGraph,
+  getCauscapeEdgeBindings,
+  getCauscapeFlowEndpointIds,
+  layoutCauscapeGraph,
+} from "@causcape/graph";
 
 import {
   COLOR_PALETTE,
@@ -12636,19 +12641,41 @@ class App extends React.Component<AppProps, AppState> {
         continue;
       }
       const geometry = result.edges.get(element.id);
-      if (
-        !geometry ||
-        (element.x === geometry.x &&
-          element.y === geometry.y &&
-          element.width === geometry.width &&
-          element.height === geometry.height &&
-          element.points.length === geometry.points.length &&
-          element.points.every(
-            (point, index) =>
-              point[0] === geometry.points[index][0] &&
-              point[1] === geometry.points[index][1],
-          ))
-      ) {
+      const edge = graph.edgesById.get(element.id);
+      if (!geometry || !edge) {
+        continue;
+      }
+      const [fromNodeId, toNodeId] = getCauscapeFlowEndpointIds(edge);
+      const fromNode = graph.nodesById.get(fromNodeId);
+      const toNode = graph.nodesById.get(toNodeId);
+      if (!fromNode || !toNode) {
+        continue;
+      }
+      const bindings = getCauscapeEdgeBindings(fromNode, toNode, geometry);
+      const geometryMatches =
+        element.x === geometry.x &&
+        element.y === geometry.y &&
+        element.width === geometry.width &&
+        element.height === geometry.height &&
+        element.points.length === geometry.points.length &&
+        element.points.every(
+          (point, index) =>
+            point[0] === geometry.points[index][0] &&
+            point[1] === geometry.points[index][1],
+        );
+      const bindingsMatch = (["startBinding", "endBinding"] as const).every(
+        (bindingName) => {
+          const current = element[bindingName];
+          const next = bindings[bindingName];
+          return (
+            current?.elementId === next.elementId &&
+            current.mode === next.mode &&
+            current.fixedPoint[0] === next.fixedPoint[0] &&
+            current.fixedPoint[1] === next.fixedPoint[1]
+          );
+        },
+      );
+      if (geometryMatches && bindingsMatch) {
         continue;
       }
       this.scene.mutateElement(
@@ -12659,7 +12686,58 @@ class App extends React.Component<AppProps, AppState> {
           width: geometry.width,
           height: geometry.height,
           points: geometry.points as never,
+          ...bindings,
         } as never,
+        { informMutation: false, isDragging: false },
+      );
+      didChange = true;
+    }
+    const edgeReferencesByNode = new Map<
+      string,
+      { id: string; type: "causcape-edge" }[]
+    >();
+    for (const edge of graph.edges) {
+      for (const nodeId of [edge.fromNodeId, edge.toNodeId]) {
+        const references = edgeReferencesByNode.get(nodeId) ?? [];
+        if (!references.some((reference) => reference.id === edge.id)) {
+          references.push({ id: edge.id, type: "causcape-edge" });
+        }
+        edgeReferencesByNode.set(nodeId, references);
+      }
+    }
+    for (const element of elements) {
+      if (element.type !== "causcape-node") {
+        continue;
+      }
+      const retainedReferences =
+        element.boundElements?.filter(
+          (boundElement) => boundElement.type !== "causcape-edge",
+        ) ?? [];
+      const edgeReferences = edgeReferencesByNode.get(element.id) ?? [];
+      const nextBoundElements =
+        retainedReferences.length > 0 || edgeReferences.length > 0
+          ? [...retainedReferences, ...edgeReferences]
+          : null;
+      const currentBoundElements = element.boundElements ?? null;
+      const boundElementsMatch =
+        currentBoundElements === null && nextBoundElements === null
+          ? true
+          : currentBoundElements !== null && nextBoundElements !== null
+          ? currentBoundElements.length === nextBoundElements.length &&
+            currentBoundElements.every(
+              (reference, index) =>
+                reference.id === nextBoundElements[index].id &&
+                reference.type === nextBoundElements[index].type,
+            )
+          : false;
+      if (boundElementsMatch) {
+        continue;
+      }
+      this.scene.mutateElement(
+        element,
+        {
+          boundElements: nextBoundElements,
+        },
         { informMutation: false, isDragging: false },
       );
       didChange = true;

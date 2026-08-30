@@ -4,7 +4,7 @@ import {
   newCauscapeNodeElement,
 } from "@causcape/element";
 
-import { routeCauscapeEdge } from "@causcape/graph";
+import { getCauscapeEdgeBindings, routeCauscapeEdge } from "@causcape/graph";
 
 import type { CauscapeElement } from "@causcape/element/types";
 import type { CauscapeImperativeAPI } from "@causcape/causcape/types";
@@ -91,6 +91,111 @@ describe("graph WebMCP handlers", () => {
     expect(harness.getElements()).toEqual([]);
   });
 
+  it("creates semantic edges with persistent endpoint bindings", async () => {
+    const harness = createHarness();
+    const handlers = createGraphMCPHandlers({
+      getApi: () => harness.api,
+    });
+
+    const result = await handlers.createCauscapeEdge({
+      fromNodeId: harness.first.id,
+      toNodeId: harness.second.id,
+      relationship: "calls",
+      label: "request",
+    });
+    const edge = harness
+      .getElements()
+      .find((element) => element.id === result.id);
+    const first = harness
+      .getElements()
+      .find((element) => element.id === harness.first.id);
+    const second = harness
+      .getElements()
+      .find((element) => element.id === harness.second.id);
+
+    expect(edge).toMatchObject({
+      startBinding: {
+        elementId: harness.first.id,
+        fixedPoint: [1, 0.5],
+        mode: "inside",
+      },
+      endBinding: {
+        elementId: harness.second.id,
+        fixedPoint: [0, 0.5],
+        mode: "inside",
+      },
+    });
+    expect(first?.boundElements).toContainEqual({
+      id: result.id,
+      type: "causcape-edge",
+    });
+    expect(second?.boundElements).toContainEqual({
+      id: result.id,
+      type: "causcape-edge",
+    });
+  });
+
+  it("validates the stored route geometry instead of an ideal replacement", async () => {
+    const harness = createHarness();
+    const detached = newCauscapeEdgeElement({
+      fromNodeId: harness.first.id,
+      toNodeId: harness.second.id,
+      x: 80,
+      y: 500,
+      points: [
+        [0, 0],
+        [120, 0],
+      ] as never,
+    });
+    harness.api.updateScene({
+      elements: [...harness.getElements(), detached],
+    });
+    const handlers = createGraphMCPHandlers({
+      getApi: () => harness.api,
+    });
+
+    const result = await handlers.validateGraph();
+
+    expect(result.metrics.edgeDetachedCount).toBe(1);
+    expect(result.diagnostics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "EDGE_DETACHED",
+          elementIds: [detached.id],
+        }),
+      ]),
+    );
+    expect(result.recommendedAction).toMatchObject({ tool: "autoLayout" });
+  });
+
+  it("detects missing node back-references for otherwise bound edges", async () => {
+    const harness = createHarness();
+    const geometry = routeCauscapeEdge(harness.first, harness.second);
+    const edge = newCauscapeEdgeElement({
+      fromNodeId: harness.first.id,
+      toNodeId: harness.second.id,
+      x: geometry.x,
+      y: geometry.y,
+      points: geometry.points as never,
+      ...getCauscapeEdgeBindings(harness.first, harness.second, geometry),
+    });
+    harness.api.updateScene({
+      elements: [...harness.getElements(), edge],
+    });
+    const handlers = createGraphMCPHandlers({ getApi: () => harness.api });
+
+    const result = await handlers.validateGraph();
+
+    expect(result.diagnostics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "EDGE_BACK_REFERENCE_MISSING",
+          elementIds: [edge.id, harness.first.id, harness.second.id],
+        }),
+      ]),
+    );
+  });
+
   it("updates all requested node settings in one scene operation", async () => {
     const harness = createHarness();
     const handlers = createGraphMCPHandlers({
@@ -165,7 +270,23 @@ describe("graph WebMCP handlers", () => {
     });
     if (updatedEdge?.type === "causcape-edge") {
       expect(updatedEdge.points).toHaveLength(2);
+      expect(updatedEdge.startBinding?.elementId).toBe(harness.first.id);
+      expect(updatedEdge.endBinding?.elementId).toBe(harness.second.id);
     }
+    const updatedFirst = harness
+      .getElements()
+      .find((element) => element.id === harness.first.id);
+    const updatedSecond = harness
+      .getElements()
+      .find((element) => element.id === harness.second.id);
+    expect(updatedFirst?.boundElements).toContainEqual({
+      id: edge.id,
+      type: "causcape-edge",
+    });
+    expect(updatedSecond?.boundElements).toContainEqual({
+      id: edge.id,
+      type: "causcape-edge",
+    });
   });
 
   it("re-routes incident edges when an agent moves a node", async () => {
@@ -209,5 +330,39 @@ describe("graph WebMCP handlers", () => {
       expect(updatedStartX).toBeCloseTo(updatedNode.x + updatedNode.width);
       expect(updatedStartX).not.toBe(initialStartX);
     }
+  });
+
+  it("records automatic repairs so an agent session can roll them back", async () => {
+    const harness = createHarness();
+    const geometry = routeCauscapeEdge(harness.first, harness.second);
+    const edge = newCauscapeEdgeElement({
+      fromNodeId: harness.first.id,
+      toNodeId: harness.second.id,
+      x: geometry.x,
+      y: geometry.y,
+      points: geometry.points as never,
+    });
+    harness.api.updateScene({ elements: [...harness.getElements(), edge] });
+    const handlers = createGraphMCPHandlers({ getApi: () => harness.api });
+    await handlers.beginAgentSession({ sessionId: "repair-session" });
+
+    await handlers.autoLayout();
+    const repaired = harness
+      .getElements()
+      .find((element) => element.id === edge.id);
+    expect(
+      repaired?.type === "causcape-edge" && repaired.startBinding,
+    ).not.toBe(null);
+
+    const rollback = await handlers.rollbackAgentChanges({
+      sessionId: "repair-session",
+    });
+    const restored = harness
+      .getElements()
+      .find((element) => element.id === edge.id);
+    expect(rollback.rolledBack).toBe(true);
+    expect(restored?.type === "causcape-edge" && restored.startBinding).toBe(
+      null,
+    );
   });
 });

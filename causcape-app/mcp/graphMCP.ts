@@ -15,8 +15,11 @@ import {
   ARCHITECTURE_RELATIONSHIP_TYPES,
   CAUSCAPE_MCP_TOOLS,
   createGraphProvenance,
+  getCauscapeEdgeBindings,
+  getCauscapeFlowEndpointIds,
   isArchitectureNodeKind,
   layoutCauscapeGraph,
+  analyzeGraphQuality,
   routeCauscapeEdge,
   suggestPosition,
 } from "@causcape/graph";
@@ -41,6 +44,8 @@ import type {
   CauscapeNodeKind,
   GraphSnapshot,
   GraphQualityMetrics,
+  CauscapeEdgeGeometry,
+  Diagnostic,
   NodeSettings,
   UpdateElementPatch,
 } from "@causcape/graph";
@@ -526,6 +531,99 @@ const graphEntities = (
     )
     .map((element) => ({ id: element.id, value: element }));
 
+const storedEdgeGeometry = (
+  edge: CauscapeEdgeElement,
+): CauscapeEdgeGeometry => ({
+  x: edge.x,
+  y: edge.y,
+  width: edge.width,
+  height: edge.height,
+  points: edge.points.map(([x, y]) => [x, y]),
+});
+
+const synchronizeCauscapeEdgeBoundElements = (
+  elements: readonly CauscapeElement[],
+): CauscapeElement[] => {
+  const edgeRefsByNode = new Map<
+    string,
+    { id: string; type: "causcape-edge" }[]
+  >();
+  for (const element of elements) {
+    if (element.type !== "causcape-edge" || element.isDeleted) {
+      continue;
+    }
+    for (const binding of [element.startBinding, element.endBinding]) {
+      if (!binding) {
+        continue;
+      }
+      const references = edgeRefsByNode.get(binding.elementId) ?? [];
+      if (!references.some((reference) => reference.id === element.id)) {
+        references.push({ id: element.id, type: "causcape-edge" });
+      }
+      edgeRefsByNode.set(binding.elementId, references);
+    }
+  }
+  return elements.map((element) => {
+    if (element.type !== "causcape-node") {
+      return element;
+    }
+    const retained =
+      element.boundElements?.filter(
+        (boundElement) => boundElement.type !== "causcape-edge",
+      ) ?? [];
+    const edgeReferences = edgeRefsByNode.get(element.id) ?? [];
+    const boundElements = [...retained, ...edgeReferences];
+    const nextBoundElements = boundElements.length > 0 ? boundElements : null;
+    const currentBoundElements = element.boundElements ?? null;
+    const isUnchanged =
+      currentBoundElements === null && nextBoundElements === null
+        ? true
+        : currentBoundElements !== null && nextBoundElements !== null
+        ? currentBoundElements.length === nextBoundElements.length &&
+          currentBoundElements.every(
+            (reference, index) =>
+              reference.id === nextBoundElements[index].id &&
+              reference.type === nextBoundElements[index].type,
+          )
+        : false;
+    if (isUnchanged) {
+      return element;
+    }
+    return newElementWith(element, {
+      boundElements: nextBoundElements,
+    });
+  });
+};
+
+const applyRoutedCauscapeEdges = (
+  elements: readonly CauscapeElement[],
+  graph: ReturnType<typeof buildGraph>,
+  routes: ReadonlyMap<string, CauscapeEdgeGeometry>,
+): CauscapeElement[] => {
+  const routed = elements.map((element) => {
+    if (element.type !== "causcape-edge") {
+      return element;
+    }
+    const edge = graph.edgesById.get(element.id);
+    const geometry = routes.get(element.id);
+    if (!edge || !geometry) {
+      return element;
+    }
+    const [fromNodeId, toNodeId] = getCauscapeFlowEndpointIds(edge);
+    const fromNode = graph.nodesById.get(fromNodeId);
+    const toNode = graph.nodesById.get(toNodeId);
+    if (!fromNode || !toNode) {
+      return element;
+    }
+    return newElementWith(element, {
+      ...geometry,
+      points: geometry.points as unknown as typeof element.points,
+      ...getCauscapeEdgeBindings(fromNode, toNode, geometry),
+    } as never);
+  });
+  return synchronizeCauscapeEdgeBoundElements(routed);
+};
+
 const rerouteCauscapeEdges = (
   elements: readonly CauscapeElement[],
 ): CauscapeElement[] => {
@@ -538,18 +636,7 @@ const rerouteCauscapeEdges = (
     respectLocked: false,
     maxIterations: 1,
   });
-  return elements.map((element) => {
-    if (element.type !== "causcape-edge") {
-      return element;
-    }
-    const geometry = result.edges.get(element.id);
-    return geometry
-      ? newElementWith(element, {
-          ...geometry,
-          points: geometry.points as unknown as typeof element.points,
-        } as never)
-      : element;
-  });
+  return applyRoutedCauscapeEdges(elements, graph, result.edges);
 };
 
 const restoreGraphEntities = (
@@ -788,8 +875,68 @@ export const createGraphMCPHandlers = (ctx: GraphMCPContext) => {
   };
 
   const validateGraph = async () => {
-    const snapshot = await getGraph();
-    return { diagnostics: snapshot.diagnostics };
+    const api = ctx.getApi();
+    if (!api) {
+      throw new Error("Causcape API not ready");
+    }
+    const graph = buildGraph(api.getSceneElements(), {
+      includeDiagnostics: true,
+    });
+    const routes = new Map(
+      graph.edges.map((edge) => [edge.id, storedEdgeGeometry(edge.element)]),
+    );
+    const quality = analyzeGraphQuality(graph, { routes });
+    const bindingDiagnostics: Diagnostic[] = [];
+    for (const edge of graph.edges) {
+      const [fromNodeId, toNodeId] = getCauscapeFlowEndpointIds(edge);
+      if (
+        edge.element.startBinding?.elementId !== fromNodeId ||
+        edge.element.endBinding?.elementId !== toNodeId
+      ) {
+        bindingDiagnostics.push({
+          level: "warning",
+          code: "EDGE_BINDING_MISSING",
+          message: `Edge ${edge.id} is not persistently bound to both endpoint cards`,
+          elementIds: [edge.id, fromNodeId, toNodeId],
+        });
+      }
+      const endpointNodes = [
+        graph.nodesById.get(fromNodeId),
+        graph.nodesById.get(toNodeId),
+      ];
+      if (
+        endpointNodes.some(
+          (node) =>
+            !node?.element.boundElements?.some(
+              (boundElement) =>
+                boundElement.id === edge.id &&
+                boundElement.type === "causcape-edge",
+            ),
+        )
+      ) {
+        bindingDiagnostics.push({
+          level: "warning",
+          code: "EDGE_BACK_REFERENCE_MISSING",
+          message: `Endpoint cards for edge ${edge.id} do not both record the connection`,
+          elementIds: [edge.id, fromNodeId, toNodeId],
+        });
+      }
+    }
+    const diagnostics = [...quality.diagnostics, ...bindingDiagnostics];
+    const needsRepair = diagnostics.some(
+      (diagnostic) => diagnostic.level !== "info",
+    );
+    return {
+      metrics: quality.metrics,
+      diagnostics,
+      recommendedAction: needsRepair
+        ? {
+            tool: "autoLayout" as const,
+            reason:
+              "Re-route edges, restore endpoint bindings, and resolve avoidable overlaps; validate again afterward.",
+          }
+        : null,
+    };
   };
 
   const resetCanvas = async (): Promise<{ ok: true; cleared: number }> => {
@@ -1237,7 +1384,19 @@ export const createGraphMCPHandlers = (ctx: GraphMCPContext) => {
       );
     }
 
-    const geometry = routeCauscapeEdge(fromNode, toNode);
+    const [routedFromNodeId, routedToNodeId] = getCauscapeFlowEndpointIds({
+      fromNodeId,
+      toNodeId,
+      relationship,
+    });
+    const routedFromNode = routedFromNodeId === fromNodeId ? fromNode : toNode;
+    const routedToNode = routedToNodeId === toNodeId ? toNode : fromNode;
+    const geometry = routeCauscapeEdge(routedFromNode, routedToNode);
+    const bindings = getCauscapeEdgeBindings(
+      routedFromNode,
+      routedToNode,
+      geometry,
+    );
 
     const baseEdge = newCauscapeEdgeElement({
       fromNodeId,
@@ -1248,6 +1407,7 @@ export const createGraphMCPHandlers = (ctx: GraphMCPContext) => {
       width: geometry.width,
       height: geometry.height,
       points: geometry.points as unknown as CauscapeEdgeElement["points"],
+      ...bindings,
     });
     const edge = (
       relationship === undefined
@@ -1259,7 +1419,10 @@ export const createGraphMCPHandlers = (ctx: GraphMCPContext) => {
     ) as CauscapeEdgeElement;
 
     const currentElements = api.getSceneElementsIncludingDeleted();
-    applySceneUpdate(api, [...currentElements, edge]);
+    applySceneUpdate(
+      api,
+      synchronizeCauscapeEdgeBoundElements([...currentElements, edge]),
+    );
 
     return { id: edge.id, element: edge };
   };
@@ -1472,11 +1635,19 @@ export const createGraphMCPHandlers = (ctx: GraphMCPContext) => {
       const nextElements = elements.map((el) =>
         el.id === input.id ? { ...el, ...patch } : el,
       );
-      applySceneUpdate(
-        api,
+      const nextSceneElements = rerouteCauscapeEdges(
         nextElements as unknown as readonly CauscapeElement[],
       );
-      return { id: input.id, element: { ...element, ...patch } };
+      applySceneUpdate(
+        api,
+        nextSceneElements as unknown as readonly CauscapeElement[],
+      );
+      return {
+        id: input.id,
+        element: nextSceneElements.find(
+          (candidate) => candidate.id === input.id,
+        ) ?? { ...element, ...patch },
+      };
     }
 
     throw new Error(`Element ${input.id} is not a causcape node/edge`);
@@ -1551,8 +1722,7 @@ export const createGraphMCPHandlers = (ctx: GraphMCPContext) => {
     const graph = buildGraph(elements, { includeDiagnostics: true });
     const result = layoutCauscapeGraph(graph, input);
     const movedNodeIds: string[] = [];
-    const routedEdgeIds: string[] = [];
-    const nextElements = elements.map((element) => {
+    const positionedElements = elements.map((element) => {
       if (element.type === "causcape-node") {
         const position = result.positions.get(element.id);
         if (
@@ -1564,24 +1734,21 @@ export const createGraphMCPHandlers = (ctx: GraphMCPContext) => {
         movedNodeIds.push(element.id);
         return newElementWith(element, position);
       }
-      if (element.type === "causcape-edge") {
-        const geometry = result.edges.get(element.id);
-        if (!geometry) {
-          return element;
-        }
-        routedEdgeIds.push(element.id);
-        return newElementWith(element, {
-          ...geometry,
-          points: geometry.points as unknown as typeof element.points,
-        } as never);
-      }
       return element;
     });
+    const positionedGraph = buildGraph(positionedElements, {
+      includeDiagnostics: true,
+    });
+    const routedEdgeIds = positionedGraph.edges
+      .filter((edge) => result.edges.has(edge.id))
+      .map((edge) => edge.id);
+    const nextElements = applyRoutedCauscapeEdges(
+      positionedElements,
+      positionedGraph,
+      result.edges,
+    );
     if (movedNodeIds.length > 0 || routedEdgeIds.length > 0) {
-      api.updateScene({
-        elements: nextElements,
-        captureUpdate: CaptureUpdateAction.IMMEDIATELY,
-      });
+      applySceneUpdate(api, nextElements);
     }
     return {
       movedNodeIds,
@@ -1622,7 +1789,12 @@ export const createGraphMCPHandlers = (ctx: GraphMCPContext) => {
 export type GraphMCPHandlers = {
   getGraph: () => Promise<GraphSnapshot>;
   validateGraph: () => Promise<{
+    metrics: GraphQualityMetrics;
     diagnostics: readonly import("@causcape/graph").Diagnostic[];
+    recommendedAction: {
+      tool: "autoLayout";
+      reason: string;
+    } | null;
   }>;
   resetCanvas: () => Promise<{ ok: true; cleared: number }>;
   searchNodes: (
@@ -1819,13 +1991,17 @@ export const registerGraphMCP = (
       {
         name: "createCauscapeEdge",
         description:
-          "Create a directed edge between causcape nodes with optional freeform label.",
+          "Create a directed, persistently bound edge between Causcape nodes with an optional relationship and label.",
         inputSchema: {
           type: "object",
           properties: {
             fromNodeId: { type: "string" },
             toNodeId: { type: "string" },
             label: { type: "string" },
+            relationship: {
+              type: "string",
+              enum: [...ARCHITECTURE_RELATIONSHIP_TYPES],
+            },
           },
           required: ["fromNodeId", "toNodeId"],
         },
