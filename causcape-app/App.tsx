@@ -790,12 +790,40 @@ const CauscapeWrapper = ({
   }, [causcapeAPI]);
 
   useEffect(() => {
-    if (causcapeAPI) {
-      flowOverlayRef.current?.update(
-        causcapeAPI.getSceneElementsIncludingDeleted(),
-        causcapeAPI.getAppState(),
-      );
+    if (!causcapeAPI) {
+      return;
     }
+
+    let active = true;
+    const syncFlowOverlay = () => {
+      if (active) {
+        flowOverlayRef.current?.update(
+          causcapeAPI.getSceneElementsIncludingDeleted() as readonly OrderedCauscapeElement[],
+          causcapeAPI.getAppState(),
+        );
+      }
+    };
+    const unsubscribeChange = causcapeAPI.onChange((elements, appState) => {
+      flowOverlayRef.current?.update(
+        elements as readonly OrderedCauscapeElement[],
+        appState,
+      );
+    });
+    const unsubscribeIncrement = causcapeAPI.onIncrement(syncFlowOverlay);
+    const unsubscribeScroll = causcapeAPI.onScrollChange(syncFlowOverlay);
+
+    syncFlowOverlay();
+    // The API mounts before async project restoration completes. Sync once
+    // that initial scene has been consumed so existing flows appear without
+    // requiring the user to edit or move the canvas first.
+    void initialStatePromiseRef.current.promise.then(syncFlowOverlay);
+
+    return () => {
+      active = false;
+      unsubscribeChange();
+      unsubscribeIncrement();
+      unsubscribeScroll();
+    };
   }, [causcapeAPI]);
 
   const onChange = (
@@ -803,7 +831,6 @@ const CauscapeWrapper = ({
     appState: AppState,
     files: BinaryFiles,
   ) => {
-    flowOverlayRef.current?.update(elements, appState);
     onProjectCanvasChange?.(elements, appState, files);
 
     if (collabAPI?.isCollaborating()) {

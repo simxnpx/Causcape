@@ -8,6 +8,7 @@ import type { StaticCanvasRenderConfig } from "@causcape/causcape/scene/types";
 import {
   drawCauscapeEdgeOnCanvas,
   drawCauscapeNodeOnCanvas,
+  getCauscapeArchitectureLayout,
   getCauscapeEdgeLabelBounds,
   getCauscapeReferenceAtPoint,
   getCauscapeNodeSize,
@@ -191,6 +192,7 @@ describe("Causcape elements", () => {
     });
     expect(rich.width).toBeGreaterThanOrEqual(sparse.width);
     expect(rich.height).toBeGreaterThan(sparse.height);
+    expect(rich.height).toBeLessThan(300);
   });
 
   it("draws architecture metadata through the canvas node renderer", () => {
@@ -223,7 +225,7 @@ describe("Causcape elements", () => {
       expect.any(Number),
     );
     expect(fillText).toHaveBeenCalledWith(
-      "✓ Healthy",
+      "● Healthy",
       expect.any(Number),
       expect.any(Number),
     );
@@ -253,11 +255,19 @@ describe("Causcape elements", () => {
         },
       ],
     });
+    const referenceRect = getCauscapeArchitectureLayout(node.causcape, {
+      width: node.width,
+      height: node.height,
+      theme: THEME.LIGHT,
+    }).metadata!.rows[0].rect;
 
     expect(
       getCauscapeReferenceAtPoint(
         node,
-        { x: node.x + 160, y: node.y + 190 },
+        {
+          x: node.x + referenceRect.x + referenceRect.width / 2,
+          y: node.y + referenceRect.y + referenceRect.height / 2,
+        },
         THEME.LIGHT,
       ),
     ).toMatchObject({

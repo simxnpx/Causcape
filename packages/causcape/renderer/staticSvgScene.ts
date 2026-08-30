@@ -206,6 +206,7 @@ const renderElementToSvg = (
         if (nodeData.isArchitecture) {
           const {
             architecturePadding: pad,
+            architectureIconSize: iconSize,
             architectureIconTileSize: iconTileSize,
             architectureIconGap: gap,
             architectureTitleFontSize: titleSize,
@@ -224,7 +225,6 @@ const renderElementToSvg = (
           const secondary = applyDarkModeFilter(nodeData.secondary, isDark);
           const accent = nodeData.kindAccent;
           const surface = isDark ? CAUSCAPE_NODE_STYLE.darkSurface : "#ffffff";
-          const panel = isDark ? "#263449" : "#fbfcfe";
           const rule = isDark
             ? CAUSCAPE_NODE_STYLE.darkRule
             : CAUSCAPE_NODE_STYLE.lightRule;
@@ -297,7 +297,7 @@ const renderElementToSvg = (
             const content = `${prefix ? `${prefix} ` : ""}${value}`;
             const width = Math.max(
               architecturePillHeight + 2,
-              content.length * 8.5 + 28,
+              content.length * 7 + 20,
             );
             rect(
               x,
@@ -306,27 +306,24 @@ const renderElementToSvg = (
               architecturePillHeight,
               `${color}15`,
               `${color}66`,
-              9,
+              12,
             );
-            text(content, x + 14, y + 22, 15, "600", color);
+            text(content, x + 10, y + 17, 12, "600", color);
             return width;
           };
 
           rect(pad, pad, iconTileSize, iconTileSize, surface, `${accent}55`, 8);
           const icon = svgRoot.ownerDocument.createElementNS(SVG_NS, "path");
-          const iconX = pad + (iconTileSize - 58) / 2;
-          const iconY = pad + (iconTileSize - 58) / 2;
+          const iconX = pad + (iconTileSize - iconSize) / 2;
+          const iconY = pad + (iconTileSize - iconSize) / 2;
+          const iconScale = iconSize / 58;
           icon.setAttribute(
             "d",
-            `M ${iconX + 7} ${
-              iconY + 10
-            } h 44 a 3 3 0 0 1 3 3 v 32 a 3 3 0 0 1 -3 3 H ${
-              iconX + 7
-            } a 3 3 0 0 1 -3 -3 V ${iconY + 13} a 3 3 0 0 1 3 -3 Z M ${
-              iconX + 4
-            } ${iconY + 19} H ${iconX + 54} M ${iconX + 10} ${iconY + 14.5} H ${
-              iconX + 11
-            }`,
+            "M 7 10 h 44 a 3 3 0 0 1 3 3 v 32 a 3 3 0 0 1 -3 3 H 7 a 3 3 0 0 1 -3 -3 V 13 a 3 3 0 0 1 3 -3 Z M 4 19 H 54 M 10 14.5 H 11",
+          );
+          icon.setAttribute(
+            "transform",
+            `translate(${iconX} ${iconY}) scale(${iconScale})`,
           );
           icon.setAttribute("fill", "none");
           icon.setAttribute("stroke", accent);
@@ -334,25 +331,36 @@ const renderElementToSvg = (
           icon.setAttribute("stroke-linejoin", "round");
           architectureGroup.appendChild(icon);
           const titleX = pad + iconTileSize + gap;
-          const titleLines = wrapCauscapeText(
-            nodeData.title,
-            Math.floor((element.width - titleX - pad) / 14),
-          );
-          text(titleLines[0], titleX, pad + 38, titleSize, "700", foreground);
-          if (titleLines[1]) {
-            text(titleLines[1], titleX, pad + 69, titleSize, "700", foreground);
-          }
           let pillX = titleX;
-          const pillY = pad + (titleLines[1] ? 80 : 58);
+          const pillY = pad;
           pillX +=
-            pill(nodeData.kindLabel ?? "Component", pillX, pillY, accent) + 10;
+            pill(nodeData.kindLabel ?? "Component", pillX, pillY, accent) + 6;
+          if (nodeData.environment) {
+            pillX +=
+              pill(nodeData.environment, pillX, pillY, secondary, "◉") + 6;
+          }
           if (nodeData.health) {
             pill(
               nodeData.health.label,
               pillX,
               pillY,
               nodeData.health.color,
-              nodeData.health.glyph,
+              "●",
+            );
+          }
+          const titleLines = wrapCauscapeText(
+            nodeData.title,
+            Math.floor((element.width - titleX - pad) / 13),
+          );
+          text(titleLines[0], titleX, pad + 55, titleSize, "700", foreground);
+          if (titleLines[1]) {
+            text(
+              titleLines[1],
+              titleX,
+              pad + 55 + lineHeight,
+              titleSize,
+              "700",
+              foreground,
             );
           }
 
@@ -394,73 +402,67 @@ const renderElementToSvg = (
             }
             cursorY += lineHeight * (descriptionLines[1] ? 2 : 1);
           }
-          if (nodeData.environment || nodeData.references.length > 0) {
+          if (nodeData.references.length > 0) {
             cursorY += sectionGap;
-            const rows = [
-              ...(nodeData.environment
-                ? [
-                    {
-                      label: "Environment",
-                      value: nodeData.environment,
-                      color: foreground,
-                    },
-                  ]
-                : []),
-              ...nodeData.references.map((reference) => ({
-                label:
-                  reference.type === "repository"
-                    ? "Repository"
-                    : reference.type === "dashboard"
-                    ? "Dashboard"
-                    : reference.type === "documentation"
-                    ? "Documentation"
-                    : "Runbook",
-                value: getCauscapeReferenceLabel(reference),
-                color: accent,
-                url: reference.url,
-              })),
-            ];
+            const rows = nodeData.references.map((reference) => ({
+              value: getCauscapeReferenceLabel(reference),
+              url: reference.url,
+            }));
+            const columnGap = 6;
+            const columnCount = Math.min(2, rows.length);
+            const rowCount = Math.ceil(rows.length / columnCount);
+            const rowWidth =
+              (contentWidth - columnGap * (columnCount - 1)) / columnCount;
             const panelHeight =
-              metadataPanelPadding * 2 + rows.length * metadataRowHeight;
-            rect(pad, cursorY, contentWidth, panelHeight, panel, rule, 12);
+              metadataPanelPadding * 2 + rowCount * metadataRowHeight;
             rows.forEach((row, index) => {
+              const column = index % columnCount;
+              const rowIndex = Math.floor(index / columnCount);
+              const rowX = pad + column * (rowWidth + columnGap);
               const rowTop =
-                cursorY + metadataPanelPadding + index * metadataRowHeight;
-              const baseline = rowTop + 30;
-              text(row.label, pad + 52, baseline, 16, "500", secondary);
-              if ("url" in row) {
-                const anchor = svgRoot.ownerDocument.createElementNS(
-                  SVG_NS,
-                  "a",
-                );
-                anchor.setAttribute("href", normalizeLink(toValidURL(row.url)));
-                const value = svgRoot.ownerDocument.createElementNS(
-                  SVG_NS,
-                  "text",
-                );
-                value.setAttribute("x", `${pad + 230}`);
-                value.setAttribute("y", `${baseline}`);
-                value.setAttribute(
-                  "font-family",
-                  "system-ui, -apple-system, sans-serif",
-                );
-                value.setAttribute("font-size", "16");
-                value.setAttribute("font-weight", "500");
-                value.setAttribute("fill", accent);
-                value.textContent = row.value;
-                anchor.appendChild(value);
-                architectureGroup.appendChild(anchor);
-              } else {
-                text(row.value, pad + 230, baseline, 16, "500", row.color);
-              }
-              if (index < rows.length - 1) {
-                drawRule(rowTop + metadataRowHeight);
-              }
+                cursorY + metadataPanelPadding + rowIndex * metadataRowHeight;
+              const baseline = rowTop + 24;
+              rect(
+                rowX,
+                rowTop,
+                rowWidth,
+                metadataRowHeight - 2,
+                `${accent}0d`,
+                `${accent}38`,
+                9,
+              );
+              const dot = svgRoot.ownerDocument.createElementNS(
+                SVG_NS,
+                "circle",
+              );
+              dot.setAttribute("cx", `${rowX + 16}`);
+              dot.setAttribute("cy", `${rowTop + 17}`);
+              dot.setAttribute("r", "3");
+              dot.setAttribute("fill", accent);
+              architectureGroup.appendChild(dot);
+              const anchor = svgRoot.ownerDocument.createElementNS(SVG_NS, "a");
+              anchor.setAttribute("href", normalizeLink(toValidURL(row.url)));
+              const value = svgRoot.ownerDocument.createElementNS(
+                SVG_NS,
+                "text",
+              );
+              value.setAttribute("x", `${rowX + 34}`);
+              value.setAttribute("y", `${baseline}`);
+              value.setAttribute(
+                "font-family",
+                "system-ui, -apple-system, sans-serif",
+              );
+              value.setAttribute("font-size", "12");
+              value.setAttribute("font-weight", "600");
+              value.setAttribute("fill", accent);
+              value.textContent = row.value;
+              anchor.appendChild(value);
+              architectureGroup.appendChild(anchor);
             });
             cursorY += panelHeight;
           }
           if (nodeData.technologies.length > 0) {
-            if (nodeData.environment || nodeData.references.length > 0) {
+            if (nodeData.references.length > 0) {
               drawRule(cursorY + sectionRuleGap);
               cursorY += sectionRuleGap + 1 + sectionRuleGap;
             } else {

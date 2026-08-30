@@ -25,6 +25,12 @@ type CauscapeEngineeringToolsProps = {
 const metadataValueLabel = (value: MetadataValue) =>
   typeof value === "object" ? value.value : String(value);
 
+const SHAPE_GROUPS = [
+  { id: "components", label: "Components" },
+  { id: "boundaries", label: "Boundaries" },
+  { id: "flows", label: "Flows" },
+] as const;
+
 export const CauscapeEngineeringTools = ({
   selectedObject,
   onAddShape,
@@ -103,25 +109,45 @@ export const CauscapeEngineeringTools = ({
           className="causcape-engineering-tools__popover causcape-engineering-tools__palette"
           aria-label="Prepared engineering shapes"
         >
-          {PREPARED_ENGINEERING_SHAPES.map((shape) => (
-            <button
-              type="button"
-              key={shape.kind}
-              onClick={() => {
-                onAddShape(shape.kind);
-                setShowShapes(false);
-              }}
+          <header className="causcape-engineering-tools__palette-header">
+            <strong>Engineering library</strong>
+            <span>Place a component or describe a flow</span>
+          </header>
+          {SHAPE_GROUPS.map((group) => (
+            <section
+              className="causcape-engineering-tools__palette-group"
+              key={group.id}
             >
-              <span
-                className={`causcape-engineering-tools__swatch causcape-engineering-tools__swatch--${shape.elementType} causcape-engineering-tools__swatch--${shape.kind}`}
-                style={{
-                  borderColor: shape.strokeColor,
-                  background: shape.backgroundColor,
-                }}
-                aria-hidden="true"
-              />
-              {shape.label}
-            </button>
+              <h3>{group.label}</h3>
+              <div>
+                {PREPARED_ENGINEERING_SHAPES.filter(
+                  (shape) => shape.category === group.id,
+                ).map((shape) => (
+                  <button
+                    type="button"
+                    key={shape.kind}
+                    aria-label={shape.label}
+                    onClick={() => {
+                      onAddShape(shape.kind);
+                      setShowShapes(false);
+                    }}
+                  >
+                    <span
+                      className={`causcape-engineering-tools__swatch causcape-engineering-tools__swatch--${shape.elementType} causcape-engineering-tools__swatch--${shape.kind}`}
+                      style={{
+                        borderColor: shape.strokeColor,
+                        background: shape.backgroundColor,
+                      }}
+                      aria-hidden="true"
+                    />
+                    <span className="causcape-engineering-tools__shape-copy">
+                      <strong>{shape.label}</strong>
+                      <span>{shape.description}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </section>
           ))}
         </div>
       ) : null}

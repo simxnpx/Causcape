@@ -55,6 +55,18 @@ describe("CauscapeNodeOverlay", () => {
       href: "https://grafana.example.com/booking",
       textContent: "Latency dashboard",
     });
+    expect(
+      card?.querySelector(
+        ".causcape-node-overlay-card__context-chip--environment",
+      ),
+    ).toHaveTextContent("prod-eu-west-1");
+    expect(
+      card?.querySelector(".causcape-node-overlay-card__references"),
+    ).toHaveAttribute("aria-label", "Component references");
+    expect(
+      card?.querySelector(".causcape-node-overlay-card__metadata"),
+    ).toBeNull();
+    expect(card).not.toHaveTextContent("Environmentprod-eu-west-1");
   });
 
   it("omits optional sections without changing the node interface", () => {
@@ -80,8 +92,8 @@ describe("CauscapeNodeOverlay", () => {
       container.querySelector(".causcape-node-overlay-card__description"),
     ).toBeNull();
     expect(
-      container.querySelector(".causcape-node-overlay-card__metadata"),
-    ).toBeNull();
+      container.querySelector(".causcape-node-overlay-card__context"),
+    ).toHaveTextContent("Datastore");
     expect(
       container.querySelector(".causcape-node-overlay-card__technologies"),
     ).toBeNull();

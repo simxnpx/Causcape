@@ -58,6 +58,13 @@ const MetadataIcon = ({ kind }: Readonly<{ kind: CauscapeMetadataIcon }>) => {
   return METADATA_ICONS[kind];
 };
 
+const REFERENCE_TYPE_LABELS = {
+  repository: "Repository",
+  dashboard: "Dashboard",
+  documentation: "Documentation",
+  runbook: "Runbook",
+} as const;
+
 export const CauscapeNodeOverlay = ({
   element,
   theme,
@@ -89,23 +96,33 @@ export const CauscapeNodeOverlay = ({
           <ArchitectureIcon kind={data.kind as CauscapeArchitectureNodeKind} />
         </div>
         <div className="causcape-node-overlay-card__heading">
-          <h3>{data.title || "Untitled component"}</h3>
-          <div className="causcape-node-overlay-card__pills">
-            <span className="causcape-node-overlay-card__pill causcape-node-overlay-card__pill--kind">
+          <div className="causcape-node-overlay-card__context">
+            <span className="causcape-node-overlay-card__context-chip causcape-node-overlay-card__context-chip--kind">
               {data.kindLabel ?? "Component"}
             </span>
+            {data.environment && (
+              <span className="causcape-node-overlay-card__context-chip causcape-node-overlay-card__context-chip--environment">
+                <MetadataIcon kind="environment" />
+                {data.environment}
+              </span>
+            )}
             {data.health && (
               <span
-                className="causcape-node-overlay-card__pill"
+                className="causcape-node-overlay-card__context-chip causcape-node-overlay-card__context-chip--health"
+                data-health={data.health.value}
                 style={{
                   ["--causcape-pill-color" as string]: data.health.color,
                 }}
               >
-                <span aria-hidden="true">{data.health.glyph}</span>
+                <span
+                  className="causcape-node-overlay-card__health-dot"
+                  aria-hidden="true"
+                />
                 {data.health.label}
               </span>
             )}
           </div>
+          <h3>{data.title || "Untitled component"}</h3>
         </div>
       </header>
 
@@ -115,63 +132,47 @@ export const CauscapeNodeOverlay = ({
         </p>
       )}
 
-      {(data.environment || data.references.length > 0) && (
-        <section className="causcape-node-overlay-card__metadata">
-          {data.environment && (
-            <div className="causcape-node-overlay-card__metadata-row">
-              <MetadataIcon kind="environment" />
-              <span className="causcape-node-overlay-card__metadata-label">
-                Environment
-              </span>
-              <span className="causcape-node-overlay-card__metadata-value causcape-node-overlay-card__metadata-value--plain">
-                {data.environment}
-              </span>
-            </div>
+      {(data.technologies.length > 0 || data.references.length > 0) && (
+        <footer className="causcape-node-overlay-card__footer">
+          {data.technologies.length > 0 && (
+            <section className="causcape-node-overlay-card__technologies">
+              {data.technologies.map((technology) => (
+                <span
+                  className="causcape-node-overlay-card__technology"
+                  key={technology}
+                >
+                  {technology}
+                </span>
+              ))}
+            </section>
           )}
-          {data.references.map((reference) => (
-            <div
-              className="causcape-node-overlay-card__metadata-row"
-              key={`${reference.type}:${reference.url}`}
+          {data.references.length > 0 && (
+            <nav
+              className="causcape-node-overlay-card__references"
+              aria-label="Component references"
             >
-              <MetadataIcon kind={reference.type} />
-              <span className="causcape-node-overlay-card__metadata-label">
-                {reference.type === "repository"
-                  ? "Repository"
-                  : reference.type === "dashboard"
-                  ? "Dashboard"
-                  : reference.type === "documentation"
-                  ? "Documentation"
-                  : "Runbook"}
-              </span>
-              <a
-                className="causcape-node-overlay-card__metadata-value"
-                href={reference.url}
-                target="_blank"
-                rel="noreferrer"
-              >
-                {getCauscapeReferenceLabel(reference)}
-              </a>
-            </div>
-          ))}
-        </section>
-      )}
-
-      {data.technologies.length > 0 && (
-        <>
-          {(data.environment || data.references.length > 0) && (
-            <div className="causcape-node-overlay-card__section-rule" />
+              {data.references.map((reference) => {
+                const label = getCauscapeReferenceLabel(reference);
+                const typeLabel = REFERENCE_TYPE_LABELS[reference.type];
+                return (
+                  <a
+                    className="causcape-node-overlay-card__reference"
+                    data-reference-type={reference.type}
+                    href={reference.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label={`${typeLabel}: ${label}`}
+                    title={`${typeLabel}: ${label}`}
+                    key={`${reference.type}:${reference.url}`}
+                  >
+                    <MetadataIcon kind={reference.type} />
+                    <span>{label}</span>
+                  </a>
+                );
+              })}
+            </nav>
           )}
-          <section className="causcape-node-overlay-card__technologies">
-            {data.technologies.map((technology) => (
-              <span
-                className="causcape-node-overlay-card__technology"
-                key={technology}
-              >
-                {technology}
-              </span>
-            ))}
-          </section>
-        </>
+        </footer>
       )}
     </article>
   );

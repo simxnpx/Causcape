@@ -64,6 +64,9 @@ describe("CauscapeEngineeringTools", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Engineering shapes" }));
+    expect(screen.getByRole("heading", { name: "Components" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Flows" })).toBeVisible();
+    expect(screen.getByText("Animated one-way traffic")).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Service" }));
 
     expect(onAddShape).toHaveBeenCalledWith("service");

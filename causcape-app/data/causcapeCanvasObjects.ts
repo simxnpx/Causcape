@@ -22,6 +22,8 @@ export type PreparedEngineeringShapeKind =
 type PreparedEngineeringShape = {
   readonly kind: PreparedEngineeringShapeKind;
   readonly label: string;
+  readonly description: string;
+  readonly category: "components" | "boundaries" | "flows";
   readonly elementType: "rectangle" | "ellipse" | "diamond" | "arrow";
   readonly width: number;
   readonly height: number;
@@ -39,6 +41,8 @@ export const PREPARED_ENGINEERING_SHAPES: readonly PreparedEngineeringShape[] =
     {
       kind: "service",
       label: "Service",
+      description: "API, worker, or application",
+      category: "components",
       elementType: "rectangle",
       width: 220,
       height: 100,
@@ -48,6 +52,8 @@ export const PREPARED_ENGINEERING_SHAPES: readonly PreparedEngineeringShape[] =
     {
       kind: "database",
       label: "Database",
+      description: "Persistent data store",
+      category: "components",
       elementType: "ellipse",
       width: 210,
       height: 110,
@@ -57,6 +63,8 @@ export const PREPARED_ENGINEERING_SHAPES: readonly PreparedEngineeringShape[] =
     {
       kind: "queue",
       label: "Queue / Topic",
+      description: "Asynchronous message channel",
+      category: "components",
       elementType: "rectangle",
       width: 220,
       height: 90,
@@ -67,6 +75,8 @@ export const PREPARED_ENGINEERING_SHAPES: readonly PreparedEngineeringShape[] =
     {
       kind: "external-system",
       label: "External System",
+      description: "Third-party dependency",
+      category: "components",
       elementType: "diamond",
       width: 220,
       height: 130,
@@ -76,6 +86,8 @@ export const PREPARED_ENGINEERING_SHAPES: readonly PreparedEngineeringShape[] =
     {
       kind: "actor",
       label: "User / Actor",
+      description: "Human or external caller",
+      category: "components",
       elementType: "ellipse",
       width: 180,
       height: 110,
@@ -85,6 +97,8 @@ export const PREPARED_ENGINEERING_SHAPES: readonly PreparedEngineeringShape[] =
     {
       kind: "trust-boundary",
       label: "Trust Boundary",
+      description: "Security or ownership boundary",
+      category: "boundaries",
       elementType: "rectangle",
       width: 300,
       height: 180,
@@ -95,6 +109,8 @@ export const PREPARED_ENGINEERING_SHAPES: readonly PreparedEngineeringShape[] =
     {
       kind: "resource",
       label: "Generic Resource",
+      description: "Any supporting component",
+      category: "components",
       elementType: "rectangle",
       width: 220,
       height: 100,
@@ -104,6 +120,8 @@ export const PREPARED_ENGINEERING_SHAPES: readonly PreparedEngineeringShape[] =
     {
       kind: "flow",
       label: "Flow / Packets",
+      description: "Animated one-way traffic",
+      category: "flows",
       elementType: "arrow",
       width: 260,
       height: 0,
@@ -114,6 +132,8 @@ export const PREPARED_ENGINEERING_SHAPES: readonly PreparedEngineeringShape[] =
     {
       kind: "flow-bidirectional",
       label: "Bidirectional flow",
+      description: "Request and response traffic",
+      category: "flows",
       elementType: "arrow",
       width: 260,
       height: 0,
@@ -127,6 +147,8 @@ export const PREPARED_ENGINEERING_SHAPES: readonly PreparedEngineeringShape[] =
     {
       kind: "flow-interrupted",
       label: "Interrupted flow",
+      description: "Failed or blocked traffic",
+      category: "flows",
       elementType: "arrow",
       width: 260,
       height: 0,

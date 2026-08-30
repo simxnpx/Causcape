@@ -126,26 +126,100 @@
 }
 
 .causcape-engineering-tools__palette {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  width: min(25rem, calc(100vw - 2rem));
+  padding: 0.8rem;
+
+  .causcape-engineering-tools__palette-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding: 0.1rem 0.15rem 0.2rem;
+
+    strong {
+      font-size: 0.85rem;
+    }
+
+    span {
+      color: #77727f;
+      font-size: 0.7rem;
+      font-weight: 500;
+    }
+  }
+
+  .causcape-engineering-tools__palette-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+
+    h3 {
+      margin: 0;
+      padding: 0 0.15rem;
+      color: #77727f;
+      font-size: 0.66rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    > div {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.3rem;
+    }
+  }
 
   button {
     display: flex;
     align-items: center;
-    gap: 0.55rem;
-    min-height: 2.6rem;
-    padding: 0.45rem 0.55rem;
-    border: 0;
-    border-radius: 0.45rem;
-    background: transparent;
+    gap: 0.65rem;
+    min-height: 3.45rem;
+    padding: 0.55rem 0.65rem;
+    border: 1px solid transparent;
+    border-radius: 0.65rem;
+    background: #faf9fc;
     color: inherit;
     text-align: left;
     cursor: pointer;
+    transition: border-color 120ms ease, background-color 120ms ease,
+      transform 120ms ease;
 
     &:hover {
-      background: #f1f0f4;
+      transform: translateY(-1px);
+      border-color: #d7d5ff;
+      background: #f5f4ff;
     }
+
+    &:focus-visible {
+      outline: 2px solid #6965db;
+      outline-offset: 1px;
+    }
+  }
+}
+
+.causcape-engineering-tools__shape-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.12rem;
+
+  strong,
+  > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  strong {
+    font-size: 0.75rem;
+  }
+
+  > span {
+    color: #77727f;
+    font-size: 0.65rem;
+    font-weight: 500;
   }
 }
 
@@ -312,7 +386,8 @@
 }
 
 .theme--dark .causcape-engineering-tools,
-.dark .causcape-engineering-tools {
+.dark .causcape-engineering-tools,
+.causcape-canvas-region:has(.causcape.theme--dark) .causcape-engineering-tools {
   color: #ecebf0;
 
   .causcape-engineering-tools__buttons,
@@ -341,6 +416,23 @@
 
   .causcape-engineering-tools__palette button:hover {
     background: #34323d;
+  }
+
+  .causcape-engineering-tools__palette {
+    .causcape-engineering-tools__palette-header span,
+    .causcape-engineering-tools__palette-group h3,
+    .causcape-engineering-tools__shape-copy > span {
+      color: #aaa6b2;
+    }
+
+    button {
+      background: #2b2a31;
+
+      &:hover {
+        border-color: #56516f;
+        background: #34323d;
+      }
+    }
   }
 
   input {

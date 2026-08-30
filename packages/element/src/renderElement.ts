@@ -701,39 +701,51 @@ const drawArchitectureCard = (
     accent,
   );
 
-  context.font = `700 ${titleFontSize}px system-ui, -apple-system, sans-serif`;
-  context.fillStyle = foreground;
-  const titleLines = wrapCauscapeText(
-    data.title,
-    Math.floor(titleMaxWidth / 14),
-  );
-  context.fillText(titleLines[0], titleX, padding + 38);
-  if (titleLines[1]) {
-    context.fillText(titleLines[1], titleX, padding + 69);
-  }
-
   context.font = `600 ${CAUSCAPE_NODE_STYLE.kindFontSize}px system-ui, -apple-system, sans-serif`;
   let pillX = titleX;
-  const pillY = padding + (titleLines[1] ? 80 : 58);
+  const pillY = padding;
   pillX +=
     drawPill(context, data.kindLabel ?? "Component", pillX, pillY, {
       color: accent,
       background: `${accent}15`,
       border: `${accent}66`,
       height: architecturePillHeight,
-      radius: 9,
-      horizontalPadding: 14,
-    }) + 10;
+      radius: 12,
+      horizontalPadding: 10,
+    }) + 6;
+  if (data.environment) {
+    pillX +=
+      drawPill(context, data.environment, pillX, pillY, {
+        color: secondary,
+        background: panel,
+        border: rule,
+        prefix: "◉",
+        height: architecturePillHeight,
+        radius: 12,
+        horizontalPadding: 10,
+      }) + 6;
+  }
   if (data.health) {
     drawPill(context, data.health.label, pillX, pillY, {
       color: data.health.color,
       background: `${data.health.color}15`,
       border: `${data.health.color}66`,
-      prefix: data.health.glyph,
+      prefix: "●",
       height: architecturePillHeight,
-      radius: 9,
-      horizontalPadding: 14,
+      radius: 12,
+      horizontalPadding: 10,
     });
+  }
+
+  context.font = `700 ${titleFontSize}px system-ui, -apple-system, sans-serif`;
+  context.fillStyle = foreground;
+  const titleLines = wrapCauscapeText(
+    data.title,
+    Math.floor(titleMaxWidth / 13),
+  );
+  context.fillText(titleLines[0], titleX, padding + 55);
+  if (titleLines[1]) {
+    context.fillText(titleLines[1], titleX, padding + 55 + lineHeight);
   }
 
   const drawRule = (y: number) => {
@@ -760,75 +772,55 @@ const drawArchitectureCard = (
     cursorY += lineHeight * (descriptionLines[1] ? 2 : 1);
   }
 
-  if (data.environment || data.references.length > 0) {
+  if (data.references.length > 0) {
     cursorY += sectionGap;
-    const rows = [
-      ...(data.environment
-        ? [
-            {
-              label: "Environment",
-              value: data.environment,
-              icon: "environment" as const,
-            },
-          ]
-        : []),
-      ...data.references.map((reference) => ({
-        label:
-          reference.type === "repository"
-            ? "Repository"
-            : reference.type === "dashboard"
-            ? "Dashboard"
-            : reference.type === "documentation"
-            ? "Documentation"
-            : "Runbook",
-        value: getCauscapeReferenceLabel(reference),
-        icon: reference.type,
-      })),
-    ];
-    const panelHeight =
-      metadataPanelPadding * 2 + rows.length * metadataRowHeight;
-    drawRoundedRect(context, padding, cursorY, contentWidth, panelHeight, 12);
-    context.fillStyle = panel;
-    context.fill();
-    context.strokeStyle = rule;
-    context.lineWidth = 1;
-    context.stroke();
+    const rows = data.references.map((reference) => ({
+      value: getCauscapeReferenceLabel(reference),
+      icon: reference.type,
+    }));
+    const columnGap = 6;
+    const columnCount = Math.min(2, rows.length);
+    const rowCount = Math.ceil(rows.length / columnCount);
+    const rowWidth =
+      (contentWidth - columnGap * (columnCount - 1)) / columnCount;
+    const panelHeight = metadataPanelPadding * 2 + rowCount * metadataRowHeight;
 
-    context.font = `500 ${CAUSCAPE_NODE_STYLE.bodyFontSize}px system-ui, -apple-system, sans-serif`;
+    context.font = `600 ${CAUSCAPE_NODE_STYLE.badgeFontSize}px system-ui, -apple-system, sans-serif`;
     rows.forEach((row, index) => {
-      const rowTop = cursorY + metadataPanelPadding + index * metadataRowHeight;
-      const baseline = rowTop + 30;
+      const column = index % columnCount;
+      const rowIndex = Math.floor(index / columnCount);
+      const rowX = padding + column * (rowWidth + columnGap);
+      const rowTop =
+        cursorY + metadataPanelPadding + rowIndex * metadataRowHeight;
+      const baseline = rowTop + 24;
+      drawRoundedRect(
+        context,
+        rowX,
+        rowTop,
+        rowWidth,
+        metadataRowHeight - 2,
+        9,
+      );
+      context.fillStyle = `${accent}0d`;
+      context.fill();
+      context.strokeStyle = `${accent}38`;
+      context.lineWidth = 1;
+      context.stroke();
       drawArchitectureMetadataIcon(
         context,
         row.icon,
-        padding + 16,
-        baseline - 16,
+        rowX + 9,
+        baseline - 15,
         accent,
       );
-      context.fillStyle = secondary;
-      context.font = `500 ${CAUSCAPE_NODE_STYLE.bodyFontSize}px system-ui, -apple-system, sans-serif`;
-      context.fillText(row.label, padding + 52, baseline);
-      if (row.label !== "Environment") {
-        context.fillStyle = accent;
-        context.fillText(row.value, padding + 230, baseline);
-      } else {
-        context.fillStyle = foreground;
-        context.fillText(row.value, padding + 230, baseline);
-      }
-      if (index < rows.length - 1) {
-        context.beginPath();
-        context.moveTo(padding + 16, rowTop + metadataRowHeight);
-        context.lineTo(padding + contentWidth - 16, rowTop + metadataRowHeight);
-        context.strokeStyle = rule;
-        context.lineWidth = 1;
-        context.stroke();
-      }
+      context.fillStyle = accent;
+      context.fillText(row.value, rowX + 34, baseline);
     });
     cursorY += panelHeight;
   }
 
   if (data.technologies.length > 0) {
-    if (data.environment || data.references.length > 0) {
+    if (data.references.length > 0) {
       drawRule(cursorY + sectionRuleGap);
       cursorY += sectionRuleGap + 1 + sectionRuleGap;
     } else {

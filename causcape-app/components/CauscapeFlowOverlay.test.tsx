@@ -2,7 +2,10 @@ import { act, render, screen } from "@testing-library/react";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-import { convertToCauscapeElements } from "@causcape/element";
+import {
+  convertToCauscapeElements,
+  newCauscapeEdgeElement,
+} from "@causcape/element";
 
 import type { CauscapeElementSkeleton } from "@causcape/element";
 import type { OrderedCauscapeElement } from "@causcape/element/types";
@@ -48,14 +51,16 @@ describe("CauscapeFlowOverlay", () => {
       height: 600,
     });
 
-    expect(paths).toEqual([
-      {
-        id: "flow-arrow",
-        color: "#1971c2",
-        d: "M 31 21 L 230 20 L 429 219",
-        packetCount: 3,
-      },
-    ]);
+    expect(paths).toHaveLength(1);
+    expect(paths[0]).toMatchObject({
+      id: "flow-arrow",
+      color: "#1971c2",
+      d: "M 31 21 L 230 20 L 429 219",
+      packetCount: 3,
+      relationship: "flow",
+      variant: "generic",
+      status: "active",
+    });
 
     const reverseOnly = arrow({
       startArrowhead: "arrow",
@@ -162,6 +167,135 @@ describe("CauscapeFlowOverlay", () => {
     ).toHaveAttribute("path", path.reverseD);
   });
 
+  it.each([
+    ["calls", "synchronous", "#2563eb", "capsule", false],
+    ["depends-on", "dependency", "#64748b", "diamond", false],
+    ["reads", "data", "#7c3aed", "dot", true],
+    ["writes", "data", "#7c3aed", "dot", false],
+    ["publishes", "asynchronous", "#d97706", "dot", false],
+    ["subscribes", "asynchronous", "#d97706", "dot", true],
+  ] as const)(
+    "gives typed %s relationships a semantic flow presentation",
+    (relationship, variant, color, packetVariant, reversesDirection) => {
+      const baseEdge = newCauscapeEdgeElement({
+        id: `${relationship}-edge`,
+        fromNodeId: "source",
+        toNodeId: "target",
+        label: "orders.v1",
+        x: 10,
+        y: 20,
+        points: [
+          [0, 0],
+          [200, 0],
+        ],
+      });
+      const edge = {
+        ...baseEdge,
+        causcape: { ...baseEdge.causcape, relationship },
+      } as OrderedCauscapeElement;
+
+      const [path] = buildEngineeringFlowPaths([edge], {
+        zoom: { value: 1 },
+        scrollX: 0,
+        scrollY: 0,
+        width: 800,
+        height: 600,
+      });
+
+      expect(path).toMatchObject({
+        id: `${relationship}-edge`,
+        relationship,
+        variant,
+        color,
+        packetVariant,
+        status: "active",
+        label: `${relationship.replace("-", " ")} · orders.v1`,
+      });
+      expect(path.d).toBe(
+        reversesDirection ? "M 210 20 L 10 20" : "M 10 20 L 210 20",
+      );
+    },
+  );
+
+  it("renders a designed track, arrow marker, and semantic label for typed edges", () => {
+    render(
+      <CauscapeFlowOverlay
+        paths={[
+          {
+            id: "typed-call",
+            color: "#2563eb",
+            d: "M 20 40 L 220 40",
+            packetCount: 2,
+            relationship: "calls",
+            variant: "synchronous",
+            packetVariant: "capsule",
+            status: "active",
+            label: "calls · POST /checkout",
+            labelAnchor: { x: 120, y: 22 },
+          },
+        ]}
+      />,
+    );
+
+    const overlay = screen.getByTestId("causcape-flow-overlay");
+    expect(
+      overlay.querySelector("[data-flow-track='typed-call']"),
+    ).toHaveAttribute("marker-end");
+    expect(
+      overlay.querySelector("[data-flow-label='typed-call']"),
+    ).toHaveTextContent("calls · POST /checkout");
+  });
+
+  it("supports degraded and interrupted bidirectional typed flows", () => {
+    const baseEdge = newCauscapeEdgeElement({
+      id: "degraded-edge",
+      fromNodeId: "source",
+      toNodeId: "target",
+      x: 0,
+      y: 0,
+      points: [
+        [0, 0],
+        [240, 0],
+      ],
+    });
+    const degraded = {
+      ...baseEdge,
+      causcape: {
+        ...baseEdge.causcape,
+        relationship: "calls",
+        status: "degraded",
+        direction: "bidirectional",
+      },
+    } as OrderedCauscapeElement;
+    const interrupted = {
+      ...degraded,
+      id: "interrupted-edge",
+      causcape: { ...degraded.causcape, status: "interrupted" },
+    } as OrderedCauscapeElement;
+
+    const [degradedPath, interruptedPath] = buildEngineeringFlowPaths(
+      [degraded, interrupted],
+      {
+        zoom: { value: 1 },
+        scrollX: 0,
+        scrollY: 0,
+        width: 800,
+        height: 600,
+      },
+    );
+
+    expect(degradedPath).toMatchObject({
+      status: "degraded",
+      color: "#d97706",
+      reverseD: "M 240 0 L 0 0",
+    });
+    expect(interruptedPath).toMatchObject({
+      status: "interrupted",
+      color: "#dc2626",
+      interruption: { x: 120, y: 0 },
+    });
+  });
+
   it("retains live paths supplied through its frame-coalesced update handle", () => {
     const callbacks: FrameRequestCallback[] = [];
     vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
@@ -187,6 +321,35 @@ describe("CauscapeFlowOverlay", () => {
         .getByTestId("causcape-flow-overlay")
         .querySelectorAll("[data-flow-packet='flow-arrow']"),
     ).toHaveLength(2);
+  });
+
+  it("flushes a pending update when the browser pauses animation frames", () => {
+    vi.useFakeTimers();
+    const cancelAnimationFrame = vi
+      .spyOn(window, "cancelAnimationFrame")
+      .mockImplementation(() => undefined);
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation(() => 42);
+    const overlayRef = createRef<CauscapeFlowOverlayHandle>();
+    render(<CauscapeFlowOverlay ref={overlayRef} />);
+
+    act(() => {
+      overlayRef.current?.update([arrow()], {
+        zoom: { value: 1 },
+        scrollX: 0,
+        scrollY: 0,
+        width: 800,
+        height: 600,
+      });
+      vi.advanceTimersByTime(120);
+    });
+
+    expect(
+      screen
+        .getByTestId("causcape-flow-overlay")
+        .querySelectorAll("[data-flow-packet='flow-arrow']"),
+    ).toHaveLength(2);
+    expect(cancelAnimationFrame).toHaveBeenCalledWith(42);
+    vi.useRealTimers();
   });
 
   it("ignores deleted arrows, regular shapes, and offscreen flows", () => {
