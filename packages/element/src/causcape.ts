@@ -1,4 +1,4 @@
-import { THEME } from "@excalidraw/common";
+import { THEME } from "@causcape/common";
 
 import type {
   CauscapeArchitectureNodeKind,
@@ -8,8 +8,8 @@ import type {
   CauscapeNodeKind,
   CauscapeReference,
   CauscapeReferenceType,
-  ExcalidrawCauscapeEdgeElement,
-  ExcalidrawCauscapeNodeElement,
+  CauscapeEdgeElement,
+  CauscapeNodeElement,
   GithubRef,
   Theme,
 } from "./types";
@@ -215,7 +215,7 @@ export const normalizeCauscapeNodeData = (
 
 export const normalizeCauscapeEdgeData = (
   value: unknown,
-): ExcalidrawCauscapeEdgeElement["causcape"] => {
+): CauscapeEdgeElement["causcape"] => {
   const raw = isRecord(value) ? value : {};
   return {
     ...raw,
@@ -1054,10 +1054,10 @@ export const getCauscapeNodeSize = (value: unknown): CauscapeNodeSize => {
 /**
  * Returns the architecture reference painted under a scene point. Keeping
  * this geometry next to the renderer lets the editor make the same pixels
- * interactive without introducing DOM children into the Excalidraw scene.
+ * interactive without introducing DOM children into the Causcape scene.
  */
 export const getCauscapeReferenceAtPoint = (
-  element: ExcalidrawCauscapeNodeElement,
+  element: CauscapeNodeElement,
   point: Readonly<{ x: number; y: number }>,
   theme: Theme,
 ): CauscapeReference | null => {

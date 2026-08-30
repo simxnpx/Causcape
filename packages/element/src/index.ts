@@ -1,11 +1,11 @@
-import { toIterable } from "@excalidraw/common";
+import { toIterable } from "@causcape/common";
 
 import { isNonDeletedElement } from "./elementHelpers";
 import { isInvisiblySmallElement } from "./sizeHelpers";
 
 import type {
-  ExcalidrawElement,
-  NonDeletedExcalidrawElement,
+  CauscapeElement,
+  NonDeletedCauscapeElement,
   ElementsMapOrArray,
 } from "./types";
 
@@ -14,7 +14,7 @@ export { getNonDeletedElements, isNonDeletedElement } from "./elementHelpers";
 /**
  * @deprecated unsafe, use hashElementsVersion instead
  */
-export const getSceneVersion = (elements: readonly ExcalidrawElement[]) =>
+export const getSceneVersion = (elements: readonly CauscapeElement[]) =>
   elements.reduce((acc, el) => acc + el.version, 0);
 
 /**
@@ -43,10 +43,10 @@ export const hashString = (s: string): number => {
 };
 
 export const getVisibleElements = (
-  elements: readonly ExcalidrawElement[],
-): readonly NonDeletedExcalidrawElement[] =>
+  elements: readonly CauscapeElement[],
+): readonly NonDeletedCauscapeElement[] =>
   elements.filter(
-    (el): el is NonDeletedExcalidrawElement =>
+    (el): el is NonDeletedCauscapeElement =>
       isNonDeletedElement(el) && !isInvisiblySmallElement(el),
   );
 

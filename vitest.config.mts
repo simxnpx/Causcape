@@ -17,79 +17,79 @@ export default defineConfig({
         replacement: path.resolve(__dirname, "./packages/causcape-core/src/$1"),
       },
       {
-        find: /^@excalidraw\/common$/,
+        find: /^@causcape\/common$/,
         replacement: path.resolve(__dirname, "./packages/common/src/index.ts"),
       },
       {
-        find: /^@excalidraw\/common\/(.*?)/,
+        find: /^@causcape\/common\/(.*?)/,
         replacement: path.resolve(__dirname, "./packages/common/src/$1"),
       },
       {
-        find: /^@excalidraw\/element$/,
+        find: /^@causcape\/element$/,
         replacement: path.resolve(__dirname, "./packages/element/src/index.ts"),
       },
       {
-        find: /^@excalidraw\/element\/(.*?)/,
+        find: /^@causcape\/element\/(.*?)/,
         replacement: path.resolve(__dirname, "./packages/element/src/$1"),
       },
       {
-        find: /^@excalidraw\/excalidraw$/,
-        replacement: path.resolve(__dirname, "./packages/excalidraw/index.tsx"),
+        find: /^@causcape\/causcape$/,
+        replacement: path.resolve(__dirname, "./packages/causcape/index.tsx"),
       },
       {
-        find: /^@excalidraw\/excalidraw\/(.*?)/,
-        replacement: path.resolve(__dirname, "./packages/excalidraw/$1"),
+        find: /^@causcape\/causcape\/(.*?)/,
+        replacement: path.resolve(__dirname, "./packages/causcape/$1"),
       },
       {
-        find: /^@excalidraw\/math$/,
+        find: /^@causcape\/math$/,
         replacement: path.resolve(__dirname, "./packages/math/src/index.ts"),
       },
       {
-        find: /^@excalidraw\/math\/(.*?)/,
+        find: /^@causcape\/math\/(.*?)/,
         replacement: path.resolve(__dirname, "./packages/math/src/$1"),
       },
       {
-        find: /^@excalidraw\/utils$/,
+        find: /^@causcape\/utils$/,
         replacement: path.resolve(__dirname, "./packages/utils/src/index.ts"),
       },
       {
-        find: /^@excalidraw\/utils\/(.*?)/,
+        find: /^@causcape\/utils\/(.*?)/,
         replacement: path.resolve(__dirname, "./packages/utils/src/$1"),
       },
       {
-        find: /^@excalidraw\/fractional-indexing$/,
+        find: /^@causcape\/fractional-indexing$/,
         replacement: path.resolve(
           __dirname,
           "./packages/fractional-indexing/src/index.ts",
         ),
       },
       {
-        find: /^@excalidraw\/fractional-indexing\/(.*?)/,
+        find: /^@causcape\/fractional-indexing\/(.*?)/,
         replacement: path.resolve(
           __dirname,
           "./packages/fractional-indexing/src/$1",
         ),
       },
       {
-        find: /^@excalidraw\/laser-pointer$/,
+        find: /^@causcape\/laser-pointer$/,
         replacement: path.resolve(
           __dirname,
           "./packages/laser-pointer/src/index.ts",
         ),
       },
       {
-        find: /^@excalidraw\/laser-pointer\/(.*?)/,
+        find: /^@causcape\/laser-pointer\/(.*?)/,
         replacement: path.resolve(
           __dirname,
           "./packages/laser-pointer/src/$1",
         ),
       },
       {
-        find: /^@excalidraw\/graph$/,
+        find: /^@causcape\/graph$/,
         replacement: path.resolve(__dirname, "./packages/graph/src/index.ts"),
       },
       {
-        find: /^@excalidraw\/graph\/(.*?)/,
+        find: /^@causcape\/graph\/(.*?)/,
         replacement: path.resolve(__dirname, "./packages/graph/src/$1"),
       },
     ],

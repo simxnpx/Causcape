@@ -7,25 +7,21 @@ import {
   isDevEnv,
   isTestEnv,
   toArray,
-} from "@excalidraw/common";
+} from "@causcape/common";
 
 import type {
-  ExcalidrawElement,
-  NonDeletedExcalidrawElement,
+  CauscapeElement,
+  NonDeletedCauscapeElement,
   NonDeleted,
-  ExcalidrawFrameLikeElement,
+  CauscapeFrameLikeElement,
   ElementsMapOrArray,
   SceneElementsMap,
   NonDeletedSceneElementsMap,
-  OrderedExcalidrawElement,
+  OrderedCauscapeElement,
   Ordered,
-} from "@excalidraw/element/types";
+} from "@causcape/element/types";
 
-import type {
-  Assert,
-  Mutable,
-  SameType,
-} from "@excalidraw/common/utility-types";
+import type { Assert, Mutable, SameType } from "@causcape/common/utility-types";
 
 import {
   syncInvalidIndices,
@@ -38,14 +34,14 @@ import { getElementsInGroup } from "./groups";
 import { getSelectedElements } from "./selection";
 import { mutateElement, type ElementUpdate } from "./mutateElement";
 
-import type { AppState } from "../../excalidraw/types";
+import type { AppState } from "../../causcape/types";
 
 type SceneStateCallback = () => void;
 type SceneStateCallbackRemover = () => void;
 
 type SelectionHash = string & { __brand: "selectionHash" };
 
-const getNonDeletedElements = <T extends ExcalidrawElement>(
+const getNonDeletedElements = <T extends CauscapeElement>(
   allElements: readonly T[],
 ) => {
   const elementsMap = new Map() as NonDeletedSceneElementsMap;
@@ -55,7 +51,7 @@ const getNonDeletedElements = <T extends ExcalidrawElement>(
       elements.push(element as NonDeleted<T>);
       elementsMap.set(
         element.id,
-        element as Ordered<NonDeletedExcalidrawElement>,
+        element as Ordered<NonDeletedCauscapeElement>,
       );
     }
   }
@@ -63,7 +59,7 @@ const getNonDeletedElements = <T extends ExcalidrawElement>(
 };
 
 const validateIndicesThrottled = throttle(
-  (elements: readonly ExcalidrawElement[]) => {
+  (elements: readonly CauscapeElement[]) => {
     if (isDevEnv() || isTestEnv() || window?.DEBUG_FRACTIONAL_INDICES) {
       validateFractionalIndices(elements, {
         // throw only in dev & test, to remain functional on `DEBUG_FRACTIONAL_INDICES`
@@ -101,7 +97,7 @@ const hashSelectionOpts = (
 
 // ideally this would be a branded type but it'd be insanely hard to work with
 // in our codebase
-export type ExcalidrawElementsIncludingDeleted = readonly ExcalidrawElement[];
+export type CauscapeElementsIncludingDeleted = readonly CauscapeElement[];
 
 export class Scene {
   // ---------------------------------------------------------------------------
@@ -110,21 +106,21 @@ export class Scene {
 
   private callbacks: Set<SceneStateCallback> = new Set();
 
-  private nonDeletedElements: readonly Ordered<NonDeletedExcalidrawElement>[] =
+  private nonDeletedElements: readonly Ordered<NonDeletedCauscapeElement>[] =
     [];
   private nonDeletedElementsMap = toBrandedType<NonDeletedSceneElementsMap>(
     new Map(),
   );
   // ideally all elements within the scene should be wrapped around with `Ordered` type, but right now there is no real benefit doing so
-  private elements: readonly OrderedExcalidrawElement[] = [];
-  private nonDeletedFramesLikes: readonly NonDeleted<ExcalidrawFrameLikeElement>[] =
+  private elements: readonly OrderedCauscapeElement[] = [];
+  private nonDeletedFramesLikes: readonly NonDeleted<CauscapeFrameLikeElement>[] =
     [];
-  private frames: readonly ExcalidrawFrameLikeElement[] = [];
+  private frames: readonly CauscapeFrameLikeElement[] = [];
   private elementsMap = toBrandedType<SceneElementsMap>(new Map());
   private selectedElementsCache: {
     selectedElementIds: AppState["selectedElementIds"] | null;
-    elements: readonly NonDeletedExcalidrawElement[] | null;
-    cache: Map<SelectionHash, NonDeletedExcalidrawElement[]>;
+    elements: readonly NonDeletedCauscapeElement[] | null;
+    cache: Map<SelectionHash, NonDeletedCauscapeElement[]>;
   } = {
     selectedElementIds: null,
     elements: null,
@@ -185,7 +181,7 @@ export class Scene {
     // selection-related options
     includeBoundTextElement?: boolean;
     includeElementsInFrames?: boolean;
-  }): NonDeletedExcalidrawElement[] {
+  }): NonDeletedCauscapeElement[] {
     const hash = hashSelectionOpts(opts);
 
     const elements = opts?.elements || this.nonDeletedElements;
@@ -219,17 +215,17 @@ export class Scene {
     return selectedElements;
   }
 
-  getNonDeletedFramesLikes(): readonly NonDeleted<ExcalidrawFrameLikeElement>[] {
+  getNonDeletedFramesLikes(): readonly NonDeleted<CauscapeFrameLikeElement>[] {
     return this.nonDeletedFramesLikes;
   }
 
-  getElement<T extends ExcalidrawElement>(id: T["id"]): T | null {
+  getElement<T extends CauscapeElement>(id: T["id"]): T | null {
     return (this.elementsMap.get(id) as T | undefined) || null;
   }
 
   getNonDeletedElement(
-    id: ExcalidrawElement["id"],
-  ): NonDeleted<ExcalidrawElement> | null {
+    id: CauscapeElement["id"],
+  ): NonDeleted<CauscapeElement> | null {
     const element = this.getElement(id);
     if (element && isNonDeletedElement(element)) {
       return element;
@@ -241,7 +237,7 @@ export class Scene {
    * A utility method to help with updating all scene elements, with the added
    * performance optimization of not renewing the array if no change is made.
    *
-   * Maps all current excalidraw elements, invoking the callback for each
+   * Maps all current causcape elements, invoking the callback for each
    * element. The callback should either return a new mapped element, or the
    * original element if no changes are made. If no changes are made to any
    * element, this results in a no-op. Otherwise, the newly mapped elements
@@ -250,7 +246,7 @@ export class Scene {
    * @returns whether a change was made
    */
   mapElements(
-    iteratee: (element: ExcalidrawElement) => ExcalidrawElement,
+    iteratee: (element: CauscapeElement) => CauscapeElement,
   ): boolean {
     let didChange = false;
     const newElements = this.elements.map((element) => {
@@ -274,7 +270,7 @@ export class Scene {
   ) {
     // we do trust the insertion order on the map, though maybe we shouldn't and should prefer order defined by fractional indices
     const _nextElements = toArray(nextElements);
-    const nextFrameLikes: ExcalidrawFrameLikeElement[] = [];
+    const nextFrameLikes: CauscapeFrameLikeElement[] = [];
 
     this.elements = syncInvalidIndices(_nextElements);
     if (!options?.skipValidation) {
@@ -338,7 +334,7 @@ export class Scene {
 
   /** low-level - generally use app.insertNewElements() */
   insertElementsAtIndex(
-    elements: ExcalidrawElement[],
+    elements: CauscapeElement[],
     /** null indicates end of the array */
     index: number | null,
   ) {
@@ -368,7 +364,7 @@ export class Scene {
   }
 
   /** low-level - generally use app.insertNewElement() */
-  insertElement = (element: ExcalidrawElement) => {
+  insertElement = (element: CauscapeElement) => {
     this.insertElementsAtIndex([element], null);
   };
 
@@ -378,8 +374,8 @@ export class Scene {
 
   getContainerElement = (
     element:
-      | (ExcalidrawElement & {
-          containerId: ExcalidrawElement["id"] | null;
+      | (CauscapeElement & {
+          containerId: CauscapeElement["id"] | null;
         })
       | null,
   ) => {
@@ -392,7 +388,7 @@ export class Scene {
     return null;
   };
 
-  getElementsFromId = (id: string): ExcalidrawElement[] => {
+  getElementsFromId = (id: string): CauscapeElement[] => {
     const elementsMap = this.getNonDeletedElementsMap();
     // first check if the id is an element
     const el = elementsMap.get(id);
@@ -406,7 +402,7 @@ export class Scene {
 
   // Mutate an element with passed updates and trigger the component to update. Make sure you
   // are calling it either from a React event handler or within unstable_batchedUpdates().
-  mutateElement<TElement extends Mutable<ExcalidrawElement>>(
+  mutateElement<TElement extends Mutable<CauscapeElement>>(
     element: TElement,
     updates: ElementUpdate<TElement>,
     options: {

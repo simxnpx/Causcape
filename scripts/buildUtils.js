@@ -14,15 +14,15 @@ const getConfig = (outdir) => ({
   entryNames: "[name]",
   assetNames: "[dir]/[name]",
   alias: {
-    "@excalidraw/common": path.resolve(__dirname, "../packages/common/src"),
-    "@excalidraw/element": path.resolve(__dirname, "../packages/element/src"),
-    "@excalidraw/excalidraw": path.resolve(__dirname, "../packages/excalidraw"),
-    "@excalidraw/math": path.resolve(__dirname, "../packages/math/src"),
-    "@excalidraw/fractional-indexing": path.resolve(
+    "@causcape/common": path.resolve(__dirname, "../packages/common/src"),
+    "@causcape/element": path.resolve(__dirname, "../packages/element/src"),
+    "@causcape/causcape": path.resolve(__dirname, "../packages/causcape"),
+    "@causcape/math": path.resolve(__dirname, "../packages/math/src"),
+    "@causcape/fractional-indexing": path.resolve(
       __dirname,
       "../packages/fractional-indexing/src",
     ),
-    "@excalidraw/utils": path.resolve(__dirname, "../packages/utils/src"),
+    "@causcape/utils": path.resolve(__dirname, "../packages/utils/src"),
   },
 });
 

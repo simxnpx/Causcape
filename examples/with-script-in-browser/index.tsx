@@ -1,29 +1,29 @@
 import React, { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
-import "@excalidraw/excalidraw/index.css";
+import "@causcape/causcape/index.css";
 
-import type * as TExcalidraw from "@excalidraw/excalidraw";
+import type * as TCauscape from "@causcape/causcape";
 
 import App from "./components/ExampleApp";
 
 declare global {
   interface Window {
-    ExcalidrawLib: typeof TExcalidraw;
+    CauscapeLib: typeof TCauscape;
   }
 }
 
 const rootElement = document.getElementById("root")!;
 const root = createRoot(rootElement);
-const { Excalidraw } = window.ExcalidrawLib;
+const { Causcape } = window.CauscapeLib;
 root.render(
   <StrictMode>
     <App
-      appTitle={"Excalidraw Example"}
+      appTitle={"Causcape Example"}
       useCustom={(api: any, args?: any[]) => {}}
-      excalidrawLib={window.ExcalidrawLib}
+      causcapeLib={window.CauscapeLib}
     >
-      <Excalidraw />
+      <Causcape />
     </App>
   </StrictMode>,
 );

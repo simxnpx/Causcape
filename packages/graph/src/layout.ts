@@ -1,7 +1,7 @@
 import {
   getCauscapeEdgeLabel,
   getCauscapeEdgeLabelBounds,
-} from "@excalidraw/element";
+} from "@causcape/element";
 
 import { isArchitectureNodeKind } from "./types";
 

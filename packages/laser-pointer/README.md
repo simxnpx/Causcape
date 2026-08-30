@@ -2,7 +2,7 @@
 
 ## Usage
 
-    import { LaserPointer } from '@excalidraw/laser-pointer'
+    import { LaserPointer } from '@causcape/laser-pointer'
 
     const stroke = new LaserPointer(options)
 

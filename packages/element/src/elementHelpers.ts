@@ -1,12 +1,8 @@
-import { toIterable } from "@excalidraw/common";
+import { toIterable } from "@causcape/common";
 
-import type {
-  ExcalidrawElement,
-  ElementsMapOrArray,
-  NonDeleted,
-} from "./types";
+import type { CauscapeElement, ElementsMapOrArray, NonDeleted } from "./types";
 
-export const getSceneVersion = (elements: readonly ExcalidrawElement[]) =>
+export const getSceneVersion = (elements: readonly CauscapeElement[]) =>
   elements.reduce((acc, element) => acc + element.version, 0);
 
 export const hashElementsVersion = (elements: ElementsMapOrArray): number => {
@@ -25,10 +21,10 @@ export const hashString = (value: string): number => {
   return hash >>> 0;
 };
 
-export const isNonDeletedElement = <T extends ExcalidrawElement>(
+export const isNonDeletedElement = <T extends CauscapeElement>(
   element: T,
 ): element is NonDeleted<T> => !element.isDeleted;
 
-export const getNonDeletedElements = <T extends ExcalidrawElement>(
+export const getNonDeletedElements = <T extends CauscapeElement>(
   elements: readonly T[],
 ): readonly NonDeleted<T>[] => elements.filter(isNonDeletedElement);

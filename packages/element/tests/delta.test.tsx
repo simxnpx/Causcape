@@ -1,8 +1,8 @@
-import { API } from "@excalidraw/excalidraw/tests/helpers/api";
+import { API } from "@causcape/causcape/tests/helpers/api";
 
-import type { ObservedAppState } from "@excalidraw/excalidraw/types";
-import type { LinearElementEditor } from "@excalidraw/element";
-import type { SceneElementsMap } from "@excalidraw/element/types";
+import type { ObservedAppState } from "@causcape/causcape/types";
+import type { LinearElementEditor } from "@causcape/element";
+import type { SceneElementsMap } from "@causcape/element/types";
 
 import { AppStateDelta, Delta, ElementsDelta } from "../src/delta";
 

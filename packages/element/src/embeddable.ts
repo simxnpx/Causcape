@@ -3,19 +3,19 @@ import {
   VERTICAL_ALIGN,
   escapeDoubleQuotes,
   getFontString,
-} from "@excalidraw/common";
+} from "@causcape/common";
 
-import type { ExcalidrawProps } from "@excalidraw/excalidraw/types";
-import type { MarkRequired } from "@excalidraw/common/utility-types";
+import type { CauscapeProps } from "@causcape/causcape/types";
+import type { MarkRequired } from "@causcape/common/utility-types";
 
 import { newTextElement } from "./newElement";
 import { wrapText } from "./textWrapping";
 import { isIframeElement } from "./typeChecks";
 
 import type {
-  ExcalidrawIframeLikeElement,
+  CauscapeIframeLikeElement,
   IframeData,
-  NonDeletedExcalidrawElement,
+  NonDeletedCauscapeElement,
 } from "./types";
 
 type IframeDataWithSandbox = MarkRequired<IframeData, "sandbox">;
@@ -137,7 +137,7 @@ const ALLOWED_DOMAINS = new Set([
   "player.vimeo.com",
   "drive.google.com",
   "figma.com",
-  "link.excalidraw.com",
+  "link.causcape.com",
   "gist.github.com",
   "twitter.com",
   "x.com",
@@ -400,8 +400,8 @@ export const getEmbedLink = (
 };
 
 export const createPlaceholderEmbeddableLabel = (
-  element: ExcalidrawIframeLikeElement,
-): NonDeletedExcalidrawElement => {
+  element: CauscapeIframeLikeElement,
+): NonDeletedCauscapeElement => {
   let text: string;
   if (isIframeElement(element)) {
     text = "IFrame element";
@@ -501,7 +501,7 @@ export const maybeParseEmbedSrc = (str: string): string => {
 
 export const embeddableURLValidator = (
   url: string | null | undefined,
-  validateEmbeddable: ExcalidrawProps["validateEmbeddable"],
+  validateEmbeddable: CauscapeProps["validateEmbeddable"],
 ): boolean => {
   if (!url) {
     return false;

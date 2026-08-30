@@ -1,16 +1,16 @@
-import { invariant, toBrandedType, type Bounds } from "@excalidraw/common";
+import { invariant, toBrandedType, type Bounds } from "@causcape/common";
 
 import {
   clamp,
   type GlobalPoint,
   pointFrom,
   type LocalPoint,
-} from "@excalidraw/math";
+} from "@causcape/math";
 
 import type {
   AppState,
-  PendingExcalidrawElements,
-} from "@excalidraw/excalidraw/types";
+  PendingCauscapeElements,
+} from "@causcape/causcape/types";
 
 import { bindBindingElement } from "./binding";
 import { updateElbowArrowPoints } from "./elbowArrow";
@@ -37,13 +37,13 @@ import {
 import {
   type NonDeleted,
   type ElementsMap,
-  type ExcalidrawBindableElement,
-  type ExcalidrawElement,
-  type ExcalidrawFlowchartNodeElement,
-  type NonDeletedExcalidrawElement,
+  type CauscapeBindableElement,
+  type CauscapeElement,
+  type CauscapeFlowchartNodeElement,
+  type NonDeletedCauscapeElement,
   type NonDeletedSceneElementsMap,
   type Ordered,
-  type OrderedExcalidrawElement,
+  type OrderedCauscapeElement,
 } from "./types";
 
 import type { Scene } from "./Scene";
@@ -109,13 +109,13 @@ const findNearestFreeSlot = (
 // flowchart as `node` — the whole connected component acts as the obstacle
 // set during placement (#8518).
 const getConnectedFlowchartNodes = (
-  node: ExcalidrawBindableElement,
+  node: CauscapeBindableElement,
   elementsMap: ElementsMap,
-): ExcalidrawBindableElement[] => {
+): CauscapeBindableElement[] => {
   const arrows = [...elementsMap.values()].filter(isElbowArrow);
   const visited = new Set<string>([node.id]);
   const queue: string[] = [node.id];
-  const connected: ExcalidrawBindableElement[] = [];
+  const connected: CauscapeBindableElement[] = [];
 
   while (queue.length > 0) {
     const currentId = queue.shift()!;
@@ -155,7 +155,7 @@ const getConnectedFlowchartNodes = (
 //   extends it at either end so the existing pending nodes keep their
 //   positions, unless the grown cluster no longer fits there
 const placeCluster = (
-  parent: ExcalidrawFlowchartNodeElement,
+  parent: CauscapeFlowchartNodeElement,
   direction: LinkDirection,
   count: number,
   obstacles: readonly Bounds[],
@@ -226,7 +226,7 @@ const placeCluster = (
 };
 
 const cloneFlowchartNode = (
-  template: ExcalidrawFlowchartNodeElement,
+  template: CauscapeFlowchartNodeElement,
   x: number,
   y: number,
 ) => {
@@ -246,16 +246,13 @@ const cloneFlowchartNode = (
     strokeStyle: template.strokeStyle,
   });
 
-  invariant(
-    isFlowchartNodeElement(node),
-    "not an ExcalidrawFlowchartNodeElement",
-  );
+  invariant(isFlowchartNodeElement(node), "not a CauscapeFlowchartNodeElement");
 
   return node;
 };
 
 const addNewNodes = (
-  startNode: NonDeleted<ExcalidrawFlowchartNodeElement>,
+  startNode: NonDeleted<CauscapeFlowchartNodeElement>,
   appState: AppState,
   direction: LinkDirection,
   scene: Scene,
@@ -275,7 +272,7 @@ const addNewNodes = (
     stickyCrossStart,
   );
 
-  const nodes: NonDeletedExcalidrawElement[] = [];
+  const nodes: NonDeletedCauscapeElement[] = [];
   for (const position of positions) {
     const nextNode = cloneFlowchartNode(startNode, position.x, position.y);
     const bindingArrow = createBindingArrow(
@@ -293,8 +290,8 @@ const addNewNodes = (
 };
 
 const createBindingArrow = (
-  startBindingElement: NonDeleted<ExcalidrawFlowchartNodeElement>,
-  endBindingElement: NonDeleted<ExcalidrawFlowchartNodeElement>,
+  startBindingElement: NonDeleted<CauscapeFlowchartNodeElement>,
+  endBindingElement: NonDeleted<CauscapeFlowchartNodeElement>,
   direction: LinkDirection,
   appState: AppState,
   scene: Scene,
@@ -379,19 +376,16 @@ const createBindingArrow = (
   );
   bindBindingElement(bindingArrow, endBindingElement, "orbit", "end", scene);
 
-  const changedElements = new Map<string, OrderedExcalidrawElement>();
+  const changedElements = new Map<string, OrderedCauscapeElement>();
   changedElements.set(
     startBindingElement.id,
-    startBindingElement as OrderedExcalidrawElement,
+    startBindingElement as OrderedCauscapeElement,
   );
   changedElements.set(
     endBindingElement.id,
-    endBindingElement as OrderedExcalidrawElement,
+    endBindingElement as OrderedCauscapeElement,
   );
-  changedElements.set(
-    bindingArrow.id,
-    bindingArrow as OrderedExcalidrawElement,
-  );
+  changedElements.set(bindingArrow.id, bindingArrow as OrderedCauscapeElement);
 
   LinearElementEditor.movePoints(
     bindingArrow,
@@ -414,7 +408,7 @@ const createBindingArrow = (
         [startBindingElement.id, startBindingElement],
         [endBindingElement.id, endBindingElement],
         [bindingArrow.id, bindingArrow],
-      ] as [string, Ordered<NonDeletedExcalidrawElement>][]),
+      ] as [string, Ordered<NonDeletedCauscapeElement>][]),
     ),
     { points: bindingArrow.points },
   );
@@ -429,12 +423,12 @@ const createBindingArrow = (
 export class FlowChartNavigator {
   isExploring: boolean = false;
   // nodes that are ONE link away (successor and predecessor both included)
-  private sameLevelNodes: ExcalidrawElement[] = [];
+  private sameLevelNodes: CauscapeElement[] = [];
   private sameLevelIndex: number = 0;
   // set it to the opposite of the defalut creation direction
   private direction: LinkDirection | null = null;
   // for speedier navigation
-  private visitedNodes: Set<ExcalidrawElement["id"]> = new Set();
+  private visitedNodes: Set<CauscapeElement["id"]> = new Set();
 
   clear() {
     this.isExploring = false;
@@ -445,10 +439,10 @@ export class FlowChartNavigator {
   }
 
   exploreByDirection(
-    element: ExcalidrawElement,
+    element: CauscapeElement,
     elementsMap: ElementsMap,
     direction: LinkDirection,
-  ): ExcalidrawElement["id"] | null {
+  ): CauscapeElement["id"] | null {
     if (!isBindableElement(element)) {
       return null;
     }
@@ -558,15 +552,12 @@ export class FlowChartNavigator {
 
   private static getNodeRelatives(
     type: "predecessors" | "successors",
-    node: ExcalidrawBindableElement,
+    node: CauscapeBindableElement,
     elementsMap: ElementsMap,
     direction: LinkDirection,
   ) {
     const items = [...elementsMap.values()].reduce(
-      (
-        acc: { relative: ExcalidrawBindableElement; heading: Heading }[],
-        el,
-      ) => {
+      (acc: { relative: CauscapeBindableElement; heading: Heading }[], el) => {
         let oppositeBinding;
         if (
           isElbowArrow(el) &&
@@ -586,7 +577,7 @@ export class FlowChartNavigator {
 
           invariant(
             isBindableElement(relative),
-            "not an ExcalidrawBindableElement",
+            "not a CauscapeBindableElement",
           );
 
           const edgePoint = (
@@ -630,7 +621,7 @@ export class FlowChartNavigator {
   }
 
   private static getSuccessors(
-    node: ExcalidrawBindableElement,
+    node: CauscapeBindableElement,
     elementsMap: ElementsMap,
     direction: LinkDirection,
   ) {
@@ -643,7 +634,7 @@ export class FlowChartNavigator {
   }
 
   private static getPredecessors(
-    node: ExcalidrawBindableElement,
+    node: CauscapeBindableElement,
     elementsMap: ElementsMap,
     direction: LinkDirection,
   ) {
@@ -663,10 +654,10 @@ export class FlowChartCreator {
   // cross-axis anchor of the pending cluster, so growing it keeps the
   // already-visible pending nodes in place
   private clusterCrossStart: number | null = null;
-  pendingNodes: PendingExcalidrawElements | null = null;
+  pendingNodes: PendingCauscapeElements | null = null;
 
   createNodes(
-    startNode: NonDeleted<ExcalidrawFlowchartNodeElement>,
+    startNode: NonDeleted<CauscapeFlowchartNodeElement>,
     appState: AppState,
     direction: LinkDirection,
     scene: Scene,
@@ -699,10 +690,7 @@ export class FlowChartCreator {
     if (startNode.frameId) {
       const frame = elementsMap.get(startNode.frameId);
 
-      invariant(
-        frame && isFrameElement(frame),
-        "not an ExcalidrawFrameElement",
-      );
+      invariant(frame && isFrameElement(frame), "not a CauscapeFrameElement");
 
       if (
         frame &&
@@ -731,7 +719,7 @@ export class FlowChartCreator {
 }
 
 export const isNodeInFlowchart = (
-  element: ExcalidrawFlowchartNodeElement,
+  element: CauscapeFlowchartNodeElement,
   elementsMap: ElementsMap,
 ) => {
   for (const [, el] of elementsMap) {

@@ -1,9 +1,9 @@
-import { arrayToMap, findIndex, findLastIndex } from "@excalidraw/common";
+import { arrayToMap, findIndex, findLastIndex } from "@causcape/common";
 
-import { isFiniteNumber } from "@excalidraw/math";
+import { isFiniteNumber } from "@causcape/math";
 
-import type { AppState } from "@excalidraw/excalidraw/types";
-import type { GlobalPoint } from "@excalidraw/math";
+import type { AppState } from "@causcape/causcape/types";
+import type { GlobalPoint } from "@causcape/math";
 
 import { isFrameLikeElement, isTextElement } from "./typeChecks";
 import { getElementsInGroup } from "./groups";
@@ -16,15 +16,15 @@ import { getNonDeletedElements } from "./elementHelpers";
 
 import type { Scene } from "./Scene";
 import type {
-  ExcalidrawArrowElement,
-  ExcalidrawElement,
-  ExcalidrawFrameLikeElement,
-  NonDeletedExcalidrawElement,
+  CauscapeArrowElement,
+  CauscapeElement,
+  CauscapeFrameLikeElement,
+  NonDeletedCauscapeElement,
   NonDeletedSceneElementsMap,
-  OrderedExcalidrawElement,
+  OrderedCauscapeElement,
 } from "./types";
 
-const isOfTargetFrame = (element: ExcalidrawElement, frameId: string) => {
+const isOfTargetFrame = (element: CauscapeElement, frameId: string) => {
   return element.frameId === frameId || element.id === frameId;
 };
 
@@ -37,9 +37,9 @@ const isOfTargetFrame = (element: ExcalidrawElement, frameId: string) => {
  * appState.selectedElementsIds
  */
 const getIndicesToMove = (
-  elements: readonly ExcalidrawElement[],
+  elements: readonly CauscapeElement[],
   appState: AppState,
-  elementsToBeMoved?: readonly ExcalidrawElement[],
+  elementsToBeMoved?: readonly CauscapeElement[],
 ) => {
   let selectedIndices: number[] = [];
   let deletedIndices: number[] = [];
@@ -89,8 +89,8 @@ const toContiguousGroups = (array: number[]) => {
  * If no binding present, returns `undefined`.
  */
 const getTargetIndexAccountingForBinding = (
-  nextElement: ExcalidrawElement,
-  elements: readonly ExcalidrawElement[],
+  nextElement: CauscapeElement,
+  elements: readonly CauscapeElement[],
   direction: "left" | "right",
   scene: Scene,
 ) => {
@@ -130,8 +130,8 @@ const getTargetIndexAccountingForBinding = (
 };
 
 const getContiguousFrameRangeElements = (
-  allElements: readonly ExcalidrawElement[],
-  frameId: ExcalidrawFrameLikeElement["id"],
+  allElements: readonly CauscapeElement[],
+  frameId: CauscapeFrameLikeElement["id"],
 ) => {
   let rangeStart = -1;
   let rangeEnd = -1;
@@ -155,12 +155,12 @@ const getContiguousFrameRangeElements = (
  */
 export const moveArrowAboveBindable = (
   point: GlobalPoint,
-  arrow: ExcalidrawArrowElement,
-  elements: readonly OrderedExcalidrawElement[],
+  arrow: CauscapeArrowElement,
+  elements: readonly OrderedCauscapeElement[],
   elementsMap: NonDeletedSceneElementsMap,
   scene: Scene,
-  hit?: NonDeletedExcalidrawElement,
-): readonly OrderedExcalidrawElement[] => {
+  hit?: NonDeletedCauscapeElement,
+): readonly OrderedCauscapeElement[] => {
   const hoveredElement = hit
     ? hit
     : getHoveredElementForBinding(
@@ -183,7 +183,7 @@ export const moveArrowAboveBindable = (
     hoveredElement.id,
     boundTextElement?.id,
     containerElement?.id,
-  ].filter((id): id is NonDeletedExcalidrawElement["id"] => !!id);
+  ].filter((id): id is NonDeletedCauscapeElement["id"] => !!id);
   const bindableIdx = elements.findIndex((el) => bindableIds.includes(el.id));
   const arrowIdx = elements.findIndex((el) => el.id === arrow.id);
 
@@ -204,19 +204,19 @@ export const moveArrowAboveBindable = (
  */
 const getTargetIndex = (
   appState: AppState,
-  elements: readonly ExcalidrawElement[],
+  elements: readonly CauscapeElement[],
   boundaryIndex: number,
   direction: "left" | "right",
   /**
    * Frame id if moving frame children.
    * If whole frame (including all children) is being moved, supply `null`.
    */
-  containingFrame: ExcalidrawFrameLikeElement["id"] | null,
+  containingFrame: CauscapeFrameLikeElement["id"] | null,
   scene: Scene,
 ) => {
   const sourceElement = elements[boundaryIndex];
 
-  const indexFilter = (element: ExcalidrawElement) => {
+  const indexFilter = (element: CauscapeElement) => {
     if (element.isDeleted) {
       return false;
     }
@@ -310,7 +310,7 @@ const getTargetIndex = (
   return candidateIndex;
 };
 
-const getTargetElementsMap = <T extends ExcalidrawElement>(
+const getTargetElementsMap = <T extends CauscapeElement>(
   elements: readonly T[],
   indices: number[],
 ) => {
@@ -318,12 +318,12 @@ const getTargetElementsMap = <T extends ExcalidrawElement>(
     const element = elements[index];
     acc.set(element.id, element);
     return acc;
-  }, new Map<string, ExcalidrawElement>());
+  }, new Map<string, CauscapeElement>());
 };
 
 const hasSameElementIds = (
-  prevElements: readonly ExcalidrawElement[],
-  nextElements: readonly ExcalidrawElement[],
+  prevElements: readonly CauscapeElement[],
+  nextElements: readonly CauscapeElement[],
 ) => {
   if (prevElements.length !== nextElements.length) {
     console.error(
@@ -332,7 +332,7 @@ const hasSameElementIds = (
     return false;
   }
 
-  const prevElementIdCounts = new Map<ExcalidrawElement["id"], number>();
+  const prevElementIdCounts = new Map<CauscapeElement["id"], number>();
   for (const element of prevElements) {
     prevElementIdCounts.set(
       element.id,
@@ -355,7 +355,7 @@ const hasSameElementIds = (
 };
 
 const shiftElementsByOne = (
-  elements: readonly ExcalidrawElement[],
+  elements: readonly CauscapeElement[],
   appState: AppState,
   direction: "left" | "right",
   scene: Scene,
@@ -370,7 +370,7 @@ const shiftElementsByOne = (
     groupedIndices = groupedIndices.reverse();
   }
 
-  const selectedFrames = new Set<ExcalidrawFrameLikeElement["id"]>(
+  const selectedFrames = new Set<CauscapeFrameLikeElement["id"]>(
     indicesToMove
       .filter((idx) => isFrameLikeElement(elements[idx]))
       .map((idx) => elements[idx].id),
@@ -441,11 +441,11 @@ const shiftElementsByOne = (
 };
 
 const shiftElementsToEnd = (
-  elements: readonly ExcalidrawElement[],
+  elements: readonly CauscapeElement[],
   appState: AppState,
   direction: "left" | "right",
-  containingFrame: ExcalidrawFrameLikeElement["id"] | null,
-  elementsToBeMoved?: readonly ExcalidrawElement[],
+  containingFrame: CauscapeFrameLikeElement["id"] | null,
+  elementsToBeMoved?: readonly CauscapeElement[],
 ) => {
   const indicesToMove = getIndicesToMove(elements, appState, elementsToBeMoved);
 
@@ -458,7 +458,7 @@ const shiftElementsToEnd = (
   }
 
   const targetElementsMap = getTargetElementsMap(elements, indicesToMove);
-  const displacedElements: ExcalidrawElement[] = [];
+  const displacedElements: CauscapeElement[] = [];
 
   let leadingIndex: number | undefined;
   let trailingIndex: number | undefined;
@@ -553,16 +553,16 @@ const shiftElementsToEnd = (
 };
 
 function shiftElementsAccountingForFrames(
-  allElements: readonly ExcalidrawElement[],
+  allElements: readonly CauscapeElement[],
   appState: AppState,
   direction: "left" | "right",
   shiftFunction: (
-    elements: readonly ExcalidrawElement[],
+    elements: readonly CauscapeElement[],
     appState: AppState,
     direction: "left" | "right",
-    containingFrame: ExcalidrawFrameLikeElement["id"] | null,
-    elementsToBeMoved?: readonly ExcalidrawElement[],
-  ) => ExcalidrawElement[] | readonly ExcalidrawElement[],
+    containingFrame: CauscapeFrameLikeElement["id"] | null,
+    elementsToBeMoved?: readonly CauscapeElement[],
+  ) => CauscapeElement[] | readonly CauscapeElement[],
 ) {
   const elementsToMove = arrayToMap(
     getSelectedElements(allElements, appState, {
@@ -572,11 +572,11 @@ function shiftElementsAccountingForFrames(
   );
 
   const frameAwareContiguousElementsToMove: {
-    regularElements: ExcalidrawElement[];
-    frameChildren: Map<ExcalidrawFrameLikeElement["id"], ExcalidrawElement[]>;
+    regularElements: CauscapeElement[];
+    frameChildren: Map<CauscapeFrameLikeElement["id"], CauscapeElement[]>;
   } = { regularElements: [], frameChildren: new Map() };
 
-  const fullySelectedFrames = new Set<ExcalidrawFrameLikeElement["id"]>();
+  const fullySelectedFrames = new Set<CauscapeFrameLikeElement["id"]>();
 
   for (const element of allElements) {
     if (elementsToMove.has(element.id) && isFrameLikeElement(element)) {
@@ -636,7 +636,7 @@ function shiftElementsAccountingForFrames(
 // -----------------------------------------------------------------------------
 
 export const moveOneLeft = (
-  allElements: readonly ExcalidrawElement[],
+  allElements: readonly CauscapeElement[],
   appState: AppState,
   scene: Scene,
 ) => {
@@ -644,7 +644,7 @@ export const moveOneLeft = (
 };
 
 export const moveOneRight = (
-  allElements: readonly ExcalidrawElement[],
+  allElements: readonly CauscapeElement[],
   appState: AppState,
   scene: Scene,
 ) => {
@@ -652,7 +652,7 @@ export const moveOneRight = (
 };
 
 export const moveAllLeft = (
-  allElements: readonly ExcalidrawElement[],
+  allElements: readonly CauscapeElement[],
   appState: AppState,
 ) => {
   return shiftElementsAccountingForFrames(
@@ -664,7 +664,7 @@ export const moveAllLeft = (
 };
 
 export const moveAllRight = (
-  allElements: readonly ExcalidrawElement[],
+  allElements: readonly CauscapeElement[],
   appState: AppState,
 ) => {
   return shiftElementsAccountingForFrames(

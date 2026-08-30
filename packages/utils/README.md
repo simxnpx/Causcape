@@ -1,56 +1,56 @@
-# @excalidraw/utils
+# @causcape/utils
 
 ## Install
 
 ```bash
-npm install @excalidraw/utils
+npm install @causcape/utils
 ```
 
-If you prefer Yarn over npm, use this command to install the Excalidraw utils package:
+If you prefer Yarn over npm, use this command to install the Causcape utils package:
 
 ```bash
-yarn add @excalidraw/utils
+yarn add @causcape/utils
 ```
 
 ## API
 
 ### `serializeAsJSON`
 
-See [`serializeAsJSON`](https://github.com/excalidraw/excalidraw/blob/master/src/packages/excalidraw/README.md#serializeAsJSON) for API and description.
+See [`serializeAsJSON`](https://github.com/causcape/causcape/blob/master/src/packages/causcape/README.md#serializeAsJSON) for API and description.
 
 ### `exportToBlob` (async)
 
-Export an Excalidraw diagram to a [Blob](https://developer.mozilla.org/en-US/docs/Web/API/Blob).
+Export a Causcape diagram to a [Blob](https://developer.mozilla.org/en-US/docs/Web/API/Blob).
 
 ### `exportToSvg`
 
-Export an Excalidraw diagram to a [SVGElement](https://developer.mozilla.org/en-US/docs/Web/API/SVGElement).
+Export a Causcape diagram to a [SVGElement](https://developer.mozilla.org/en-US/docs/Web/API/SVGElement).
 
 ## Usage
 
-Excalidraw utils is published as a UMD (Universal Module Definition). If you are using a module bundler (for instance, Webpack), you can import it as an ES6 module:
+Causcape utils is published as a UMD (Universal Module Definition). If you are using a module bundler (for instance, Webpack), you can import it as an ES6 module:
 
 ```js
-import { exportToSvg, exportToBlob } from "@excalidraw/utils";
+import { exportToSvg, exportToBlob } from "@causcape/utils";
 ```
 
 To use it in a browser directly:
 
 ```html
-<script src="https://unpkg.com/@excalidraw/utils@0.1.0/dist/excalidraw-utils.min.js"></script>
+<script src="https://unpkg.com/@causcape/utils@0.1.0/dist/causcape-utils.min.js"></script>
 <script>
-  // ExcalidrawUtils is a global variable defined by excalidraw.min.js
-  const { exportToSvg, exportToBlob } = ExcalidrawUtils;
+  // CauscapeUtils is a global variable defined by causcape.min.js
+  const { exportToSvg, exportToBlob } = CauscapeUtils;
 </script>
 ```
 
 Here's the `exportToBlob` and `exportToSvg` functions in action:
 
 ```js
-const excalidrawDiagram = {
-  type: "excalidraw",
+const causcapeDiagram = {
+  type: "causcape",
   version: 2,
-  source: "https://excalidraw.com",
+  source: "https://causcape.com",
   elements: [
     {
       id: "vWrqOAfkind2qcm7LDAGZ",
@@ -82,14 +82,14 @@ const excalidrawDiagram = {
   },
 };
 
-// Export the Excalidraw diagram as SVG string
-const svg = exportToSvg(excalidrawDiagram);
+// Export the Causcape diagram as SVG string
+const svg = exportToSvg(causcapeDiagram);
 console.log(svg.outerHTML);
 
-// Export the Excalidraw diagram as PNG Blob URL
+// Export the Causcape diagram as PNG Blob URL
 (async () => {
   const blob = await exportToBlob({
-    ...excalidrawDiagram,
+    ...causcapeDiagram,
     mimeType: "image/png",
   });
 

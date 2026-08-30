@@ -1,0 +1,7 @@
+@use "../css/theme" as *;
+
+.causcape {
+  .causcape-button {
+    @include outlineButtonStyles;
+  }
+}

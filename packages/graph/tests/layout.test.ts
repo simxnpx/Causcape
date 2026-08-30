@@ -1,7 +1,7 @@
 import type {
-  ExcalidrawCauscapeEdgeElement,
-  ExcalidrawCauscapeNodeElement,
-} from "@excalidraw/element/types";
+  CauscapeEdgeElement,
+  CauscapeNodeElement,
+} from "@causcape/element/types";
 
 import {
   analyzeGraphQuality,
@@ -35,7 +35,7 @@ const node = (
     height: options.height ?? 20,
     element: {
       locked: options.locked ?? false,
-    } as ExcalidrawCauscapeNodeElement,
+    } as CauscapeNodeElement,
   } as CauscapeNode);
 
 const edge = (
@@ -58,7 +58,7 @@ const edge = (
         label: options.label,
         relationship: options.relationship,
       },
-    } as ExcalidrawCauscapeEdgeElement,
+    } as CauscapeEdgeElement,
   } as CauscapeEdge);
 
 const graph = (

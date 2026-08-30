@@ -1,26 +1,20 @@
-import {
-  convertToExcalidrawElements,
-  Excalidraw,
-} from "@excalidraw/excalidraw";
-import { arrayToMap } from "@excalidraw/common";
+import { convertToCauscapeElements, Causcape } from "@causcape/causcape";
+import { arrayToMap } from "@causcape/common";
 
-import { API } from "@excalidraw/excalidraw/tests/helpers/api";
-import { Keyboard, Pointer, UI } from "@excalidraw/excalidraw/tests/helpers/ui";
-import { getTextEditor } from "@excalidraw/excalidraw/tests/queries/dom";
-import {
-  getCloneByOrigId,
-  render,
-} from "@excalidraw/excalidraw/tests/test-utils";
+import { API } from "@causcape/causcape/tests/helpers/api";
+import { Keyboard, Pointer, UI } from "@causcape/causcape/tests/helpers/ui";
+import { getTextEditor } from "@causcape/causcape/tests/queries/dom";
+import { getCloneByOrigId, render } from "@causcape/causcape/tests/test-utils";
 
-import { getSelectedElements } from "@excalidraw/excalidraw/scene";
+import { getSelectedElements } from "@causcape/causcape/scene";
 
 import { elementOverlapsWithFrame } from "../src/frame";
 
 import type {
-  ExcalidrawElement,
-  ExcalidrawFrameLikeElement,
+  CauscapeElement,
+  CauscapeFrameLikeElement,
   NonDeleted,
-  NonDeletedExcalidrawElement,
+  NonDeletedCauscapeElement,
 } from "../src/types";
 
 const { h } = window;
@@ -46,8 +40,8 @@ describe("adding elements to frames", () => {
   };
 
   function resizeFrameOverElement(
-    frame: ExcalidrawElement,
-    element: ExcalidrawElement,
+    frame: CauscapeElement,
+    element: CauscapeElement,
   ) {
     mouse.clickAt(0, 0);
     mouse.downAt(frame.x + frame.width, frame.y + frame.height);
@@ -59,8 +53,8 @@ describe("adding elements to frames", () => {
   }
 
   function dragElementIntoFrame(
-    frame: ExcalidrawElement,
-    element: ExcalidrawElement,
+    frame: CauscapeElement,
+    element: CauscapeElement,
   ) {
     mouse.clickAt(element.x, element.y);
     mouse.downAt(element.x + element.width / 2, element.y + element.height / 2);
@@ -69,7 +63,7 @@ describe("adding elements to frames", () => {
   }
 
   function selectElementAndDuplicate(
-    element: ExcalidrawElement,
+    element: CauscapeElement,
     moveTo: [number, number] = [element.x + 25, element.y + 25],
   ) {
     const [x, y] = [
@@ -84,20 +78,20 @@ describe("adding elements to frames", () => {
     });
   }
 
-  function expectEqualIds(expected: ExcalidrawElement[]) {
+  function expectEqualIds(expected: CauscapeElement[]) {
     expect(h.elements.map((x) => x.id)).toEqual(expected.map((x) => x.id));
   }
 
-  let frame: ExcalidrawElement;
-  let rect1: ExcalidrawElement;
-  let rect2: ExcalidrawElement;
-  let rect3: ExcalidrawElement;
-  let rect4: ExcalidrawElement;
-  let text: ExcalidrawElement;
-  let arrow: ExcalidrawElement;
+  let frame: CauscapeElement;
+  let rect1: CauscapeElement;
+  let rect2: CauscapeElement;
+  let rect3: CauscapeElement;
+  let rect4: CauscapeElement;
+  let text: CauscapeElement;
+  let arrow: CauscapeElement;
 
   beforeEach(async () => {
-    await render(<Excalidraw />);
+    await render(<Causcape />);
 
     frame = API.createElement({ id: "id0", type: "frame", x: 0, width: 150 });
     rect1 = API.createElement({
@@ -150,7 +144,7 @@ describe("adding elements to frames", () => {
     expect(
       elementOverlapsWithFrame(
         containingRect,
-        frame as ExcalidrawFrameLikeElement,
+        frame as CauscapeFrameLikeElement,
         arrayToMap(h.elements),
       ),
     ).toBe(true);
@@ -512,7 +506,7 @@ describe("adding elements to frames", () => {
     initialOrder: ElementType[],
     expectedOrder: ElementType[],
   ) => {
-    await render(<Excalidraw />);
+    await render(<Causcape />);
 
     const frame = API.createElement({ type: "frame", x: 0, y: 0 });
 
@@ -520,7 +514,7 @@ describe("adding elements to frames", () => {
       reorderElements(
         [
           frame,
-          ...convertToExcalidrawElements([
+          ...convertToCauscapeElements([
             {
               type: containerType,
               x: 100,
@@ -759,7 +753,7 @@ describe("adding elements to frames", () => {
       });
 
       API.setElements([rect2, frame, frameChild]);
-      API.setSelectedElements([rect2] as NonDeletedExcalidrawElement[]);
+      API.setSelectedElements([rect2] as NonDeletedCauscapeElement[]);
       API.updateElement(rect2, {
         x: 10,
         y: 10,
@@ -781,7 +775,7 @@ describe("adding elements to frames", () => {
             newElement: h.state.newElement,
             selectedElements: getSelectedElements(h.elements, h.state),
             selectedElementsAreBeingDragged,
-            frameToHighlight: frame as NonDeleted<ExcalidrawFrameLikeElement>,
+            frameToHighlight: frame as NonDeleted<CauscapeFrameLikeElement>,
           })
           .visibleElements.map((element) => element.id);
       };
@@ -845,7 +839,7 @@ describe("adding elements to frames", () => {
           newElement: h.state.newElement,
           selectedElements: getSelectedElements(h.elements, h.state),
           selectedElementsAreBeingDragged: true,
-          frameToHighlight: frame as NonDeleted<ExcalidrawFrameLikeElement>,
+          frameToHighlight: frame as NonDeleted<CauscapeFrameLikeElement>,
         })
         .visibleElements.map((element) => element.id);
 

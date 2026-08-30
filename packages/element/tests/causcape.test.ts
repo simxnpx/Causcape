@@ -1,9 +1,9 @@
-import { THEME } from "@excalidraw/common";
-import { pointFrom, type LocalPoint } from "@excalidraw/math";
+import { THEME } from "@causcape/common";
+import { pointFrom, type LocalPoint } from "@causcape/math";
 
 import { vi } from "vitest";
 
-import type { StaticCanvasRenderConfig } from "@excalidraw/excalidraw/scene/types";
+import type { StaticCanvasRenderConfig } from "@causcape/causcape/scene/types";
 
 import {
   drawCauscapeEdgeOnCanvas,

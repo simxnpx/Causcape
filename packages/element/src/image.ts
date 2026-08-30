@@ -1,21 +1,21 @@
 // -----------------------------------------------------------------------------
-// ExcalidrawImageElement & related helpers
+// CauscapeImageElement & related helpers
 // -----------------------------------------------------------------------------
 
-import { MIME_TYPES, SVG_NS } from "@excalidraw/common";
+import { MIME_TYPES, SVG_NS } from "@causcape/common";
 
 import type {
   AppClassProperties,
   DataURL,
   BinaryFiles,
-} from "@excalidraw/excalidraw/types";
+} from "@causcape/causcape/types";
 
 import { isInitializedImageElement } from "./typeChecks";
 
 import type {
-  ExcalidrawElement,
+  CauscapeElement,
   FileId,
-  InitializedExcalidrawImageElement,
+  InitializedCauscapeImageElement,
 } from "./types";
 
 export const loadHTMLImageElement = (dataURL: DataURL) => {
@@ -89,11 +89,11 @@ export const updateImageCache = async ({
 };
 
 export const getInitializedImageElements = (
-  elements: readonly ExcalidrawElement[],
+  elements: readonly CauscapeElement[],
 ) =>
   elements.filter((element) =>
     isInitializedImageElement(element),
-  ) as InitializedExcalidrawImageElement[];
+  ) as InitializedCauscapeImageElement[];
 
 export const isHTMLSVGElement = (node: Node | null): node is SVGElement => {
   // lower-casing due to XML/HTML convention differences

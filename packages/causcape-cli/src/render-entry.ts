@@ -1,15 +1,13 @@
-import { getDefaultAppState } from "../../excalidraw/appState";
-import {
-  restoreAppState,
-  restoreElements,
-} from "../../excalidraw/data/restore";
-import { exportToSvg } from "../../excalidraw/scene/export";
-
 import type { Project } from "@causcape/core";
-import type { BinaryFiles } from "../../excalidraw/types";
+
+import { getDefaultAppState } from "../../causcape/appState";
+import { restoreAppState, restoreElements } from "../../causcape/data/restore";
+import { exportToSvg } from "../../causcape/scene/export";
+
+import type { BinaryFiles } from "../../causcape/types";
 import type {
-  ExcalidrawElement,
-  NonDeletedExcalidrawElement,
+  CauscapeElement,
+  NonDeletedCauscapeElement,
 } from "../../element/src/types";
 
 declare global {
@@ -20,10 +18,10 @@ declare global {
 
 window.renderCauscapeProject = async (project) => {
   const elements = restoreElements(
-    project.canvas.scene.elements as unknown as ExcalidrawElement[],
+    project.canvas.scene.elements as unknown as CauscapeElement[],
     null,
     { repairBindings: true },
-  ).filter((element) => !element.isDeleted) as NonDeletedExcalidrawElement[];
+  ).filter((element) => !element.isDeleted) as NonDeletedCauscapeElement[];
   const appState = restoreAppState(
     project.canvas.scene.appState as never,
     getDefaultAppState(),

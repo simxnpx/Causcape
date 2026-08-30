@@ -183,7 +183,7 @@ export const CAUSCPE_MCP_TOOLS: readonly MCPToolDefinition[] = [
   {
     name: "updateNodeSettings",
     description:
-      "Atomically update the Excalidraw appearance settings of one causcape node. Omitted settings are preserved.",
+      "Atomically update the Causcape appearance settings of one causcape node. Omitted settings are preserved.",
     inputSchema: {
       type: "object",
       properties: {

@@ -23,7 +23,7 @@
 <div align="center">
   <figure>
     <a href="#" target="_blank" rel="noopener">
-      <img src="https://excalidraw.nyc3.cdn.digitaloceanspaces.com/github%2Fproduct_showcase.png" alt="Causcape engineering canvas" />
+      <img src="https://causcape.nyc3.cdn.digitaloceanspaces.com/github%2Fproduct_showcase.png" alt="Causcape engineering canvas" />
     </a>
     <figcaption>
       <p align="center">
@@ -37,14 +37,14 @@
 
 The desktop application currently supports:
 
-- One local-first project containing an infinite Excalidraw canvas and a structured document.
+- One local-first project containing an infinite Causcape canvas and a structured document.
 - Focus mode for the full drawing experience and a scroll-driven desktop Briefing mode that progressively shrinks the canvas above its independently scrolling document.
 - Stable inline references from document text to named canvas objects, with selection highlighting, click-to-focus, and explicit deleted placeholders.
 - Blank, Architecture, and Post-incident templates, IndexedDB autosave, a recent-project dashboard, and canonical `.causcape` import/export.
-- Prepared Service, Database, Queue / Topic, External System, User / Actor, Trust Boundary, and Generic Resource shapes built from ordinary Excalidraw elements.
+- Prepared Service, Database, Queue / Topic, External System, User / Actor, Trust Boundary, and Generic Resource shapes built from ordinary Causcape elements.
 - A machine-readable CLI for project creation, inspection, validation, atomic revision-checked patches, deterministic ELK layout, and SVG/PNG rendering.
 
-The original Excalidraw drawing tools, libraries, image support, themes, localization, undo/redo, zooming, and canvas-only `.excalidraw` workflows remain available. Real-time collaboration is intentionally not exposed in this first local project slice.
+The original Causcape drawing tools, libraries, image support, themes, localization, undo/redo, zooming, and canvas-only `.causcape` workflows remain available. Real-time collaboration is intentionally not exposed in this first local project slice.
 
 ## Run locally
 
@@ -59,17 +59,17 @@ The app opens the most recently edited project or creates a blank local project.
 
 ## Upstream editor package
 
-**Note:** following instructions are for installing the Excalidraw [npm package](https://www.npmjs.com/package/@excalidraw/excalidraw) when integrating the Excalidraw editor into your own app. To run the Causcape repository locally for development, see the `excalidraw-app` source in this repository.
+**Note:** following instructions are for installing the Causcape [npm package](https://www.npmjs.com/package/@causcape/causcape) when integrating the Causcape editor into your own app. To run the Causcape repository locally for development, see the `causcape-app` source in this repository.
 
 Use `npm` or `yarn` to install the package.
 
 ```bash
-npm install react react-dom @excalidraw/excalidraw
+npm install react react-dom @causcape/causcape
 # or
-yarn add react react-dom @excalidraw/excalidraw
+yarn add react react-dom @causcape/causcape
 ```
 
-Check out the [documentation](https://docs.excalidraw.com/docs/@excalidraw/excalidraw/installation) for more details!
+Check out the [documentation](https://docs.causcape.com/docs/@causcape/causcape/installation) for more details!
 
 ## Contributing
 

@@ -1,8 +1,8 @@
-import { decodePngMetadata } from "@excalidraw/excalidraw/data/image";
-import { decodeSvgBase64Payload } from "@excalidraw/excalidraw/scene/export";
-import { API } from "@excalidraw/excalidraw/tests/helpers/api";
+import { decodePngMetadata } from "@causcape/causcape/data/image";
+import { decodeSvgBase64Payload } from "@causcape/causcape/scene/export";
+import { API } from "@causcape/causcape/tests/helpers/api";
 
-import type { ImportedDataState } from "@excalidraw/excalidraw/data/types";
+import type { ImportedDataState } from "@causcape/causcape/data/types";
 
 import * as utils from "../src";
 

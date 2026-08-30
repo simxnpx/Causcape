@@ -11,20 +11,20 @@
     "jsx": "react-jsx",
     "emitDeclarationOnly": true,
     "paths": {
-      "@excalidraw/common": ["./common/src/index.ts"],
-      "@excalidraw/common/*": ["./common/src/*"],
-      "@excalidraw/element": ["./element/src/index.ts"],
-      "@excalidraw/element/*": ["./element/src/*"],
-      "@excalidraw/excalidraw": ["./excalidraw/index.tsx"],
-      "@excalidraw/excalidraw/*": ["./excalidraw/*"],
-      "@excalidraw/laser-pointer": ["./laser-pointer/src/index.ts"],
-      "@excalidraw/laser-pointer/*": ["./laser-pointer/src/*"],
-      "@excalidraw/math": ["./math/src/index.ts"],
-      "@excalidraw/math/*": ["./math/src/*"],
-      "@excalidraw/utils": ["./utils/src/index.ts"],
-      "@excalidraw/utils/*": ["./utils/src/*"],
-      "@excalidraw/fractional-indexing": ["./fractional-indexing/src/index.ts"],
-      "@excalidraw/fractional-indexing/*": ["./fractional-indexing/src/*"]
+      "@causcape/common": ["./common/src/index.ts"],
+      "@causcape/common/*": ["./common/src/*"],
+      "@causcape/element": ["./element/src/index.ts"],
+      "@causcape/element/*": ["./element/src/*"],
+      "@causcape/causcape": ["./causcape/index.tsx"],
+      "@causcape/causcape/*": ["./causcape/*"],
+      "@causcape/laser-pointer": ["./laser-pointer/src/index.ts"],
+      "@causcape/laser-pointer/*": ["./laser-pointer/src/*"],
+      "@causcape/math": ["./math/src/index.ts"],
+      "@causcape/math/*": ["./math/src/*"],
+      "@causcape/utils": ["./utils/src/index.ts"],
+      "@causcape/utils/*": ["./utils/src/*"],
+      "@causcape/fractional-indexing": ["./fractional-indexing/src/index.ts"],
+      "@causcape/fractional-indexing/*": ["./fractional-indexing/src/*"]
     }
   }
 }

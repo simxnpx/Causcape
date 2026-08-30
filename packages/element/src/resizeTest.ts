@@ -3,17 +3,17 @@ import {
   pointOnLineSegment,
   pointRotateRads,
   type Radians,
-} from "@excalidraw/math";
+} from "@causcape/math";
 
 import {
   SIDE_RESIZING_THRESHOLD,
   type EditorInterface,
-} from "@excalidraw/common";
+} from "@causcape/common";
 
-import type { GlobalPoint, LineSegment, LocalPoint } from "@excalidraw/math";
+import type { GlobalPoint, LineSegment, LocalPoint } from "@causcape/math";
 
-import type { AppState, Zoom } from "@excalidraw/excalidraw/types";
-import type { Bounds } from "@excalidraw/common";
+import type { AppState, Zoom } from "@causcape/causcape/types";
+import type { Bounds } from "@causcape/common";
 
 import { getElementAbsoluteCoords } from "./bounds";
 import {
@@ -30,9 +30,9 @@ import type {
   MaybeTransformHandleType,
 } from "./transformHandles";
 import type {
-  ExcalidrawElement,
+  CauscapeElement,
   PointerType,
-  NonDeletedExcalidrawElement,
+  NonDeletedCauscapeElement,
   ElementsMap,
 } from "./types";
 
@@ -47,7 +47,7 @@ const isInsideTransformHandle = (
   y <= transformHandle[1] + transformHandle[3];
 
 export const resizeTest = <Point extends GlobalPoint | LocalPoint>(
-  element: NonDeletedExcalidrawElement,
+  element: NonDeletedCauscapeElement,
   elementsMap: ElementsMap,
   appState: AppState,
   x: number,
@@ -128,7 +128,7 @@ export const resizeTest = <Point extends GlobalPoint | LocalPoint>(
 };
 
 export const getElementWithTransformHandleType = (
-  elements: readonly NonDeletedExcalidrawElement[],
+  elements: readonly NonDeletedCauscapeElement[],
   appState: AppState,
   scenePointerX: number,
   scenePointerY: number,
@@ -152,7 +152,7 @@ export const getElementWithTransformHandleType = (
       editorInterface,
     );
     return transformHandleType ? { element, transformHandleType } : null;
-  }, null as { element: NonDeletedExcalidrawElement; transformHandleType: MaybeTransformHandleType } | null);
+  }, null as { element: NonDeletedCauscapeElement; transformHandleType: MaybeTransformHandleType } | null);
 };
 
 export const getTransformHandleTypeFromCoords = <
@@ -230,7 +230,7 @@ const rotateResizeCursor = (cursor: string, angle: number) => {
  * Returns bi-directional cursor for the element being resized
  */
 export const getCursorForResizingElement = (resizingElement: {
-  element?: ExcalidrawElement;
+  element?: CauscapeElement;
   transformHandleType: MaybeTransformHandleType;
 }): string => {
   const { element, transformHandleType } = resizingElement;

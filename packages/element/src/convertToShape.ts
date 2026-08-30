@@ -2,7 +2,7 @@ import {
   ELEMENT_PENDING_DRAW_SHAPE_OPACITY,
   getStrokeWidthByKey,
   ROUNDNESS,
-} from "@excalidraw/common";
+} from "@causcape/common";
 import {
   convexHull,
   distanceToLineSegment,
@@ -15,12 +15,12 @@ import {
   principalAxes,
   principalCoords,
   skewness,
-} from "@excalidraw/math";
+} from "@causcape/math";
 
-import type { App, AppState } from "@excalidraw/excalidraw/types";
+import type { App, AppState } from "@causcape/causcape/types";
 
-import type { LocalPoint, GlobalPoint, Radians } from "@excalidraw/math";
-import type { Bounds } from "@excalidraw/common";
+import type { LocalPoint, GlobalPoint, Radians } from "@causcape/math";
+import type { Bounds } from "@causcape/common";
 
 import { newArrowElement, newElement, newLinearElement } from "./newElement";
 import { getBoundsFromPoints, getElementAbsoluteCoords } from "./bounds";
@@ -34,18 +34,18 @@ import {
 import { LinearElementEditor } from "./linearElementEditor";
 
 import type {
-  ExcalidrawArrowElement,
-  ExcalidrawDiamondElement,
-  ExcalidrawElement,
-  ExcalidrawEllipseElement,
-  ExcalidrawFreeDrawElement,
-  ExcalidrawFrameLikeElement,
-  ExcalidrawRectangleElement,
+  CauscapeArrowElement,
+  CauscapeDiamondElement,
+  CauscapeElement,
+  CauscapeEllipseElement,
+  CauscapeFreeDrawElement,
+  CauscapeFrameLikeElement,
+  CauscapeRectangleElement,
   ElementsMap,
-  ExcalidrawNonSelectionElement,
-  NonDeletedExcalidrawElement,
+  CauscapeNonSelectionElement,
+  NonDeletedCauscapeElement,
   NonDeleted,
-  ExcalidrawLineElement,
+  CauscapeLineElement,
 } from "./types";
 
 declare global {
@@ -60,12 +60,12 @@ declare global {
 // rectangle = diamond.
 
 type NonDeletedRecognizedShapeElement = NonDeleted<
-  | ExcalidrawRectangleElement
-  | ExcalidrawEllipseElement
-  | ExcalidrawDiamondElement
-  | ExcalidrawArrowElement
-  | ExcalidrawLineElement
-  | ExcalidrawFreeDrawElement
+  | CauscapeRectangleElement
+  | CauscapeEllipseElement
+  | CauscapeDiamondElement
+  | CauscapeArrowElement
+  | CauscapeLineElement
+  | CauscapeFreeDrawElement
 >;
 
 type Shape = NonDeletedRecognizedShapeElement["type"];
@@ -496,7 +496,7 @@ function getArrowEndpoint<P extends LocalPoint | GlobalPoint>(
 // Recognizes common shapes from free-draw input points
 export const recognizeShape = <P extends LocalPoint | GlobalPoint>(
   points: P[],
-  previousElement: ExcalidrawElement | null,
+  previousElement: CauscapeElement | null,
   zoom: number = 1,
 ): ShapeRecognitionResult<P> => {
   // DEBUG (will be removed lated)
@@ -531,8 +531,8 @@ export const convertToShape = (
   points: GlobalPoint[],
   appState: AppState,
   elementsMap: ElementsMap,
-  previousElement: ExcalidrawElement | null,
-  frames?: readonly ExcalidrawFrameLikeElement[],
+  previousElement: CauscapeElement | null,
+  frames?: readonly CauscapeFrameLikeElement[],
 ): NonDeletedRecognizedShapeElement | undefined => {
   const recognizedShape = recognizeShape(
     points,
@@ -726,8 +726,8 @@ export const convertToShape = (
 // preview recompute on pointermove can skip setState (avoiding a no-op React
 // re-render and roughjs shape regeneration).
 const isDrawShapePreviewEqual = (
-  a: NonDeletedExcalidrawElement | null,
-  b: NonDeletedExcalidrawElement,
+  a: NonDeletedCauscapeElement | null,
+  b: NonDeletedCauscapeElement,
 ): boolean => {
   if (
     !a ||
@@ -775,7 +775,7 @@ export const convertToShapeHandlePointerMoveFromPointerDown = (
         app.scene.getNonDeletedElementsMap(),
         app.state.newElement,
         app.scene.getNonDeletedFramesLikes(),
-      ) as ExcalidrawNonSelectionElement | undefined;
+      ) as CauscapeNonSelectionElement | undefined;
 
       // Lines get no live preview — nearly every stroke reads as a line at
       // some early point, so previewing them is mostly flicker. Releasing

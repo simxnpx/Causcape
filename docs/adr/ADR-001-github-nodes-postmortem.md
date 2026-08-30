@@ -6,7 +6,7 @@
 
 ## Context
 
-Causcape is a fork of Excalidraw. `feature/graph-engine` introduces a causal graph substrate:
+Causcape is a fork of Causcape. `feature/graph-engine` introduces a causal graph substrate:
 
 - `causcape-node` (kind `variable`) + `causcape-edge` elements in `packages/element`
 - `buildGraph` / `validateGraph` / `position` in `packages/graph`
@@ -122,7 +122,7 @@ _Browser MCP tools createCauscapeNode/Edge, server-side vs browser fetch, token 
 
 **Settled: Fetch by app after creation; WebMCP creates structure, app hydrates.**
 
-- **WebMCP** (in `excalidraw-app/mcp`) exposes `createCauscapeNode` / `createCauscapeEdge` / `getGraph` / `setGithubToken` / `refresh*` over `navigator.mcp` (fallback `window.CauscapeMCP` for debug).
+- **WebMCP** (in `causcape-app/mcp`) exposes `createCauscapeNode` / `createCauscapeEdge` / `getGraph` / `setGithubToken` / `refresh*` over `navigator.mcp` (fallback `window.CauscapeMCP` for debug).
 - WebMCP **does not fetch GitHub** itself. It creates node skeletons with `github: GithubRef` (+ optional initial `cache`). The **app** performs `fetch` against `api.github.com` (or GraphQL batch) on `refresh*`, using the memory-only token if present.
 - Token boundary: WebMCP `setGithubToken` writes to the app's `useRef`; the app attaches `Authorization` header; no token crosses to a server in the MVP.
 
@@ -172,11 +172,11 @@ _Idempotent upsert by github.url lowercased, x,y omitted → graph-engine timeli
 
 ### Q17 — Where does postmortem live after agent populates?
 
-_localStorage autosave vs file in repo postmortems/_.excalidraw vs Causcape share link; source of truth & sharing.\*
+_localStorage autosave vs file in repo postmortems/_.causcape vs Causcape share link; source of truth & sharing.\*
 
 **Settled: Within component — local persistence (scene), not Vercel/hosted share for MVP.**
 
-Scene elements (including embedded caches) are the source of truth, persisted via existing Excalidraw local persistence (localStorage autosave + file export). No repo-file write and no hosted share link in the MVP. Sharing is **file export** (`.excalidraw` with snapshots) or copy. Future repo-file or Causcape share can be additive.
+Scene elements (including embedded caches) are the source of truth, persisted via existing Causcape local persistence (localStorage autosave + file export). No repo-file write and no hosted share link in the MVP. Sharing is **file export** (`.causcape` with snapshots) or copy. Future repo-file or Causcape share can be additive.
 
 ### Q18 — Scalable safest without per-user edge function — which compromise?
 
@@ -261,7 +261,7 @@ type CauscapeNodeData =
       cache?: GithubCache & { snapshotAt: string };
     };
 
-type ExcalidrawCauscapeNodeElement = _ExcalidrawElementBase & {
+type CauscapeNodeElement = _CauscapeElementBase & {
   type: "causcape-node";
   causcape: CauscapeNodeData;
 };
@@ -280,7 +280,7 @@ type CauscapeNode = {
   height: number;
   github?: GithubRef;
   cache?: GithubCache;
-  element: ExcalidrawCauscapeNodeElement;
+  element: CauscapeNodeElement;
 };
 
 const CAUSCAPE_EDGE_LABEL_POOL = [
@@ -295,7 +295,7 @@ const CAUSCAPE_EDGE_LABEL_POOL = [
 // cacheKey: `github:${kind}:${owner}/${repo}#${number}|@${sha}`  lowercased
 ```
 
-### `excalidraw-app/mcp` — WebMCP tools
+### `causcape-app/mcp` — WebMCP tools
 
 ```ts
 createCauscapeNode({ kind, github, label?, cache? }): { id: string; created: boolean } // idempotent by github.url
@@ -326,7 +326,7 @@ Rule:   No fetch on load; explicit refresh only
 
 **Positive**
 
-- Maps are shareable as plain `.excalidraw` files with embedded snapshots — no backend required.
+- Maps are shareable as plain `.causcape` files with embedded snapshots — no backend required.
 - Unauthenticated use works; authenticated use is opt-in and leak-resistant (memory-only).
 - Layout/validation centralised in `packages/graph`; idempotent create + global pool keep graphs consistent.
 - Optimizations (ETag, inflight dedup, GraphQL batch) make bulk refresh viable without `60/h` collapse.
@@ -371,8 +371,8 @@ Until that ADR lands, **unauth + ephemeral WebMCP token (memory-only, zero backe
 
 ## References
 
-- `packages/element/src/types.ts` — `ExcalidrawCauscapeNodeElement`, `CauscapeNodeData`
+- `packages/element/src/types.ts` — `CauscapeNodeElement`, `CauscapeNodeData`
 - `packages/graph/src/types.ts` — `CauscapeNode`, `CAUSCAPE_EDGE_LABEL_POOL`, `cacheKey`
 - `packages/graph/src/position.ts` — `suggestPosition` / timeline layout
 - `packages/graph/src/graph.ts` / `validate.ts` — `buildGraph`, diagnostics
-- `excalidraw-app/mcp/graphMCP.ts` — WebMCP handlers (`getGraph`, `createNode`, `createEdge`, token refs)
+- `causcape-app/mcp/graphMCP.ts` — WebMCP handlers (`getGraph`, `createNode`, `createEdge`, token refs)

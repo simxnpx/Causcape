@@ -1,9 +1,9 @@
 import type {
   ElementsMapOrArray,
-  ExcalidrawCauscapeEdgeElement,
-  ExcalidrawCauscapeNodeElement,
-  ExcalidrawElement,
-} from "@excalidraw/element/types";
+  CauscapeEdgeElement,
+  CauscapeNodeElement,
+  CauscapeElement,
+} from "@causcape/element/types";
 
 import {
   isArchitectureNodeKind,
@@ -14,20 +14,20 @@ import {
 import { validateGraph } from "./validate";
 
 const isCauscapeNodeElement = (
-  el: ExcalidrawElement,
-): el is ExcalidrawCauscapeNodeElement => el.type === "causcape-node";
+  el: CauscapeElement,
+): el is CauscapeNodeElement => el.type === "causcape-node";
 const isCauscapeEdgeElement = (
-  el: ExcalidrawElement,
-): el is ExcalidrawCauscapeEdgeElement => el.type === "causcape-edge";
+  el: CauscapeElement,
+): el is CauscapeEdgeElement => el.type === "causcape-edge";
 
 const toElementArray = (
   elements: ElementsMapOrArray,
-): readonly ExcalidrawElement[] => {
+): readonly CauscapeElement[] => {
   if (Array.isArray(elements)) {
     return elements;
   }
   // Map
-  return Array.from((elements as Map<string, ExcalidrawElement>).values());
+  return Array.from((elements as Map<string, CauscapeElement>).values());
 };
 
 export const buildGraph = (

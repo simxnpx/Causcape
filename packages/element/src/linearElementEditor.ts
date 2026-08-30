@@ -9,9 +9,9 @@ import {
   vectorFromPoint,
   curveLength,
   curvePointAtLength,
-} from "@excalidraw/math";
+} from "@causcape/math";
 
-import { getCurvePathOps } from "@excalidraw/utils/shape";
+import { getCurvePathOps } from "@causcape/utils/shape";
 
 import {
   DRAGGING_THRESHOLD,
@@ -21,9 +21,9 @@ import {
   invariant,
   isShallowEqual,
   getFeatureFlag,
-} from "@excalidraw/common";
+} from "@causcape/common";
 
-import type { Radians } from "@excalidraw/math";
+import type { Radians } from "@causcape/math";
 
 import type {
   AppState,
@@ -32,8 +32,8 @@ import type {
   AppClassProperties,
   NullableGridSize,
   Zoom,
-} from "@excalidraw/excalidraw/types";
-import type { Bounds } from "@excalidraw/common";
+} from "@causcape/causcape/types";
+import type { Bounds } from "@causcape/common";
 
 import { moveArrowAboveBindable } from "./zindex";
 import {
@@ -73,18 +73,18 @@ import type { Scene } from "./Scene";
 
 import type {
   NonDeleted,
-  ExcalidrawLinearElement,
-  ExcalidrawElement,
-  ExcalidrawTextElementWithContainer,
+  CauscapeLinearElement,
+  CauscapeElement,
+  CauscapeTextElementWithContainer,
   ElementsMap,
   NonDeletedSceneElementsMap,
   FixedPointBinding,
   FixedSegment,
-  ExcalidrawElbowArrowElement,
+  CauscapeElbowArrowElement,
   PointsPositionUpdates,
-  NonDeletedExcalidrawElement,
+  NonDeletedCauscapeElement,
   Ordered,
-  ExcalidrawBindableElement,
+  CauscapeBindableElement,
 } from "./types";
 
 /**
@@ -98,7 +98,7 @@ import type {
 const getNormalizedPoints = ({
   points,
 }: {
-  points: ExcalidrawLinearElement["points"];
+  points: CauscapeLinearElement["points"];
 }): {
   points: LocalPoint[];
   offsetX: number;
@@ -124,8 +124,8 @@ type PointMoveOtherUpdates = {
 };
 
 export class LinearElementEditor {
-  public readonly elementId: ExcalidrawElement["id"] & {
-    _brand: "excalidrawLinearElementId";
+  public readonly elementId: CauscapeElement["id"] & {
+    _brand: "causcapeLinearElementId";
   };
   /** indices */
   public readonly selectedPointsIndices: readonly number[] | null;
@@ -164,12 +164,12 @@ export class LinearElementEditor {
   public readonly pointerDownState: never;
 
   constructor(
-    element: NonDeleted<ExcalidrawLinearElement>,
+    element: NonDeleted<CauscapeLinearElement>,
     elementsMap: ElementsMap,
     isEditing: boolean = false,
   ) {
     this.elementId = element.id as string & {
-      _brand: "excalidrawLinearElementId";
+      _brand: "causcapeLinearElementId";
     };
     if (!pointsEqual(element.points[0], pointFrom(0, 0))) {
       console.error("Linear element is not normalized", Error().stack);
@@ -215,9 +215,9 @@ export class LinearElementEditor {
 
   /**
    * @param id the `elementId` from the instance of this class (so that we can
-   *  statically guarantee this method returns an ExcalidrawLinearElement)
+   *  statically guarantee this method returns a CauscapeLinearElement)
    */
-  static getElement<T extends ExcalidrawLinearElement>(
+  static getElement<T extends CauscapeLinearElement>(
     id: InstanceType<typeof LinearElementEditor>["elementId"],
     elementsMap: ElementsMap,
   ): NonDeleted<T> | null {
@@ -417,7 +417,7 @@ export class LinearElementEditor {
       element.startBinding &&
       (elementsMap.get(
         element.startBinding.elementId,
-      ) as ExcalidrawBindableElement | null);
+      ) as CauscapeBindableElement | null);
     const newLinearElementEditor = {
       ...linearElementEditor,
       customLineAngle,
@@ -640,13 +640,13 @@ export class LinearElementEditor {
       element.startBinding &&
       (elementsMap.get(
         element.startBinding.elementId,
-      ) as ExcalidrawBindableElement | null);
+      ) as CauscapeBindableElement | null);
     const endBindingElement =
       isBindingElement(element) &&
       element.endBinding &&
       (elementsMap.get(
         element.endBinding.elementId,
-      ) as ExcalidrawBindableElement | null);
+      ) as CauscapeBindableElement | null);
     const altFocusPointBindableElement =
       endIsSelected && // The "other" end (i.e. "end") is dragged
       startBindingElement &&
@@ -786,7 +786,7 @@ export class LinearElementEditor {
   }
 
   static getEditorMidPoints = (
-    element: ExcalidrawLinearElement,
+    element: CauscapeLinearElement,
     elementsMap: ElementsMap,
     appState: InteractiveCanvasAppState,
   ): (GlobalPoint | null)[] => {
@@ -910,7 +910,7 @@ export class LinearElementEditor {
   };
 
   static isSegmentTooShort<P extends GlobalPoint | LocalPoint>(
-    element: ExcalidrawLinearElement,
+    element: CauscapeLinearElement,
     startPoint: P,
     endPoint: P,
     index: number,
@@ -951,7 +951,7 @@ export class LinearElementEditor {
   }
 
   static getSegmentMidPoint(
-    element: ExcalidrawLinearElement,
+    element: CauscapeLinearElement,
     index: number,
     elementsMap: ElementsMap,
   ): GlobalPoint {
@@ -1031,7 +1031,7 @@ export class LinearElementEditor {
     scene: Scene,
   ): {
     didAddPoint: boolean;
-    hitElement: NonDeleted<ExcalidrawElement> | null;
+    hitElement: NonDeleted<CauscapeElement> | null;
     linearElementEditor: LinearElementEditor | null;
   } {
     const appState = app.state;
@@ -1275,7 +1275,7 @@ export class LinearElementEditor {
 
   /** scene coords */
   static getPointGlobalCoordinates(
-    element: ExcalidrawLinearElement,
+    element: CauscapeLinearElement,
     p: LocalPoint,
     elementsMap: ElementsMap,
   ): GlobalPoint {
@@ -1293,7 +1293,7 @@ export class LinearElementEditor {
 
   /** scene coords */
   static getPointsGlobalCoordinates(
-    element: ExcalidrawLinearElement,
+    element: CauscapeLinearElement,
     elementsMap: ElementsMap,
   ): GlobalPoint[] {
     const [x1, y1, x2, y2] = getElementAbsoluteCoords(element, elementsMap);
@@ -1310,7 +1310,7 @@ export class LinearElementEditor {
   }
 
   static getPointAtIndexGlobalCoordinates(
-    element: ExcalidrawLinearElement,
+    element: CauscapeLinearElement,
     indexMaybeFromEnd: number, // -1 for last element
     elementsMap: ElementsMap,
   ): GlobalPoint {
@@ -1333,7 +1333,7 @@ export class LinearElementEditor {
   }
 
   static pointFromAbsoluteCoords(
-    element: ExcalidrawLinearElement,
+    element: CauscapeLinearElement,
     absoluteCoords: GlobalPoint,
     elementsMap: ElementsMap,
   ): LocalPoint {
@@ -1357,7 +1357,7 @@ export class LinearElementEditor {
   }
 
   static getPointIndexUnderCursor(
-    element: ExcalidrawLinearElement,
+    element: CauscapeLinearElement,
     elementsMap: ElementsMap,
     zoom: AppState["zoom"],
     x: number,
@@ -1385,7 +1385,7 @@ export class LinearElementEditor {
   }
 
   static createPointAt(
-    element: ExcalidrawLinearElement,
+    element: CauscapeLinearElement,
     elementsMap: ElementsMap,
     scenePointerX: number,
     scenePointerY: number,
@@ -1411,7 +1411,7 @@ export class LinearElementEditor {
    * Also returns normalized x and y coords to account for the normalization
    * of the points.
    */
-  static getNormalizeElementPointsAndCoords(element: ExcalidrawLinearElement) {
+  static getNormalizeElementPointsAndCoords(element: CauscapeLinearElement) {
     const { points, offsetX, offsetY } = getNormalizedPoints(element);
 
     return {
@@ -1500,7 +1500,7 @@ export class LinearElementEditor {
   }
 
   static deletePoints(
-    element: NonDeleted<ExcalidrawLinearElement>,
+    element: NonDeleted<CauscapeLinearElement>,
     app: AppClassProperties,
     pointIndices: readonly number[],
   ) {
@@ -1544,7 +1544,7 @@ export class LinearElementEditor {
   }
 
   static addPoints(
-    element: NonDeleted<ExcalidrawLinearElement>,
+    element: NonDeleted<CauscapeLinearElement>,
     scene: Scene,
     addedPoints: LocalPoint[],
   ) {
@@ -1573,7 +1573,7 @@ export class LinearElementEditor {
   }
 
   static movePoints(
-    element: NonDeleted<ExcalidrawLinearElement>,
+    element: NonDeleted<CauscapeLinearElement>,
     scene: Scene,
     pointUpdates: PointsPositionUpdates,
     otherUpdates?: {
@@ -1756,7 +1756,7 @@ export class LinearElementEditor {
   }
 
   private static _updatePoints(
-    element: NonDeleted<ExcalidrawLinearElement>,
+    element: NonDeleted<CauscapeLinearElement>,
     scene: Scene,
     nextPoints: readonly LocalPoint[],
     offsetX: number,
@@ -1819,7 +1819,7 @@ export class LinearElementEditor {
   }
 
   private static _getShiftLockedDelta(
-    element: ExcalidrawLinearElement,
+    element: CauscapeLinearElement,
     elementsMap: ElementsMap,
     referencePoint: LocalPoint,
     scenePointer: GlobalPoint,
@@ -1866,7 +1866,7 @@ export class LinearElementEditor {
    * segment.
    */
   static getBoundTextElementCenter = (
-    element: ExcalidrawLinearElement,
+    element: CauscapeLinearElement,
     elementsMap: ElementsMap,
   ): GlobalPoint => {
     if (element.points.length % 2 === 1) {
@@ -1887,8 +1887,8 @@ export class LinearElementEditor {
   };
 
   static getBoundTextElementPosition = (
-    element: ExcalidrawLinearElement,
-    boundTextElement: ExcalidrawTextElementWithContainer,
+    element: CauscapeLinearElement,
+    boundTextElement: CauscapeTextElementWithContainer,
     elementsMap: ElementsMap,
   ): { x: number; y: number } => {
     const points = LinearElementEditor.getPointsGlobalCoordinates(
@@ -1911,10 +1911,10 @@ export class LinearElementEditor {
   };
 
   static getMinMaxXYWithBoundText = (
-    element: ExcalidrawLinearElement,
+    element: CauscapeLinearElement,
     elementsMap: ElementsMap,
     elementBounds: Bounds,
-    boundTextElement: ExcalidrawTextElementWithContainer,
+    boundTextElement: CauscapeTextElementWithContainer,
   ): [number, number, number, number, number, number] => {
     let [x1, y1, x2, y2] = elementBounds;
     const cx = (x1 + x2) / 2;
@@ -2015,7 +2015,7 @@ export class LinearElementEditor {
   };
 
   static getElementAbsoluteCoords = (
-    element: ExcalidrawLinearElement,
+    element: CauscapeLinearElement,
     elementsMap: ElementsMap,
     includeBoundText: boolean = false,
   ): [number, number, number, number, number, number] => {
@@ -2132,7 +2132,7 @@ export class LinearElementEditor {
   }
 
   static deleteFixedSegment(
-    element: ExcalidrawElbowArrowElement,
+    element: CauscapeElbowArrowElement,
     scene: Scene,
     index: number,
   ): void {
@@ -2161,8 +2161,8 @@ const pointDraggingUpdates = (
   scenePointerX: number,
   scenePointerY: number,
   elementsMap: NonDeletedSceneElementsMap,
-  element: NonDeleted<ExcalidrawLinearElement>,
-  elements: readonly Ordered<NonDeletedExcalidrawElement>[],
+  element: NonDeleted<CauscapeLinearElement>,
+  elements: readonly Ordered<NonDeletedCauscapeElement>[],
   app: AppClassProperties,
   angleLocked: boolean,
   altKey: boolean,
@@ -2256,7 +2256,7 @@ const pointDraggingUpdates = (
 
     if (element.startBinding) {
       const startBindable = elementsMap.get(element.startBinding.elementId) as
-        | ExcalidrawBindableElement
+        | CauscapeBindableElement
         | undefined;
       if (startBindable) {
         const startPoint =
@@ -2275,7 +2275,7 @@ const pointDraggingUpdates = (
 
     if (element.endBinding) {
       const endBindable = elementsMap.get(element.endBinding.elementId) as
-        | ExcalidrawBindableElement
+        | CauscapeBindableElement
         | undefined;
       if (endBindable) {
         const endPoint =
@@ -2441,7 +2441,7 @@ const pointDraggingUpdates = (
     ? end.element ??
       (elementsMap.get(
         nextArrow.endBinding.elementId,
-      )! as ExcalidrawBindableElement)
+      )! as CauscapeBindableElement)
     : null;
 
   const endLocalPoint =
@@ -2470,7 +2470,7 @@ const pointDraggingUpdates = (
     ? start.element ??
       (elementsMap.get(
         nextArrow.startBinding.elementId,
-      )! as ExcalidrawBindableElement)
+      )! as CauscapeBindableElement)
     : null;
 
   const startLocalPoint =
