@@ -51,26 +51,6 @@
   position: relative;
 }
 
-.causcape-project-actions {
-  position: absolute;
-  z-index: calc(var(--zIndex-ui-top, 100) + 1);
-  top: 0.75rem;
-  right: 0.75rem;
-  display: flex;
-  gap: 0.4rem;
-}
-
-.causcape-project-actions button {
-  border: 1px solid rgba(0, 0, 0, 0.14);
-  border-radius: 0.55rem;
-  padding: 0.5rem 0.7rem;
-  background: rgba(255, 255, 255, 0.94);
-  color: #34323d;
-  box-shadow: 0 0.15rem 0.65rem rgba(0, 0, 0, 0.1);
-  font: 600 0.78rem/1 var(--ui-font, system-ui, sans-serif);
-  cursor: pointer;
-}
-
 .causcape-project-loading {
   display: grid;
   min-height: 100dvh;

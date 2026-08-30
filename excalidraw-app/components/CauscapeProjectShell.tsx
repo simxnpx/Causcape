@@ -1,17 +1,21 @@
 import { useState, type ReactNode } from "react";
 
+import { sidebarRightIcon } from "@excalidraw/excalidraw/components/icons";
+
 import "./CauscapeProjectShell.scss";
 
 export type ProjectMode = "focus" | "document";
 
 type CauscapeProjectShellProps = {
   canvas: ReactNode;
+  canvasControls?: ReactNode;
   document: ReactNode;
   onModeChange?: (mode: ProjectMode) => void;
 };
 
 export const CauscapeProjectShell = ({
   canvas,
+  canvasControls,
   document,
   onModeChange,
 }: CauscapeProjectShellProps) => {
@@ -39,30 +43,33 @@ export const CauscapeProjectShell = ({
         >
           {canvas}
         </div>
-        {mode === "focus" ? (
+        <div
+          className="causcape-canvas-controls"
+          data-testid="causcape-canvas-controls"
+        >
+          {canvasControls}
           <button
-            className="causcape-document-handle"
+            className="causcape-document-toggle"
             type="button"
-            onClick={() => changeMode("document")}
-            aria-label="Open project document"
-            title="Open project document"
+            onClick={() => changeMode(mode === "focus" ? "document" : "focus")}
+            aria-label={
+              mode === "focus" ? "Open project document" : "Focus canvas"
+            }
+            aria-pressed={mode === "document"}
+            data-tooltip={
+              mode === "focus"
+                ? "Open project document"
+                : "Close project document"
+            }
+            title={
+              mode === "focus"
+                ? "Open project document"
+                : "Close project document"
+            }
           >
-            <span className="causcape-document-handle__grip" aria-hidden="true">
-              ›
-            </span>
-            <span className="causcape-document-handle__label">Document</span>
+            {sidebarRightIcon}
           </button>
-        ) : (
-          <button
-            className="causcape-focus-button"
-            type="button"
-            onClick={() => changeMode("focus")}
-            aria-label="Focus canvas"
-            title="Close project document"
-          >
-            <span aria-hidden="true">›</span>
-          </button>
-        )}
+        </div>
       </section>
 
       <aside

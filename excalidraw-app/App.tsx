@@ -124,6 +124,7 @@ import Collab, {
 import { AppFooter } from "./components/AppFooter";
 import { AppMainMenu } from "./components/AppMainMenu";
 import { AppWelcomeScreen } from "./components/AppWelcomeScreen";
+import { CauscapeProjectActions } from "./components/CauscapeProjectActions";
 import { GraphMCPBridge } from "./mcp/GraphMCPBridge";
 import { ProjectMCPBridge } from "./mcp/ProjectMCPBridge";
 import {
@@ -1794,28 +1795,23 @@ const CauscapeProjectWorkspace = () => {
               initialProject={project}
               onProjectCanvasChange={handleCanvasChange}
             />
-            <CauscapeEngineeringTools
-              selectedObject={selectedObject}
-              onAddShape={addPreparedShape}
-              onRename={renameCanvasObject}
-              onMetadataSet={setCanvasObjectMetadata}
-              onMetadataDelete={deleteCanvasObjectMetadata}
+            <CauscapeProjectActions
+              onOpenProjects={() => {
+                void refreshProjects();
+                setShowDashboard(true);
+              }}
+              onExport={exportProject}
             />
-            <nav className="causcape-project-actions" aria-label="Project">
-              <button
-                type="button"
-                onClick={() => {
-                  void refreshProjects();
-                  setShowDashboard(true);
-                }}
-              >
-                Projects
-              </button>
-              <button type="button" onClick={exportProject}>
-                Export .causcape
-              </button>
-            </nav>
           </div>
+        }
+        canvasControls={
+          <CauscapeEngineeringTools
+            selectedObject={selectedObject}
+            onAddShape={addPreparedShape}
+            onRename={renameCanvasObject}
+            onMetadataSet={setCanvasObjectMetadata}
+            onMetadataDelete={deleteCanvasObjectMetadata}
+          />
         }
         document={
           <article>
