@@ -1,9 +1,5 @@
 .causcape-engineering-tools {
-  position: absolute;
-  z-index: calc(var(--zIndex-ui-top, 100) + 2);
-  top: 50%;
-  right: 0.75rem;
-  transform: translateY(-50%);
+  position: relative;
   color: #34323d;
   font: 500 0.78rem/1.25 var(--ui-font, system-ui, sans-serif);
 }

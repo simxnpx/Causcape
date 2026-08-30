@@ -124,6 +124,8 @@ import Collab, {
 import { AppFooter } from "./components/AppFooter";
 import { AppMainMenu } from "./components/AppMainMenu";
 import { AppWelcomeScreen } from "./components/AppWelcomeScreen";
+import { CauscapeDocumentHeader } from "./components/CauscapeDocumentHeader";
+import { CauscapeProjectActions } from "./components/CauscapeProjectActions";
 import { GraphMCPBridge } from "./mcp/GraphMCPBridge";
 import { ProjectMCPBridge } from "./mcp/ProjectMCPBridge";
 import {
@@ -1794,46 +1796,30 @@ const CauscapeProjectWorkspace = () => {
               initialProject={project}
               onProjectCanvasChange={handleCanvasChange}
             />
-            <CauscapeEngineeringTools
-              selectedObject={selectedObject}
-              onAddShape={addPreparedShape}
-              onRename={renameCanvasObject}
-              onMetadataSet={setCanvasObjectMetadata}
-              onMetadataDelete={deleteCanvasObjectMetadata}
+            <CauscapeProjectActions
+              onOpenProjects={() => {
+                void refreshProjects();
+                setShowDashboard(true);
+              }}
+              onExport={exportProject}
             />
-            <nav className="causcape-project-actions" aria-label="Project">
-              <button
-                type="button"
-                onClick={() => {
-                  void refreshProjects();
-                  setShowDashboard(true);
-                }}
-              >
-                Projects
-              </button>
-              <button type="button" onClick={exportProject}>
-                Export .causcape
-              </button>
-            </nav>
           </div>
+        }
+        canvasControls={
+          <CauscapeEngineeringTools
+            selectedObject={selectedObject}
+            onAddShape={addPreparedShape}
+            onRename={renameCanvasObject}
+            onMetadataSet={setCanvasObjectMetadata}
+            onMetadataDelete={deleteCanvasObjectMetadata}
+          />
         }
         document={
           <article>
-            <header className="causcape-document-header">
-              <div>
-                <p className="causcape-document-eyebrow">Project document</p>
-                <p className="causcape-document-project-title">
-                  {project.title}
-                </p>
-              </div>
-              <button
-                type="button"
-                className="causcape-document-mode-button"
-                onClick={() => setIsDocumentEditable((editable) => !editable)}
-              >
-                {isDocumentEditable ? "Read" : "Edit"}
-              </button>
-            </header>
+            <CauscapeDocumentHeader
+              editable={isDocumentEditable}
+              onEditableChange={setIsDocumentEditable}
+            />
             <Suspense
               fallback={
                 <p className="causcape-document-loading">Loading document…</p>
