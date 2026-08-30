@@ -13,32 +13,93 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 1rem;
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
 }
 
 .causcape-document-header .causcape-document-eyebrow {
   margin: 0;
 }
 
-.causcape-document-mode-button {
+.causcape-document-mode-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
   border: 1px solid rgba(0, 0, 0, 0.14);
-  border-radius: 0.45rem;
-  padding: 0.45rem 0.7rem;
+  border-radius: 0.7rem;
+  padding: 0.2rem;
+  background: rgba(255, 255, 255, 0.48);
+}
+
+.causcape-document-mode-label {
+  padding: 0 0.4rem 0 0.5rem;
+  color: #77727f;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.causcape-document-mode-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 0;
+  border-radius: 0.5rem;
+  padding: 0.42rem 0.58rem;
   background: transparent;
   color: inherit;
   font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
   cursor: pointer;
+  transition: background-color 120ms ease, box-shadow 120ms ease,
+    color 120ms ease;
+
+  svg {
+    width: 1rem;
+    height: 1rem;
+  }
+}
+
+.causcape-document-mode-option:hover {
+  background: rgba(105, 101, 219, 0.09);
+  color: #514da5;
+}
+
+.causcape-document-mode-option:focus-visible {
+  outline: 2px solid #6965db;
+  outline-offset: 1px;
+}
+
+.causcape-document-mode-option[aria-pressed="true"] {
+  background: #fff;
+  color: #514da5;
+  box-shadow: 0 0.08rem 0.25rem rgba(32, 29, 44, 0.14),
+    0 0 0 1px rgba(32, 29, 44, 0.06);
 }
 
 .causcape-document-loading {
   color: #77736f;
 }
 
-.causcape-document-project-title {
-  margin: 0.35rem 0 0;
-  font-size: 1.15rem;
-  font-weight: 700;
+.theme--dark .causcape-document-mode-selector,
+.dark .causcape-document-mode-selector {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.theme--dark .causcape-document-mode-label,
+.dark .causcape-document-mode-label {
+  color: #aaa6b2;
+}
+
+.theme--dark .causcape-document-mode-option[aria-pressed="true"],
+.dark .causcape-document-mode-option[aria-pressed="true"] {
+  background: #34313c;
+  color: #b8b4ff;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
 .causcape-canvas-stack {

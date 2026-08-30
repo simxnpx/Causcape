@@ -124,6 +124,7 @@ import Collab, {
 import { AppFooter } from "./components/AppFooter";
 import { AppMainMenu } from "./components/AppMainMenu";
 import { AppWelcomeScreen } from "./components/AppWelcomeScreen";
+import { CauscapeDocumentHeader } from "./components/CauscapeDocumentHeader";
 import { CauscapeProjectActions } from "./components/CauscapeProjectActions";
 import { GraphMCPBridge } from "./mcp/GraphMCPBridge";
 import { ProjectMCPBridge } from "./mcp/ProjectMCPBridge";
@@ -1815,21 +1816,10 @@ const CauscapeProjectWorkspace = () => {
         }
         document={
           <article>
-            <header className="causcape-document-header">
-              <div>
-                <p className="causcape-document-eyebrow">Project document</p>
-                <p className="causcape-document-project-title">
-                  {project.title}
-                </p>
-              </div>
-              <button
-                type="button"
-                className="causcape-document-mode-button"
-                onClick={() => setIsDocumentEditable((editable) => !editable)}
-              >
-                {isDocumentEditable ? "Read" : "Edit"}
-              </button>
-            </header>
+            <CauscapeDocumentHeader
+              editable={isDocumentEditable}
+              onEditableChange={setIsDocumentEditable}
+            />
             <Suspense
               fallback={
                 <p className="causcape-document-loading">Loading document…</p>
