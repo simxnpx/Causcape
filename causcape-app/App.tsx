@@ -182,6 +182,7 @@ import {
   CauscapeDataFlowPanel,
   CauscapeDataFlowPlaybackBar,
 } from "./components/CauscapeDataFlowPlayer";
+import { followDataFlowPlaybackStep } from "./components/dataFlowPlaybackViewport";
 import {
   CauscapeFlowOverlay,
   type CauscapeFlowOverlayHandle,
@@ -1542,6 +1543,15 @@ const CauscapeProjectWorkspace = () => {
       project?.canvas.scene,
     ],
   );
+  const activeDataFlowNodeElementId =
+    resolvedDataFlowPlayback?.activeNodeElementIds[0];
+
+  useEffect(() => {
+    if (!causcapeAPI || !activeDataFlowNodeElementId) {
+      return;
+    }
+    followDataFlowPlaybackStep(causcapeAPI, [activeDataFlowNodeElementId]);
+  }, [activeDataFlowNodeElementId, causcapeAPI]);
 
   const getProjectForMCP = useCallback(() => projectRef.current, []);
   const setProjectFromMCP = useCallback((nextProject: Project) => {

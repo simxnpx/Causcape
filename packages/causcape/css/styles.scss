@@ -1277,21 +1277,19 @@ body.causcape-cursor-resize * {
   }
 
   &[data-flow-playback-state] {
-    transition: filter 220ms ease, opacity 220ms ease, transform 220ms ease,
+    transition: filter 220ms ease, border-color 220ms ease,
       box-shadow 220ms ease;
   }
 
   &[data-flow-playback-state="inactive"] {
-    filter: saturate(0.35);
-    opacity: 0.38;
+    filter: saturate(0.35) brightness(0.96);
   }
 
   &[data-flow-playback-state="completed"] {
-    opacity: 0.72;
+    filter: saturate(0.72) brightness(0.99);
   }
 
   &[data-flow-playback-state="active"] {
-    transform: translateY(-3px);
     border-color: var(--causcape-accent);
     box-shadow: 0 0 0 5px
         color-mix(in srgb, var(--causcape-accent) 15%, transparent),

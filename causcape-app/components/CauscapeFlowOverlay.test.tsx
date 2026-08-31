@@ -143,6 +143,13 @@ describe("CauscapeFlowOverlay", () => {
     expect(
       overlay.querySelector("[data-flow-playback-packet='database-edge']"),
     ).toHaveAttribute("path", "M 220 80 L 20 80");
+    expect(
+      overlay.querySelector("[data-flow-playback-track='database-edge']"),
+    ).toHaveAttribute("d", "M 220 80 L 20 80");
+    expect(
+      overlay.querySelector("[data-flow-playback-track='database-edge']"),
+    ).toHaveAttribute("marker-end");
+    expect(overlay.querySelectorAll("[data-flow-packet]")).toHaveLength(0);
   });
 
   it("stops failed-flow packets at a visible interruption marker", () => {

@@ -464,6 +464,12 @@ export const CauscapeFlowOverlay = forwardRef<
           : path.packetCount;
         const markerId = getMarkerId(path.id);
         const duration = path.durationSeconds ?? 2.4;
+        const playbackD =
+          playbackState === "active"
+            ? playback?.activeDirection === "reverse"
+              ? path.playbackReverseD ?? path.reverseD ?? path.d
+              : path.playbackForwardD ?? path.d
+            : null;
         const visibleLabel = path.label ? getVisibleLabel(path.label) : null;
         const labelWidth = visibleLabel
           ? Math.min(286, Math.max(96, visibleLabel.length * 7.2 + 28))
@@ -498,9 +504,12 @@ export const CauscapeFlowOverlay = forwardRef<
             <path
               className="causcape-flow-overlay__track"
               data-flow-track={path.id}
-              d={path.d}
+              data-flow-playback-track={playbackD ? path.id : undefined}
+              d={playbackD ?? path.d}
               stroke={path.color}
-              markerStart={path.reverseD ? `url(#${markerId})` : undefined}
+              markerStart={
+                !playbackD && path.reverseD ? `url(#${markerId})` : undefined
+              }
               markerEnd={`url(#${markerId})`}
             />
             {playbackState === "active" && playback?.isPlaying ? (
@@ -511,11 +520,7 @@ export const CauscapeFlowOverlay = forwardRef<
               >
                 <animateMotion
                   data-flow-playback-packet={path.id}
-                  path={
-                    playback.activeDirection === "reverse"
-                      ? path.playbackReverseD ?? path.reverseD ?? path.d
-                      : path.playbackForwardD ?? path.d
-                  }
+                  path={playbackD ?? path.d}
                   dur="1.15s"
                   repeatCount="indefinite"
                   rotate="auto"
@@ -523,57 +528,59 @@ export const CauscapeFlowOverlay = forwardRef<
                 />
               </circle>
             ) : null}
-            {directions.flatMap((direction) =>
-              Array.from({ length: packetCount }, (_, index) => {
-                const packetProps = {
-                  className: `causcape-flow-overlay__packet causcape-flow-overlay__packet--${
-                    path.packetVariant ?? "capsule"
-                  }`,
-                  "data-flow-packet": path.id,
-                  "data-flow-direction": direction.name,
-                  fill: path.color,
-                } as const;
-                const animation = (
-                  <animateMotion
-                    path={direction.d}
-                    dur={`${duration}s`}
-                    begin={`${(-duration * index) / packetCount}s`}
-                    repeatCount="indefinite"
-                    rotate="auto"
-                    calcMode="linear"
-                  />
-                );
-                return path.packetVariant === "dot" ? (
-                  <circle
-                    key={`${direction.name}-${index}`}
-                    {...packetProps}
-                    r="4.5"
-                  >
-                    {animation}
-                  </circle>
-                ) : path.packetVariant === "diamond" ? (
-                  <path
-                    key={`${direction.name}-${index}`}
-                    {...packetProps}
-                    d="M 0 -5 L 6 0 L 0 5 L -6 0 Z"
-                  >
-                    {animation}
-                  </path>
-                ) : (
-                  <rect
-                    key={`${direction.name}-${index}`}
-                    {...packetProps}
-                    x="-8"
-                    y="-3.5"
-                    width="16"
-                    height="7"
-                    rx="3.5"
-                  >
-                    {animation}
-                  </rect>
-                );
-              }),
-            )}
+            {!playback
+              ? directions.flatMap((direction) =>
+                  Array.from({ length: packetCount }, (_, index) => {
+                    const packetProps = {
+                      className: `causcape-flow-overlay__packet causcape-flow-overlay__packet--${
+                        path.packetVariant ?? "capsule"
+                      }`,
+                      "data-flow-packet": path.id,
+                      "data-flow-direction": direction.name,
+                      fill: path.color,
+                    } as const;
+                    const animation = (
+                      <animateMotion
+                        path={direction.d}
+                        dur={`${duration}s`}
+                        begin={`${(-duration * index) / packetCount}s`}
+                        repeatCount="indefinite"
+                        rotate="auto"
+                        calcMode="linear"
+                      />
+                    );
+                    return path.packetVariant === "dot" ? (
+                      <circle
+                        key={`${direction.name}-${index}`}
+                        {...packetProps}
+                        r="4.5"
+                      >
+                        {animation}
+                      </circle>
+                    ) : path.packetVariant === "diamond" ? (
+                      <path
+                        key={`${direction.name}-${index}`}
+                        {...packetProps}
+                        d="M 0 -5 L 6 0 L 0 5 L -6 0 Z"
+                      >
+                        {animation}
+                      </path>
+                    ) : (
+                      <rect
+                        key={`${direction.name}-${index}`}
+                        {...packetProps}
+                        x="-8"
+                        y="-3.5"
+                        width="16"
+                        height="7"
+                        rx="3.5"
+                      >
+                        {animation}
+                      </rect>
+                    );
+                  }),
+                )
+              : null}
             {visibleLabel && path.labelAnchor ? (
               <g
                 className="causcape-flow-overlay__label"
