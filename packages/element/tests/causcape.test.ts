@@ -342,6 +342,27 @@ describe("Causcape elements", () => {
     );
   });
 
+  it("can leave edge labels to a richer DOM overlay", () => {
+    const edge = newCauscapeEdgeElement({
+      x: 0,
+      y: 0,
+      fromNodeId: "source",
+      toNodeId: "target",
+      label: "submits a reservation request",
+      points: [pointFrom<LocalPoint>(0, 0), pointFrom<LocalPoint>(180, 0)],
+    });
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d")!;
+    const fillText = vi.spyOn(context, "fillText");
+
+    drawCauscapeEdgeOnCanvas(edge, context, {
+      theme: THEME.LIGHT,
+      renderCauscapeEdgeLabels: false,
+    } as StaticCanvasRenderConfig);
+
+    expect(fillText).not.toHaveBeenCalled();
+  });
+
   it("reports the full label bounds for short horizontal and vertical edges", () => {
     const value = {
       relationship: "calls",

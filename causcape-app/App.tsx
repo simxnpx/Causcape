@@ -1132,6 +1132,7 @@ const CauscapeWrapper = ({
             </div>
           );
         }}
+        renderCauscapeEdgeLabels={false}
         onLinkOpen={(element, event) => {
           if (element.link && isElementLink(element.link)) {
             event.preventDefault();

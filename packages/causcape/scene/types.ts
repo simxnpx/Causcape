@@ -30,6 +30,10 @@ export type StaticCanvasRenderConfig = {
   // ---------------------------------------------------------------------------
   imageCache: AppClassProperties["imageCache"];
   renderGrid: boolean;
+  /** whether Causcape relationship labels are painted on the base canvas.
+   * Hosts with a richer DOM/SVG label layer can disable this to avoid
+   * rendering the same label twice. @default true */
+  renderCauscapeEdgeLabels?: boolean;
   /** whether to render link icons on elements with links (never rendered
    when exporting). @default true */
   renderLinks?: boolean;

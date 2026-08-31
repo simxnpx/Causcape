@@ -971,6 +971,11 @@ export interface CauscapeProps {
   aiEnabled?: boolean;
   showDeprecatedFonts?: boolean;
   renderScrollbars?: boolean;
+  /**
+   * Paint typed relationship labels on the base canvas. Disable this when the
+   * host supplies its own label overlay. Defaults to true.
+   */
+  renderCauscapeEdgeLabels?: boolean;
   viewportStatusFrame?: ViewportStatusFrame | null;
   /**
    * Rendered inside the UserList "who's here" dropdown (desktop) and inline

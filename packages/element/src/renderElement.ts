@@ -932,6 +932,9 @@ export const drawCauscapeEdgeOnCanvas = (
   context: CanvasRenderingContext2D,
   renderConfig: StaticCanvasRenderConfig,
 ): void => {
+  if (renderConfig.renderCauscapeEdgeLabels === false) {
+    return;
+  }
   const label = getCauscapeEdgeLabel(element.causcape);
   if (!label) {
     return;

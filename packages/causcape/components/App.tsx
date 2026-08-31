@@ -2673,6 +2673,8 @@ class App extends React.Component<AppProps, AppState> {
                               isExporting: false,
                               renderGrid: isGridModeEnabled(this),
                               renderLinks: this.isLinksEnabled(),
+                              renderCauscapeEdgeLabels:
+                                this.props.renderCauscapeEdgeLabels,
                               canvasBackgroundColor:
                                 this.state.viewBackgroundColor,
                               embedsValidationStatus:
@@ -2696,6 +2698,8 @@ class App extends React.Component<AppProps, AppState> {
                                 imageCache: this.imageCache,
                                 isExporting: false,
                                 renderGrid: false,
+                                renderCauscapeEdgeLabels:
+                                  this.props.renderCauscapeEdgeLabels,
                                 canvasBackgroundColor:
                                   this.state.viewBackgroundColor,
                                 embedsValidationStatus:
