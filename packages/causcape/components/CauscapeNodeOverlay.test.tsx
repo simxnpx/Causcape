@@ -118,6 +118,30 @@ describe("CauscapeNodeOverlay", () => {
     ).toBeNull();
   });
 
+  it("exposes walkthrough state without changing component interaction", () => {
+    const node = newCauscapeNodeElement({
+      x: 0,
+      y: 0,
+      label: "Session cache",
+      kind: "datastore",
+    });
+
+    renderDOM(
+      <CauscapeNodeOverlay
+        element={node}
+        theme={THEME.LIGHT}
+        linksEnabled={true}
+        playbackState="active"
+        onOpenDescription={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId("causcape-node-overlay")).toHaveAttribute(
+      "data-flow-playback-state",
+      "active",
+    );
+  });
+
   it("presents the selected component description in a dismissible sheet", async () => {
     const onClose = vi.fn();
     const node = newCauscapeNodeElement({

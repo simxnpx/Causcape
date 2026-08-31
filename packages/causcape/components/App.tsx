@@ -2090,6 +2090,12 @@ class App extends React.Component<AppProps, AppState> {
    */
   private renderCauscapeNodes() {
     const scale = this.state.zoom.value;
+    const activePlaybackNodes = new Set(
+      this.props.flowPlayback?.activeNodeElementIds,
+    );
+    const completedPlaybackNodes = new Set(
+      this.props.flowPlayback?.completedNodeElementIds,
+    );
     const nodeElements = this.scene
       .getNonDeletedElements()
       .filter(
@@ -2155,6 +2161,15 @@ class App extends React.Component<AppProps, AppState> {
                   theme={this.state.theme}
                   linksEnabled={this.isLinksEnabled()}
                   onOpenDescription={this.inspectCauscapeNode}
+                  playbackState={
+                    this.props.flowPlayback
+                      ? activePlaybackNodes.has(element.id)
+                        ? "active"
+                        : completedPlaybackNodes.has(element.id)
+                        ? "completed"
+                        : "inactive"
+                      : undefined
+                  }
                 />
               </div>
             </div>

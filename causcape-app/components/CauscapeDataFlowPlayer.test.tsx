@@ -114,6 +114,32 @@ describe("CauscapeDataFlowPanel", () => {
     );
     expect(onStart).toHaveBeenCalledWith("checkout-read");
   });
+
+  it("keeps an incomplete flow draft from reaching project validation", () => {
+    render(
+      <CauscapeDataFlowPanel
+        objects={objects}
+        flows={[]}
+        onSave={vi.fn()}
+        onDelete={vi.fn()}
+        onStart={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Create data flow" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Flow name" }), {
+      target: { value: "Incomplete path" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Add step" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add step" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Step 2 title" }), {
+      target: { value: "" },
+    });
+
+    expect(
+      screen.getByRole("button", { name: "Save data flow" }),
+    ).toBeDisabled();
+  });
 });
 
 describe("CauscapeDataFlowPlaybackBar", () => {

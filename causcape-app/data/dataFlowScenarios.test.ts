@@ -127,4 +127,22 @@ describe("data flow scenarios", () => {
       hasMissingConnection: true,
     });
   });
+
+  it("does not require a connector between consecutive events on one component", () => {
+    const cacheFlow = {
+      ...flow,
+      steps: [
+        { ...flow.steps[0], objectId: "backend", title: "Check cache" },
+        { ...flow.steps[1], objectId: "backend", title: "Cache miss" },
+      ],
+    };
+
+    expect(
+      resolveDataFlowPlayback(cacheFlow, 1, objects, elements),
+    ).toMatchObject({
+      activeNodeElementIds: ["backend"],
+      activeTransition: null,
+      hasMissingConnection: false,
+    });
+  });
 });

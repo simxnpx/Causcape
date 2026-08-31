@@ -116,6 +116,7 @@ const CauscapeBase = (props: CauscapeProps) => {
     viewportStatusFrame,
     currentUserControls,
     imageOptions,
+    flowPlayback,
   } = props;
 
   const canvasActions = props.UIOptions?.canvasActions;
@@ -258,6 +259,7 @@ const CauscapeBase = (props: CauscapeProps) => {
           viewportStatusFrame={viewportStatusFrame}
           currentUserControls={currentUserControls}
           imageOptions={normalizedImageOptions}
+          flowPlayback={flowPlayback}
         >
           {children}
         </App>

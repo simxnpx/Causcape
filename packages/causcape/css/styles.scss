@@ -1276,6 +1276,29 @@ body.causcape-cursor-resize * {
     opacity: 0.9;
   }
 
+  &[data-flow-playback-state] {
+    transition: filter 220ms ease, opacity 220ms ease, transform 220ms ease,
+      box-shadow 220ms ease;
+  }
+
+  &[data-flow-playback-state="inactive"] {
+    filter: saturate(0.35);
+    opacity: 0.38;
+  }
+
+  &[data-flow-playback-state="completed"] {
+    opacity: 0.72;
+  }
+
+  &[data-flow-playback-state="active"] {
+    transform: translateY(-3px);
+    border-color: var(--causcape-accent);
+    box-shadow: 0 0 0 5px
+        color-mix(in srgb, var(--causcape-accent) 15%, transparent),
+      0 18px 45px color-mix(in srgb, var(--causcape-accent) 22%, transparent);
+    animation: causcape-node-flow-active 1.8s ease-in-out infinite;
+  }
+
   &__header {
     min-height: 64px;
     grid-template-columns: 64px minmax(0, 1fr);
@@ -1525,6 +1548,14 @@ body.causcape-cursor-resize * {
   }
 }
 
+@keyframes causcape-node-flow-active {
+  50% {
+    box-shadow: 0 0 0 9px
+        color-mix(in srgb, var(--causcape-accent) 8%, transparent),
+      0 20px 50px color-mix(in srgb, var(--causcape-accent) 26%, transparent);
+  }
+}
+
 .causcape-node-description-sheet {
   position: absolute;
   z-index: 8;
@@ -1671,6 +1702,10 @@ body.causcape-cursor-resize * {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .causcape-node-overlay-card[data-flow-playback-state="active"] {
+    animation: none;
+  }
+
   .causcape-node-overlay-card__info,
   .causcape-node-description-sheet {
     transition-duration: 1ms;

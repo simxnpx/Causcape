@@ -86,7 +86,12 @@ export const CauscapeDataFlowPanel = ({
   };
 
   if (draft) {
-    const canSave = Boolean(draft.name.trim()) && draft.steps.length >= 2;
+    const canSave =
+      Boolean(draft.name.trim()) &&
+      draft.steps.length >= 2 &&
+      draft.steps.every(
+        (step) => Boolean(step.objectId) && Boolean(step.title.trim()),
+      );
     return (
       <form
         className="causcape-data-flow-panel causcape-data-flow-panel--editor"
@@ -392,7 +397,7 @@ export const CauscapeDataFlowPlaybackBar = ({
           Step {stepIndex + 1} of {flow.steps.length}
         </strong>
       </div>
-      <div className="causcape-data-flow-playback__copy">
+      <div className="causcape-data-flow-playback__copy" aria-live="polite">
         <div>
           <span data-step-signal={step.signal}>
             {SIGNAL_LABELS[step.signal]}

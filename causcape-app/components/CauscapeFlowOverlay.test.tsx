@@ -102,6 +102,49 @@ describe("CauscapeFlowOverlay", () => {
     );
   });
 
+  it("isolates the active walkthrough edge and follows its traversal direction", () => {
+    render(
+      <CauscapeFlowOverlay
+        paths={[
+          {
+            id: "request-edge",
+            color: "#2563eb",
+            d: "M 20 40 L 220 40",
+            playbackForwardD: "M 20 40 L 220 40",
+            playbackReverseD: "M 220 40 L 20 40",
+            packetCount: 2,
+          },
+          {
+            id: "database-edge",
+            color: "#7c3aed",
+            d: "M 220 80 L 20 80",
+            playbackForwardD: "M 20 80 L 220 80",
+            playbackReverseD: "M 220 80 L 20 80",
+            packetCount: 2,
+          },
+        ]}
+        playback={{
+          activeEdgeId: "database-edge",
+          activeDirection: "reverse",
+          completedEdgeIds: ["request-edge"],
+          isPlaying: true,
+        }}
+      />,
+    );
+
+    const overlay = screen.getByTestId("causcape-flow-overlay");
+    expect(overlay).toHaveAttribute("data-playback-active", "true");
+    expect(
+      overlay.querySelector("[data-flow-id='request-edge']"),
+    ).toHaveAttribute("data-playback-state", "completed");
+    expect(
+      overlay.querySelector("[data-flow-id='database-edge']"),
+    ).toHaveAttribute("data-playback-state", "active");
+    expect(
+      overlay.querySelector("[data-flow-playback-packet='database-edge']"),
+    ).toHaveAttribute("path", "M 220 80 L 20 80");
+  });
+
   it("stops failed-flow packets at a visible interruption marker", () => {
     const interruptedArrow = arrow({
       customData: {

@@ -118,6 +118,9 @@ export const resolveDataFlowPlayback = (
       ),
     );
   const activeTransition = stepIndex > 0 ? transitions.at(-1) ?? null : null;
+  const staysOnCurrentObject =
+    stepIndex > 0 &&
+    flow.steps[stepIndex - 1]?.objectId === activeStep.objectId;
   const activeEdgeId = activeTransition?.edgeElementId;
   const completedEdgeElementIds = [
     ...new Set(
@@ -139,6 +142,6 @@ export const resolveDataFlowPlayback = (
     completedEdgeElementIds,
     hasMissingConnection:
       activeNodeElementIds.length === 0 ||
-      (stepIndex > 0 && activeTransition === null),
+      (stepIndex > 0 && !staysOnCurrentObject && activeTransition === null),
   };
 };

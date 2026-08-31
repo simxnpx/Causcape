@@ -62,6 +62,9 @@ export type EngineeringFlowPath = {
   readonly packetD?: string;
   readonly reverseD?: string;
   readonly reversePacketD?: string;
+  /** Authored source-to-target geometry, independent of relationship styling. */
+  readonly playbackForwardD?: string;
+  readonly playbackReverseD?: string;
   readonly interruption?: { readonly x: number; readonly y: number };
 };
 
@@ -74,6 +77,12 @@ export type CauscapeFlowOverlayHandle = {
 
 type CauscapeFlowOverlayProps = {
   readonly paths?: readonly EngineeringFlowPath[];
+  readonly playback?: {
+    readonly activeEdgeId?: string;
+    readonly activeDirection?: "forward" | "reverse";
+    readonly completedEdgeIds: readonly string[];
+    readonly isPlaying: boolean;
+  };
 };
 
 const FLOW_VIEWPORT_MARGIN = 32;
@@ -219,13 +228,14 @@ export const buildEngineeringFlowPaths = (
       return [];
     }
 
-    let points = LinearElementEditor.getPointsGlobalCoordinates(
+    const authoredPoints = LinearElementEditor.getPointsGlobalCoordinates(
       element as unknown as CauscapeLinearElement,
       elementsMap,
     ).map(([sceneX, sceneY]) => ({
       x: compactCoordinate((sceneX + viewport.scrollX) * viewport.zoom.value),
       y: compactCoordinate((sceneY + viewport.scrollY) * viewport.zoom.value),
     }));
+    let points = authoredPoints;
 
     const metadata = getFlowMetadata(element);
     const relationship = isEngineeringRelationship(metadata.relationship)
@@ -295,6 +305,8 @@ export const buildEngineeringFlowPaths = (
         id: element.id,
         color,
         d: toSvgPath(points),
+        playbackForwardD: toSvgPath(authoredPoints),
+        playbackReverseD: toSvgPath([...authoredPoints].reverse()),
         packetCount,
         relationship: relationship ?? "flow",
         variant: presentation?.variant ?? "generic",
@@ -335,7 +347,7 @@ export const buildEngineeringFlowPaths = (
 export const CauscapeFlowOverlay = forwardRef<
   CauscapeFlowOverlayHandle,
   CauscapeFlowOverlayProps
->(({ paths: suppliedPaths }, ref) => {
+>(({ paths: suppliedPaths, playback }, ref) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const animationFrameRef = useRef<number | null>(null);
   const updateTimeoutRef = useRef<number | null>(null);
@@ -424,10 +436,18 @@ export const CauscapeFlowOverlay = forwardRef<
       className="causcape-flow-overlay"
       data-testid="causcape-flow-overlay"
       data-flow-count={paths.length}
+      data-playback-active={playback ? "true" : undefined}
       aria-hidden="true"
       focusable="false"
     >
       {paths.map((path) => {
+        const playbackState = playback
+          ? path.id === playback.activeEdgeId
+            ? "active"
+            : playback.completedEdgeIds.includes(path.id)
+            ? "completed"
+            : "inactive"
+          : undefined;
         const directions = [
           { name: "forward", d: path.packetD ?? path.d },
           ...(path.reverseD
@@ -452,6 +472,8 @@ export const CauscapeFlowOverlay = forwardRef<
         return (
           <g
             key={path.id}
+            data-flow-id={path.id}
+            data-playback-state={playbackState}
             className={`causcape-flow-overlay__flow causcape-flow-overlay__flow--${
               path.variant ?? "generic"
             } causcape-flow-overlay__flow--${path.status ?? "active"}`}
@@ -481,6 +503,26 @@ export const CauscapeFlowOverlay = forwardRef<
               markerStart={path.reverseD ? `url(#${markerId})` : undefined}
               markerEnd={`url(#${markerId})`}
             />
+            {playbackState === "active" && playback?.isPlaying ? (
+              <circle
+                className="causcape-flow-overlay__playback-packet"
+                r="7"
+                fill={path.color}
+              >
+                <animateMotion
+                  data-flow-playback-packet={path.id}
+                  path={
+                    playback.activeDirection === "reverse"
+                      ? path.playbackReverseD ?? path.reverseD ?? path.d
+                      : path.playbackForwardD ?? path.d
+                  }
+                  dur="1.15s"
+                  repeatCount="indefinite"
+                  rotate="auto"
+                  calcMode="linear"
+                />
+              </circle>
+            ) : null}
             {directions.flatMap((direction) =>
               Array.from({ length: packetCount }, (_, index) => {
                 const packetProps = {

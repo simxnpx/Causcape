@@ -781,6 +781,10 @@ export type UIConfig = {
 
 export interface CauscapeProps {
   className?: string;
+  flowPlayback?: {
+    readonly activeNodeElementIds: readonly string[];
+    readonly completedNodeElementIds: readonly string[];
+  };
   /**
    * Document that owns Causcape's mounted DOM.
    *
