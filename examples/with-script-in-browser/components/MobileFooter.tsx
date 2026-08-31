@@ -1,27 +1,24 @@
 import React from "react";
 
-import type * as TExcalidraw from "@excalidraw/excalidraw";
-import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
+import type * as TCauscape from "@causcape/causcape";
+import type { CauscapeImperativeAPI } from "@causcape/causcape/types";
 
 import CustomFooter from "./CustomFooter";
 
 const MobileFooter = ({
-  excalidrawAPI,
-  excalidrawLib,
+  causcapeAPI,
+  causcapeLib,
 }: {
-  excalidrawAPI: ExcalidrawImperativeAPI;
-  excalidrawLib: typeof TExcalidraw;
+  causcapeAPI: CauscapeImperativeAPI;
+  causcapeLib: typeof TCauscape;
 }) => {
-  const { useEditorInterface, Footer } = excalidrawLib;
+  const { useEditorInterface, Footer } = causcapeLib;
 
   const editorInterface = useEditorInterface();
   if (editorInterface.formFactor === "phone") {
     return (
       <Footer>
-        <CustomFooter
-          excalidrawAPI={excalidrawAPI}
-          excalidrawLib={excalidrawLib}
-        />
+        <CustomFooter causcapeAPI={causcapeAPI} causcapeLib={causcapeLib} />
       </Footer>
     );
   }

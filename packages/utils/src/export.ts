@@ -1,37 +1,37 @@
-import { MIME_TYPES } from "@excalidraw/common";
-import { getDefaultAppState } from "@excalidraw/excalidraw/appState";
+import { MIME_TYPES } from "@causcape/common";
+import { getDefaultAppState } from "@causcape/causcape/appState";
 import {
   copyBlobToClipboardAsPng,
   copyTextToSystemClipboard,
   copyToClipboard,
-} from "@excalidraw/excalidraw/clipboard";
-import { encodePngMetadata } from "@excalidraw/excalidraw/data/image";
-import { getNonDeletedElements } from "@excalidraw/element";
-import { serializeAsJSON } from "@excalidraw/excalidraw/data/json";
+} from "@causcape/causcape/clipboard";
+import { encodePngMetadata } from "@causcape/causcape/data/image";
+import { getNonDeletedElements } from "@causcape/element";
+import { serializeAsJSON } from "@causcape/causcape/data/json";
 import {
   restoreAppState,
   restoreElements,
-} from "@excalidraw/excalidraw/data/restore";
+} from "@causcape/causcape/data/restore";
 import {
   exportToCanvas as _exportToCanvas,
   exportToSvg as _exportToSvg,
-} from "@excalidraw/excalidraw/scene/export";
+} from "@causcape/causcape/scene/export";
 
 import type {
-  ExcalidrawFrameLikeElement,
+  CauscapeFrameLikeElement,
   NonDeleted,
-  NonDeletedExcalidrawElement,
-} from "@excalidraw/element/types";
-import type { AppState, BinaryFiles } from "@excalidraw/excalidraw/types";
+  NonDeletedCauscapeElement,
+} from "@causcape/element/types";
+import type { AppState, BinaryFiles } from "@causcape/causcape/types";
 
 export { MIME_TYPES };
 
 type ExportOpts = {
-  elements: readonly NonDeletedExcalidrawElement[];
+  elements: readonly NonDeletedCauscapeElement[];
   appState?: Partial<Omit<AppState, "offsetTop" | "offsetLeft">>;
   files: BinaryFiles | null;
   maxWidthOrHeight?: number;
-  exportingFrame?: NonDeleted<ExcalidrawFrameLikeElement> | null;
+  exportingFrame?: NonDeleted<CauscapeFrameLikeElement> | null;
   getDimensions?: (
     width: number,
     height: number,

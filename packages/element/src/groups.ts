@@ -2,8 +2,8 @@ import type {
   AppClassProperties,
   AppState,
   InteractiveCanvasAppState,
-} from "@excalidraw/excalidraw/types";
-import type { Mutable } from "@excalidraw/common/utility-types";
+} from "@causcape/causcape/types";
+import type { Mutable } from "@causcape/common/utility-types";
 
 import { getBoundTextElement } from "./textElement";
 
@@ -13,18 +13,18 @@ import { makeNextSelectedElementIds, getSelectedElements } from "./selection";
 
 import type {
   GroupId,
-  ExcalidrawElement,
+  CauscapeElement,
   NonDeleted,
   ElementsMapOrArray,
   ElementsMap,
-  NonDeletedExcalidrawElement,
+  NonDeletedCauscapeElement,
   NonDeletedElementsMapOrArray,
 } from "./types";
 
 export const selectGroup = (
   groupId: GroupId,
   appState: InteractiveCanvasAppState,
-  elements: readonly NonDeletedExcalidrawElement[],
+  elements: readonly NonDeletedCauscapeElement[],
 ): Pick<
   InteractiveCanvasAppState,
   "selectedGroupIds" | "selectedElementIds" | "editingGroupId"
@@ -69,14 +69,13 @@ export const selectGroupsForSelectedElements = (function () {
     "selectedGroupIds" | "editingGroupId" | "selectedElementIds"
   >;
 
-  let lastSelectedElements: readonly NonDeletedExcalidrawElement[] | null =
-    null;
-  let lastElements: readonly NonDeletedExcalidrawElement[] | null = null;
+  let lastSelectedElements: readonly NonDeletedCauscapeElement[] | null = null;
+  let lastElements: readonly NonDeletedCauscapeElement[] | null = null;
   let lastReturnValue: SelectGroupsReturnType | null = null;
 
   const _selectGroups = (
-    selectedElements: readonly NonDeletedExcalidrawElement[],
-    elements: readonly NonDeletedExcalidrawElement[],
+    selectedElements: readonly NonDeletedCauscapeElement[],
+    elements: readonly NonDeletedCauscapeElement[],
     appState: Pick<AppState, "selectedElementIds" | "editingGroupId">,
     prevAppState: InteractiveCanvasAppState,
   ): SelectGroupsReturnType => {
@@ -164,7 +163,7 @@ export const selectGroupsForSelectedElements = (function () {
    */
   const selectGroupsForSelectedElements = (
     appState: Pick<AppState, "selectedElementIds" | "editingGroupId">,
-    elements: readonly NonDeletedExcalidrawElement[],
+    elements: readonly NonDeletedCauscapeElement[],
     prevAppState: InteractiveCanvasAppState,
     /**
      * supply null in cases where you don't have access to App instance and
@@ -217,7 +216,7 @@ export const isSelectedViaGroup = (
     InteractiveCanvasAppState,
     "editingGroupId" | "selectedGroupIds"
   >,
-  element: ExcalidrawElement,
+  element: CauscapeElement,
 ) => getSelectedGroupForElement(appState, element) != null;
 
 export const getSelectedGroupForElement = (
@@ -225,7 +224,7 @@ export const getSelectedGroupForElement = (
     InteractiveCanvasAppState,
     "editingGroupId" | "selectedGroupIds"
   >,
-  element: ExcalidrawElement,
+  element: CauscapeElement,
 ) =>
   element.groupIds
     .filter((groupId) => groupId !== appState.editingGroupId)
@@ -241,7 +240,7 @@ export const getSelectedGroupIds = (
 // given a list of elements, return the the actual group ids that should be selected
 // or used to update the elements
 export const selectGroupsFromGivenElements = (
-  elements: readonly NonDeletedExcalidrawElement[],
+  elements: readonly NonDeletedCauscapeElement[],
   appState: InteractiveCanvasAppState,
 ) => {
   let nextAppState: InteractiveCanvasAppState = {
@@ -271,7 +270,7 @@ export const selectGroupsFromGivenElements = (
 
 export const editGroupForSelectedElement = (
   appState: AppState,
-  element: NonDeleted<ExcalidrawElement>,
+  element: NonDeleted<CauscapeElement>,
 ): AppState => {
   return {
     ...appState,
@@ -283,13 +282,13 @@ export const editGroupForSelectedElement = (
   };
 };
 
-export const isElementInGroup = (element: ExcalidrawElement, groupId: string) =>
+export const isElementInGroup = (element: CauscapeElement, groupId: string) =>
   element.groupIds.includes(groupId);
 
 export const getElementsInGroup = <
-  P extends NonDeletedExcalidrawElement | ExcalidrawElement,
+  P extends NonDeletedCauscapeElement | CauscapeElement,
 >(
-  elements: P extends NonDeletedExcalidrawElement
+  elements: P extends NonDeletedCauscapeElement
     ? NonDeletedElementsMapOrArray
     : ElementsMapOrArray,
   groupId: string,
@@ -304,12 +303,12 @@ export const getElementsInGroup = <
 };
 
 export const getSelectedGroupIdForElement = (
-  element: ExcalidrawElement,
+  element: CauscapeElement,
   selectedGroupIds: { [groupId: string]: boolean },
 ) => element.groupIds.find((groupId) => selectedGroupIds[groupId]);
 
 export const addToGroup = (
-  prevGroupIds: ExcalidrawElement["groupIds"],
+  prevGroupIds: CauscapeElement["groupIds"],
   newGroupId: GroupId,
   editingGroupId: AppState["editingGroupId"],
 ) => {
@@ -325,12 +324,12 @@ export const addToGroup = (
 };
 
 export const removeFromSelectedGroups = (
-  groupIds: ExcalidrawElement["groupIds"],
+  groupIds: CauscapeElement["groupIds"],
   selectedGroupIds: { [groupId: string]: boolean },
 ) => groupIds.filter((groupId) => !selectedGroupIds[groupId]);
 
 export const getMaximumGroups = <
-  T extends NonDeletedExcalidrawElement | ExcalidrawElement,
+  T extends NonDeletedCauscapeElement | CauscapeElement,
 >(
   elements: T[],
   elementsMap: ElementsMap,
@@ -374,7 +373,7 @@ export const getNonDeletedGroupIds = (elements: ElementsMap) => {
 };
 
 export const elementsAreInSameGroup = (
-  elements: readonly ExcalidrawElement[],
+  elements: readonly CauscapeElement[],
 ) => {
   const allGroups = elements.flatMap((element) => element.groupIds);
   const groupCount = new Map<string, number>();
@@ -390,12 +389,12 @@ export const elementsAreInSameGroup = (
   return maxGroup === elements.length;
 };
 
-export const isInGroup = (element: ExcalidrawElement) => {
+export const isInGroup = (element: CauscapeElement) => {
   return element.groupIds.length > 0;
 };
 
 export const getNewGroupIdsForDuplication = (
-  groupIds: ExcalidrawElement["groupIds"],
+  groupIds: CauscapeElement["groupIds"],
   editingGroupId: AppState["editingGroupId"],
   mapper: (groupId: GroupId) => GroupId,
 ) => {
@@ -415,11 +414,11 @@ export const getNewGroupIdsForDuplication = (
 // given a list of selected elements, return the element grouped by their immediate group selected state
 // in the case if only one group is selected and all elements selected are within the group, it will respect group hierarchy in accordance to their nested grouping order
 export const getSelectedElementsByGroup = (
-  selectedElements: NonDeletedExcalidrawElement[],
+  selectedElements: NonDeletedCauscapeElement[],
   elementsMap: ElementsMap,
   appState: Readonly<Pick<AppState, "selectedGroupIds" | "editingGroupId">>,
-): NonDeletedExcalidrawElement[][] => {
-  const buckets: Map<string, NonDeletedExcalidrawElement[]> = new Map();
+): NonDeletedCauscapeElement[][] => {
+  const buckets: Map<string, NonDeletedCauscapeElement[]> = new Map();
   const selectedGroupIds = getSelectedGroupIds(appState);
   const isSingleSelectedGroupCase =
     selectedGroupIds.length === 1 &&

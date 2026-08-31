@@ -28,7 +28,7 @@ node packages/causcape-cli/dist/cli.mjs apply-patch \
   checkout.causcape patch.json --apply --output checkout-next.causcape
 ```
 
-An optional `model` in a patch accepts technology-neutral nodes and edges. ELK lays them out deterministically and the resulting elements are stored as ordinary Excalidraw elements with stable Causcape object IDs.
+An optional `model` in a patch accepts technology-neutral nodes and edges. ELK lays them out deterministically and the resulting elements are stored as ordinary Causcape elements with stable Causcape object IDs.
 
 Render SVG or PNG with an explicitly provisioned Chromium executable:
 

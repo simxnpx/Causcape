@@ -35,18 +35,18 @@ const sidebars = {
     },
     {
       type: "category",
-      label: "@excalidraw/excalidraw",
+      label: "@causcape/causcape",
       collapsed: false,
       items: [
-        "@excalidraw/excalidraw/installation",
-        "@excalidraw/excalidraw/integration",
-        "@excalidraw/excalidraw/customizing-styles",
+        "@causcape/causcape/installation",
+        "@causcape/causcape/integration",
+        "@causcape/causcape/customizing-styles",
         {
           type: "category",
           label: "API",
           link: {
             type: "doc",
-            id: "@excalidraw/excalidraw/api/api-intro",
+            id: "@causcape/causcape/api/api-intro",
           },
           items: [
             {
@@ -54,13 +54,13 @@ const sidebars = {
               label: "Props",
               link: {
                 type: "doc",
-                id: "@excalidraw/excalidraw/api/props/props",
+                id: "@causcape/causcape/api/props/props",
               },
               items: [
-                "@excalidraw/excalidraw/api/props/initialdata",
-                "@excalidraw/excalidraw/api/props/excalidraw-api",
-                "@excalidraw/excalidraw/api/props/render-props",
-                "@excalidraw/excalidraw/api/props/ui-options",
+                "@causcape/causcape/api/props/initialdata",
+                "@causcape/causcape/api/props/causcape-api",
+                "@causcape/causcape/api/props/render-props",
+                "@causcape/causcape/api/props/ui-options",
               ],
             },
             {
@@ -68,14 +68,14 @@ const sidebars = {
               label: "Children Components",
               link: {
                 type: "doc",
-                id: "@excalidraw/excalidraw/api/children-components/children-components-intro",
+                id: "@causcape/causcape/api/children-components/children-components-intro",
               },
               items: [
-                "@excalidraw/excalidraw/api/children-components/main-menu",
-                "@excalidraw/excalidraw/api/children-components/welcome-screen",
-                "@excalidraw/excalidraw/api/children-components/sidebar",
-                "@excalidraw/excalidraw/api/children-components/footer",
-                "@excalidraw/excalidraw/api/children-components/live-collaboration-trigger",
+                "@causcape/causcape/api/children-components/main-menu",
+                "@causcape/causcape/api/children-components/welcome-screen",
+                "@causcape/causcape/api/children-components/sidebar",
+                "@causcape/causcape/api/children-components/footer",
+                "@causcape/causcape/api/children-components/live-collaboration-trigger",
               ],
             },
             {
@@ -83,37 +83,37 @@ const sidebars = {
               label: "Utils",
               link: {
                 type: "doc",
-                id: "@excalidraw/excalidraw/api/utils/utils-intro",
+                id: "@causcape/causcape/api/utils/utils-intro",
               },
               items: [
-                "@excalidraw/excalidraw/api/utils/export",
-                "@excalidraw/excalidraw/api/utils/restore",
+                "@causcape/causcape/api/utils/export",
+                "@causcape/causcape/api/utils/restore",
               ],
             },
-            "@excalidraw/excalidraw/api/constants",
-            "@excalidraw/excalidraw/api/excalidraw-element-skeleton",
+            "@causcape/causcape/api/constants",
+            "@causcape/causcape/api/causcape-element-skeleton",
           ],
         },
-        "@excalidraw/excalidraw/faq",
-        "@excalidraw/excalidraw/development",
+        "@causcape/causcape/faq",
+        "@causcape/causcape/development",
       ],
     },
     {
       type: "category",
-      label: "@excalidraw/mermaid-to-excalidraw",
+      label: "@causcape/mermaid-to-causcape",
       link: {
         type: "doc",
-        id: "@excalidraw/mermaid-to-excalidraw/installation",
+        id: "@causcape/mermaid-to-causcape/installation",
       },
       items: [
-        "@excalidraw/mermaid-to-excalidraw/api",
-        "@excalidraw/mermaid-to-excalidraw/development",
+        "@causcape/mermaid-to-causcape/api",
+        "@causcape/mermaid-to-causcape/development",
         {
           type: "category",
           label: "Codebase",
           link: {
             type: "doc",
-            id: "@excalidraw/mermaid-to-excalidraw/codebase/codebase",
+            id: "@causcape/mermaid-to-causcape/codebase/codebase",
           },
           items: [
             {
@@ -121,13 +121,13 @@ const sidebars = {
               label: "How Parser works under the hood?",
               link: {
                 type: "doc",
-                id: "@excalidraw/mermaid-to-excalidraw/codebase/parser/parser",
+                id: "@causcape/mermaid-to-causcape/codebase/parser/parser",
               },
               items: [
-                "@excalidraw/mermaid-to-excalidraw/codebase/parser/flowchart",
+                "@causcape/mermaid-to-causcape/codebase/parser/flowchart",
               ],
             },
-            "@excalidraw/mermaid-to-excalidraw/codebase/new-diagram-type",
+            "@causcape/mermaid-to-causcape/codebase/new-diagram-type",
           ],
         },
       ],

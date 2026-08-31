@@ -3,37 +3,37 @@ import ExecutionEnvironment from "@docusaurus/ExecutionEnvironment";
 import initialData from "@site/src/initialData";
 import { useColorMode } from "@docusaurus/theme-common";
 
-import "@excalidraw/excalidraw/index.css";
+import "@causcape/causcape/index.css";
 
-let ExcalidrawComp = {};
+let CauscapeComp = {};
 if (ExecutionEnvironment.canUseDOM) {
-  ExcalidrawComp = require("@excalidraw/excalidraw");
+  CauscapeComp = require("@causcape/causcape");
 }
-const Excalidraw = React.forwardRef((props, ref) => {
-  if (!window.EXCALIDRAW_ASSET_PATH) {
-    window.EXCALIDRAW_ASSET_PATH =
-      "https://esm.sh/@excalidraw/excalidraw@0.18.0/dist/prod/";
+const Causcape = React.forwardRef((props, ref) => {
+  if (!window.CAUSCAPE_ASSET_PATH) {
+    window.CAUSCAPE_ASSET_PATH =
+      "https://esm.sh/@causcape/causcape@0.18.0/dist/prod/";
   }
 
   const { colorMode } = useColorMode();
-  return <ExcalidrawComp.Excalidraw theme={colorMode} {...props} ref={ref} />;
+  return <CauscapeComp.Causcape theme={colorMode} {...props} ref={ref} />;
 });
 // Add react-live imports you need here
-const ExcalidrawScope = {
+const CauscapeScope = {
   React,
   ...React,
-  Excalidraw,
-  Footer: ExcalidrawComp.Footer,
-  useDevice: ExcalidrawComp.useDevice,
-  MainMenu: ExcalidrawComp.MainMenu,
-  WelcomeScreen: ExcalidrawComp.WelcomeScreen,
-  LiveCollaborationTrigger: ExcalidrawComp.LiveCollaborationTrigger,
-  Sidebar: ExcalidrawComp.Sidebar,
-  exportToCanvas: ExcalidrawComp.exportToCanvas,
+  Causcape,
+  Footer: CauscapeComp.Footer,
+  useDevice: CauscapeComp.useDevice,
+  MainMenu: CauscapeComp.MainMenu,
+  WelcomeScreen: CauscapeComp.WelcomeScreen,
+  LiveCollaborationTrigger: CauscapeComp.LiveCollaborationTrigger,
+  Sidebar: CauscapeComp.Sidebar,
+  exportToCanvas: CauscapeComp.exportToCanvas,
   initialData,
-  useI18n: ExcalidrawComp.useI18n,
-  convertToExcalidrawElements: ExcalidrawComp.convertToExcalidrawElements,
-  CaptureUpdateAction: ExcalidrawComp.CaptureUpdateAction,
+  useI18n: CauscapeComp.useI18n,
+  convertToCauscapeElements: CauscapeComp.convertToCauscapeElements,
+  CaptureUpdateAction: CauscapeComp.CaptureUpdateAction,
 };
 
-export default ExcalidrawScope;
+export default CauscapeScope;

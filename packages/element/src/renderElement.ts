@@ -7,7 +7,7 @@ import {
   pointFrom,
   pointRotateRads,
   type Radians,
-} from "@excalidraw/math";
+} from "@causcape/math";
 
 import {
   BOUND_TEXT_PADDING,
@@ -24,7 +24,7 @@ import {
   invariant,
   applyDarkModeFilter,
   isSafari,
-} from "@excalidraw/common";
+} from "@causcape/common";
 
 import type {
   AppState,
@@ -32,15 +32,15 @@ import type {
   Zoom,
   InteractiveCanvasAppState,
   ElementsPendingErasure,
-  PendingExcalidrawElements,
+  PendingCauscapeElements,
   NormalizedZoomValue,
-} from "@excalidraw/excalidraw/types";
+} from "@causcape/causcape/types";
 
 import type {
   StaticCanvasRenderConfig,
   RenderableElementsMap,
   InteractiveCanvasRenderConfig,
-} from "@excalidraw/excalidraw/scene/types";
+} from "@causcape/causcape/scene/types";
 
 import { getElementAbsoluteCoords, getElementBounds } from "./bounds";
 import { getUncroppedImageElement } from "./cropElement";
@@ -79,32 +79,30 @@ import {
 } from "./causcape";
 
 import type {
-  ExcalidrawElement,
-  ExcalidrawTextElement,
+  CauscapeElement,
+  CauscapeTextElement,
   NonDeleted,
-  NonDeletedExcalidrawElement,
-  ExcalidrawFreeDrawElement,
-  ExcalidrawImageElement,
-  ExcalidrawTextElementWithContainer,
-  ExcalidrawFrameLikeElement,
+  NonDeletedCauscapeElement,
+  CauscapeFreeDrawElement,
+  CauscapeImageElement,
+  CauscapeTextElementWithContainer,
+  CauscapeFrameLikeElement,
   NonDeletedSceneElementsMap,
   ElementsMap,
-  ExcalidrawCauscapeNodeElement,
-  ExcalidrawCauscapeEdgeElement,
+  CauscapeNodeElement,
+  CauscapeEdgeElement,
 } from "./types";
 
 import type { RoughCanvas } from "roughjs/bin/canvas";
 
 const isPendingImageElement = (
-  element: ExcalidrawElement,
+  element: CauscapeElement,
   renderConfig: StaticCanvasRenderConfig,
 ) =>
   isInitializedImageElement(element) &&
   !renderConfig.imageCache.has(element.fileId);
 
-const getCauscapeEdgeLabelPadding = (
-  element: ExcalidrawCauscapeEdgeElement,
-): number => {
+const getCauscapeEdgeLabelPadding = (element: CauscapeEdgeElement): number => {
   const bounds = getCauscapeEdgeLabelBounds(
     element.points.map(([x, y]) => [x, y] as [number, number]),
     element.causcape,
@@ -124,7 +122,7 @@ const getCauscapeEdgeLabelPadding = (
   );
 };
 
-const getCanvasPadding = (element: ExcalidrawElement) => {
+const getCanvasPadding = (element: CauscapeElement) => {
   switch (element.type) {
     case "freedraw":
       return element.strokeWidth * 12;
@@ -143,10 +141,10 @@ const getCanvasPadding = (element: ExcalidrawElement) => {
 };
 
 export const getRenderOpacity = (
-  element: ExcalidrawElement,
-  containingFrame: ExcalidrawFrameLikeElement | null,
+  element: CauscapeElement,
+  containingFrame: CauscapeFrameLikeElement | null,
   elementsPendingErasure: ElementsPendingErasure,
-  pendingNodes: Readonly<PendingExcalidrawElements> | null,
+  pendingNodes: Readonly<PendingCauscapeElements> | null,
   globalAlpha: number = 1,
 ) => {
   // multiplying frame opacity with element opacity to combine them
@@ -168,20 +166,20 @@ export const getRenderOpacity = (
   return opacity;
 };
 
-export interface ExcalidrawElementWithCanvas {
-  element: ExcalidrawElement | ExcalidrawTextElement;
+export interface CauscapeElementWithCanvas {
+  element: CauscapeElement | CauscapeTextElement;
   canvas: HTMLCanvasElement;
   theme: AppState["theme"];
   scale: number;
   zoomValue: AppState["zoom"]["value"];
   canvasOffsetX: number;
   canvasOffsetY: number;
-  imageCrop: ExcalidrawImageElement["crop"] | null;
+  imageCrop: CauscapeImageElement["crop"] | null;
   containingFrameOpacity: number;
 }
 
 const cappedElementCanvasSize = (
-  element: NonDeletedExcalidrawElement,
+  element: NonDeletedCauscapeElement,
   elementsMap: ElementsMap,
   zoom: Zoom,
 ): {
@@ -236,12 +234,12 @@ const cappedElementCanvasSize = (
 };
 
 const generateElementCanvas = (
-  element: NonDeletedExcalidrawElement,
+  element: NonDeletedCauscapeElement,
   elementsMap: NonDeletedSceneElementsMap,
   zoom: Zoom,
   renderConfig: StaticCanvasRenderConfig,
   appState: StaticCanvasAppState | InteractiveCanvasAppState,
-): ExcalidrawElementWithCanvas | null => {
+): CauscapeElementWithCanvas | null => {
   const canvas = document.createElement("canvas");
   const context = canvas.getContext("2d")!;
   const padding = getCanvasPadding(element);
@@ -326,7 +324,7 @@ IMAGE_ERROR_PLACEHOLDER_IMG.src = `data:${MIME_TYPES.svg},${encodeURIComponent(
 )}`;
 
 const drawImagePlaceholder = (
-  element: ExcalidrawImageElement,
+  element: CauscapeImageElement,
   context: CanvasRenderingContext2D,
   theme: StaticCanvasRenderConfig["theme"],
 ) => {
@@ -432,7 +430,7 @@ const drawPill = (
 
 const drawArchitectureIcon = (
   context: CanvasRenderingContext2D,
-  kind: ExcalidrawCauscapeNodeElement["causcape"]["kind"],
+  kind: CauscapeNodeElement["causcape"]["kind"],
   x: number,
   y: number,
   size: number,
@@ -647,7 +645,7 @@ const drawArchitectureMetadataIcon = (
 };
 
 const drawArchitectureCard = (
-  element: ExcalidrawCauscapeNodeElement,
+  element: CauscapeNodeElement,
   context: CanvasRenderingContext2D,
   data: ReturnType<typeof getCauscapeNodeRenderData>,
   isDark: boolean,
@@ -696,46 +694,58 @@ const drawArchitectureCard = (
   context.stroke();
   drawArchitectureIcon(
     context,
-    data.kind as ExcalidrawCauscapeNodeElement["causcape"]["kind"],
+    data.kind as CauscapeNodeElement["causcape"]["kind"],
     padding + (iconTileSize - iconSize) / 2,
     padding + (iconTileSize - iconSize) / 2,
     iconSize,
     accent,
   );
 
-  context.font = `700 ${titleFontSize}px system-ui, -apple-system, sans-serif`;
-  context.fillStyle = foreground;
-  const titleLines = wrapCauscapeText(
-    data.title,
-    Math.floor(titleMaxWidth / 14),
-  );
-  context.fillText(titleLines[0], titleX, padding + 38);
-  if (titleLines[1]) {
-    context.fillText(titleLines[1], titleX, padding + 69);
-  }
-
   context.font = `600 ${CAUSCAPE_NODE_STYLE.kindFontSize}px system-ui, -apple-system, sans-serif`;
   let pillX = titleX;
-  const pillY = padding + (titleLines[1] ? 80 : 58);
+  const pillY = padding;
   pillX +=
     drawPill(context, data.kindLabel ?? "Component", pillX, pillY, {
       color: accent,
       background: `${accent}15`,
       border: `${accent}66`,
       height: architecturePillHeight,
-      radius: 9,
-      horizontalPadding: 14,
-    }) + 10;
+      radius: 12,
+      horizontalPadding: 10,
+    }) + 6;
+  if (data.environment) {
+    pillX +=
+      drawPill(context, data.environment, pillX, pillY, {
+        color: secondary,
+        background: panel,
+        border: rule,
+        prefix: "◉",
+        height: architecturePillHeight,
+        radius: 12,
+        horizontalPadding: 10,
+      }) + 6;
+  }
   if (data.health) {
     drawPill(context, data.health.label, pillX, pillY, {
       color: data.health.color,
       background: `${data.health.color}15`,
       border: `${data.health.color}66`,
-      prefix: data.health.glyph,
+      prefix: "●",
       height: architecturePillHeight,
-      radius: 9,
-      horizontalPadding: 14,
+      radius: 12,
+      horizontalPadding: 10,
     });
+  }
+
+  context.font = `700 ${titleFontSize}px system-ui, -apple-system, sans-serif`;
+  context.fillStyle = foreground;
+  const titleLines = wrapCauscapeText(
+    data.title,
+    Math.floor(titleMaxWidth / 13),
+  );
+  context.fillText(titleLines[0], titleX, padding + 55);
+  if (titleLines[1]) {
+    context.fillText(titleLines[1], titleX, padding + 55 + lineHeight);
   }
 
   const drawRule = (y: number) => {
@@ -762,75 +772,55 @@ const drawArchitectureCard = (
     cursorY += lineHeight * (descriptionLines[1] ? 2 : 1);
   }
 
-  if (data.environment || data.references.length > 0) {
+  if (data.references.length > 0) {
     cursorY += sectionGap;
-    const rows = [
-      ...(data.environment
-        ? [
-            {
-              label: "Environment",
-              value: data.environment,
-              icon: "environment" as const,
-            },
-          ]
-        : []),
-      ...data.references.map((reference) => ({
-        label:
-          reference.type === "repository"
-            ? "Repository"
-            : reference.type === "dashboard"
-            ? "Dashboard"
-            : reference.type === "documentation"
-            ? "Documentation"
-            : "Runbook",
-        value: getCauscapeReferenceLabel(reference),
-        icon: reference.type,
-      })),
-    ];
-    const panelHeight =
-      metadataPanelPadding * 2 + rows.length * metadataRowHeight;
-    drawRoundedRect(context, padding, cursorY, contentWidth, panelHeight, 12);
-    context.fillStyle = panel;
-    context.fill();
-    context.strokeStyle = rule;
-    context.lineWidth = 1;
-    context.stroke();
+    const rows = data.references.map((reference) => ({
+      value: getCauscapeReferenceLabel(reference),
+      icon: reference.type,
+    }));
+    const columnGap = 6;
+    const columnCount = Math.min(2, rows.length);
+    const rowCount = Math.ceil(rows.length / columnCount);
+    const rowWidth =
+      (contentWidth - columnGap * (columnCount - 1)) / columnCount;
+    const panelHeight = metadataPanelPadding * 2 + rowCount * metadataRowHeight;
 
-    context.font = `500 ${CAUSCAPE_NODE_STYLE.bodyFontSize}px system-ui, -apple-system, sans-serif`;
+    context.font = `600 ${CAUSCAPE_NODE_STYLE.badgeFontSize}px system-ui, -apple-system, sans-serif`;
     rows.forEach((row, index) => {
-      const rowTop = cursorY + metadataPanelPadding + index * metadataRowHeight;
-      const baseline = rowTop + 30;
+      const column = index % columnCount;
+      const rowIndex = Math.floor(index / columnCount);
+      const rowX = padding + column * (rowWidth + columnGap);
+      const rowTop =
+        cursorY + metadataPanelPadding + rowIndex * metadataRowHeight;
+      const baseline = rowTop + 24;
+      drawRoundedRect(
+        context,
+        rowX,
+        rowTop,
+        rowWidth,
+        metadataRowHeight - 2,
+        9,
+      );
+      context.fillStyle = `${accent}0d`;
+      context.fill();
+      context.strokeStyle = `${accent}38`;
+      context.lineWidth = 1;
+      context.stroke();
       drawArchitectureMetadataIcon(
         context,
         row.icon,
-        padding + 16,
-        baseline - 16,
+        rowX + 9,
+        baseline - 15,
         accent,
       );
-      context.fillStyle = secondary;
-      context.font = `500 ${CAUSCAPE_NODE_STYLE.bodyFontSize}px system-ui, -apple-system, sans-serif`;
-      context.fillText(row.label, padding + 52, baseline);
-      if (row.label !== "Environment") {
-        context.fillStyle = accent;
-        context.fillText(row.value, padding + 230, baseline);
-      } else {
-        context.fillStyle = foreground;
-        context.fillText(row.value, padding + 230, baseline);
-      }
-      if (index < rows.length - 1) {
-        context.beginPath();
-        context.moveTo(padding + 16, rowTop + metadataRowHeight);
-        context.lineTo(padding + contentWidth - 16, rowTop + metadataRowHeight);
-        context.strokeStyle = rule;
-        context.lineWidth = 1;
-        context.stroke();
-      }
+      context.fillStyle = accent;
+      context.fillText(row.value, rowX + 34, baseline);
     });
     cursorY += panelHeight;
   }
 
   if (data.technologies.length > 0) {
-    if (data.environment || data.references.length > 0) {
+    if (data.references.length > 0) {
       drawRule(cursorY + sectionRuleGap);
       cursorY += sectionRuleGap + 1 + sectionRuleGap;
     } else {
@@ -851,7 +841,7 @@ const drawArchitectureCard = (
 };
 
 export const drawCauscapeNodeOnCanvas = (
-  element: ExcalidrawCauscapeNodeElement,
+  element: CauscapeNodeElement,
   context: CanvasRenderingContext2D,
   renderConfig: StaticCanvasRenderConfig,
 ): void => {
@@ -938,10 +928,13 @@ export const drawCauscapeNodeOnCanvas = (
 
 /** Paints the relationship text on the edge while keeping the line selectable as one element. */
 export const drawCauscapeEdgeOnCanvas = (
-  element: ExcalidrawCauscapeEdgeElement,
+  element: CauscapeEdgeElement,
   context: CanvasRenderingContext2D,
   renderConfig: StaticCanvasRenderConfig,
 ): void => {
+  if (renderConfig.renderCauscapeEdgeLabels === false) {
+    return;
+  }
   const label = getCauscapeEdgeLabel(element.causcape);
   if (!label) {
     return;
@@ -1011,7 +1004,7 @@ export const drawCauscapeEdgeOnCanvas = (
 };
 
 const drawElementOnCanvas = (
-  element: NonDeletedExcalidrawElement,
+  element: NonDeletedCauscapeElement,
   rc: RoughCanvas,
   context: CanvasRenderingContext2D,
   renderConfig: StaticCanvasRenderConfig,
@@ -1234,12 +1227,12 @@ const drawElementOnCanvas = (
 };
 
 export const elementWithCanvasCache = new WeakMap<
-  ExcalidrawElement,
-  ExcalidrawElementWithCanvas
+  CauscapeElement,
+  CauscapeElementWithCanvas
 >();
 
 const generateElementWithCanvas = (
-  element: NonDeletedExcalidrawElement,
+  element: NonDeletedCauscapeElement,
   elementsMap: NonDeletedSceneElementsMap,
   renderConfig: StaticCanvasRenderConfig,
   appState: StaticCanvasAppState | InteractiveCanvasAppState,
@@ -1286,7 +1279,7 @@ const generateElementWithCanvas = (
 };
 
 const drawElementFromCanvas = (
-  elementWithCanvas: ExcalidrawElementWithCanvas,
+  elementWithCanvas: CauscapeElementWithCanvas,
   context: CanvasRenderingContext2D,
   renderConfig: StaticCanvasRenderConfig,
   appState: StaticCanvasAppState | InteractiveCanvasAppState,
@@ -1374,7 +1367,7 @@ const drawElementFromCanvas = (
     const textElement = getBoundTextElement(
       element,
       allElementsMap,
-    ) as ExcalidrawTextElementWithContainer;
+    ) as CauscapeTextElementWithContainer;
     const coords = getContainerCoords(element);
     context.strokeStyle = "#c92a2a";
     context.lineWidth = 3;
@@ -1391,7 +1384,7 @@ const drawElementFromCanvas = (
 };
 
 export const renderSelectionElement = (
-  element: NonDeletedExcalidrawElement,
+  element: NonDeletedCauscapeElement,
   context: CanvasRenderingContext2D,
   appState: InteractiveCanvasAppState,
   selectionColor: InteractiveCanvasRenderConfig["selectionColor"],
@@ -1415,7 +1408,7 @@ export const renderSelectionElement = (
 };
 
 export const renderElement = (
-  element: NonDeletedExcalidrawElement,
+  element: NonDeletedCauscapeElement,
   elementsMap: RenderableElementsMap,
   allElementsMap: NonDeletedSceneElementsMap,
   rc: RoughCanvas,
@@ -1540,7 +1533,7 @@ export const renderElement = (
             const boundTextCoords =
               LinearElementEditor.getBoundTextElementPosition(
                 container,
-                element as ExcalidrawTextElementWithContainer,
+                element as CauscapeTextElementWithContainer,
                 elementsMap,
               );
             shiftX = (x2 - x1) / 2 - (boundTextCoords.x - x1);
@@ -1655,7 +1648,7 @@ export const renderElement = (
             getUncroppedImageElement(
               elementWithCanvas.element,
               elementsMap,
-            ) as NonDeleted<ExcalidrawImageElement>,
+            ) as NonDeleted<CauscapeImageElement>,
             allElementsMap,
             appState.zoom,
             renderConfig,
@@ -1698,7 +1691,7 @@ export const renderElement = (
 };
 
 export function getFreedrawOutlineAsSegments(
-  element: ExcalidrawFreeDrawElement,
+  element: CauscapeFreeDrawElement,
   points: [number, number][],
   elementsMap: ElementsMap,
 ) {

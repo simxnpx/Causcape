@@ -1,4 +1,4 @@
-import { invariant, isTransparent, type Bounds } from "@excalidraw/common";
+import { invariant, isTransparent, type Bounds } from "@causcape/common";
 import {
   curveIntersectLineSegment,
   isPointWithinBounds,
@@ -11,21 +11,13 @@ import {
   vectorFromPoint,
   vectorNormalize,
   vectorScale,
-} from "@excalidraw/math";
+} from "@causcape/math";
 
-import {
-  ellipse,
-  ellipseSegmentInterceptPoints,
-} from "@excalidraw/math/ellipse";
+import { ellipse, ellipseSegmentInterceptPoints } from "@causcape/math/ellipse";
 
-import type {
-  Curve,
-  GlobalPoint,
-  LineSegment,
-  Radians,
-} from "@excalidraw/math";
+import type { Curve, GlobalPoint, LineSegment, Radians } from "@causcape/math";
 
-import type { FrameNameBounds } from "@excalidraw/excalidraw/types";
+import type { FrameNameBounds } from "@causcape/causcape/types";
 
 import { isPathALoop } from "./utils";
 import {
@@ -65,21 +57,21 @@ import { hasBackground } from "./comparisons";
 
 import type {
   ElementsMap,
-  ExcalidrawArrowElement,
-  ExcalidrawBindableElement,
-  ExcalidrawDiamondElement,
-  ExcalidrawElement,
-  ExcalidrawEllipseElement,
-  ExcalidrawFreeDrawElement,
-  ExcalidrawLinearElement,
-  ExcalidrawRectanguloidElement,
+  CauscapeArrowElement,
+  CauscapeBindableElement,
+  CauscapeDiamondElement,
+  CauscapeElement,
+  CauscapeEllipseElement,
+  CauscapeFreeDrawElement,
+  CauscapeLinearElement,
+  CauscapeRectanguloidElement,
   NonDeleted,
-  NonDeletedExcalidrawElement,
+  NonDeletedCauscapeElement,
   NonDeletedSceneElementsMap,
   Ordered,
 } from "./types";
 
-export const shouldTestInside = (element: ExcalidrawElement) => {
+export const shouldTestInside = (element: CauscapeElement) => {
   if (element.type === "arrow") {
     return false;
   }
@@ -103,7 +95,7 @@ export const shouldTestInside = (element: ExcalidrawElement) => {
 
 export type HitTestArgs = {
   point: GlobalPoint;
-  element: ExcalidrawElement;
+  element: CauscapeElement;
   threshold: number;
   elementsMap: ElementsMap;
   frameNameBound?: FrameNameBounds | null;
@@ -111,7 +103,7 @@ export type HitTestArgs = {
 };
 
 let cachedPoint: GlobalPoint | null = null;
-let cachedElement: WeakRef<ExcalidrawElement> | null = null;
+let cachedElement: WeakRef<CauscapeElement> | null = null;
 let cachedThreshold: number = Infinity;
 let cachedHit: boolean = false;
 let cachedOverrideShouldTestInside = false;
@@ -229,7 +221,7 @@ const isPointInRotatedBounds = (
 
 export const hitElementBoundingBox = (
   point: GlobalPoint,
-  element: ExcalidrawElement,
+  element: CauscapeElement,
   elementsMap: ElementsMap,
   tolerance = 0,
 ) => {
@@ -248,7 +240,7 @@ export const hitElementBoundingBoxOnly = (
 
 export const hitElementBoundText = (
   point: GlobalPoint,
-  element: ExcalidrawElement,
+  element: CauscapeElement,
   elementsMap: ElementsMap,
 ): boolean => {
   const boundTextElementCandidate = getBoundTextElement(element, elementsMap);
@@ -273,7 +265,7 @@ export const hitElementBoundText = (
 };
 
 const bindingBorderTest = (
-  element: NonDeleted<ExcalidrawBindableElement>,
+  element: NonDeleted<CauscapeBindableElement>,
   [x, y]: Readonly<GlobalPoint>,
   elementsMap: NonDeletedSceneElementsMap,
   tolerance: number = 0,
@@ -322,11 +314,11 @@ const bindingBorderTest = (
 
 export const getAllHoveredElementAtPoint = (
   point: Readonly<GlobalPoint>,
-  elements: readonly Ordered<NonDeletedExcalidrawElement>[],
+  elements: readonly Ordered<NonDeletedCauscapeElement>[],
   elementsMap: NonDeletedSceneElementsMap,
   tolerance?: number,
-): NonDeleted<ExcalidrawBindableElement>[] => {
-  const candidateElements: NonDeleted<ExcalidrawBindableElement>[] = [];
+): NonDeleted<CauscapeBindableElement>[] => {
+  const candidateElements: NonDeleted<CauscapeBindableElement>[] = [];
   // We need to to hit testing from front (end of the array) to back (beginning of the array)
   // because array is ordered from lower z-index to highest and we want element z-index
   // with higher z-index
@@ -358,10 +350,10 @@ export const getAllHoveredElementAtPoint = (
 
 export const getHoveredElementForBinding = (
   point: Readonly<GlobalPoint>,
-  elements: readonly Ordered<NonDeletedExcalidrawElement>[],
+  elements: readonly Ordered<NonDeletedCauscapeElement>[],
   elementsMap: NonDeletedSceneElementsMap,
   tolerance?: number,
-): NonDeleted<ExcalidrawBindableElement> | null => {
+): NonDeleted<CauscapeBindableElement> | null => {
   const candidateElements = getAllHoveredElementAtPoint(
     point,
     elements,
@@ -382,17 +374,17 @@ export const getHoveredElementForBinding = (
     .sort(
       (a, b) => b.width ** 2 + b.height ** 2 - (a.width ** 2 + a.height ** 2),
     )
-    .pop() as NonDeleted<ExcalidrawBindableElement>;
+    .pop() as NonDeleted<CauscapeBindableElement>;
 };
 
 export const getHoveredElementForFocusPoint = (
   point: GlobalPoint,
-  arrow: ExcalidrawArrowElement,
-  elements: readonly Ordered<NonDeletedExcalidrawElement>[],
+  arrow: CauscapeArrowElement,
+  elements: readonly Ordered<NonDeletedCauscapeElement>[],
   elementsMap: NonDeletedSceneElementsMap,
   tolerance?: number,
-): NonDeleted<ExcalidrawBindableElement> | null => {
-  const candidateElements: NonDeleted<ExcalidrawBindableElement>[] = [];
+): NonDeleted<CauscapeBindableElement> | null => {
+  const candidateElements: NonDeleted<CauscapeBindableElement>[] = [];
   // We need to to hit testing from front (end of the array) to back (beginning of the array)
   // because array is ordered from lower z-index to highest and we want element z-index
   // with higher z-index
@@ -432,7 +424,7 @@ export const getHoveredElementForFocusPoint = (
     return null;
   }
 
-  return distanceFilteredCandidateElements[0] as NonDeleted<ExcalidrawBindableElement>;
+  return distanceFilteredCandidateElements[0] as NonDeleted<CauscapeBindableElement>;
 };
 
 /**
@@ -444,7 +436,7 @@ export const getHoveredElementForFocusPoint = (
  * @returns
  */
 export const intersectElementWithLineSegment = (
-  element: ExcalidrawElement,
+  element: CauscapeElement,
   elementsMap: ElementsMap,
   line: LineSegment<GlobalPoint>,
   offset: number = 0,
@@ -502,7 +494,7 @@ export const intersectElementWithLineSegment = (
     case "arrow":
     case "causcape-edge":
       return intersectLinearOrFreeDrawWithLineSegment(
-        element as unknown as import("./types").ExcalidrawLinearElement,
+        element as unknown as import("./types").CauscapeLinearElement,
         line,
         elementsMap,
         onlyFirst,
@@ -572,7 +564,7 @@ const lineIntersections = (
 };
 
 const intersectLinearOrFreeDrawWithLineSegment = (
-  element: ExcalidrawLinearElement | ExcalidrawFreeDrawElement,
+  element: CauscapeLinearElement | CauscapeFreeDrawElement,
   segment: LineSegment<GlobalPoint>,
   elementsMap: ElementsMap,
   onlyFirst = false,
@@ -627,7 +619,7 @@ const intersectLinearOrFreeDrawWithLineSegment = (
 };
 
 const intersectRectanguloidWithLineSegment = (
-  element: ExcalidrawRectanguloidElement,
+  element: CauscapeRectanguloidElement,
   elementsMap: ElementsMap,
   segment: LineSegment<GlobalPoint>,
   offset: number = 0,
@@ -686,7 +678,7 @@ const intersectRectanguloidWithLineSegment = (
  * @returns
  */
 const intersectDiamondWithLineSegment = (
-  element: ExcalidrawDiamondElement,
+  element: CauscapeDiamondElement,
   elementsMap: ElementsMap,
   l: LineSegment<GlobalPoint>,
   offset: number = 0,
@@ -736,7 +728,7 @@ const intersectDiamondWithLineSegment = (
  * @returns
  */
 const intersectEllipseWithLineSegment = (
-  element: ExcalidrawEllipseElement,
+  element: CauscapeEllipseElement,
   elementsMap: ElementsMap,
   l: LineSegment<GlobalPoint>,
   offset: number = 0,
@@ -762,7 +754,7 @@ const intersectEllipseWithLineSegment = (
  */
 const isPointOnElementOutline = (
   point: GlobalPoint,
-  element: ExcalidrawElement,
+  element: CauscapeElement,
   elementsMap: ElementsMap,
   tolerance = 1,
 ) => distanceToElement(element, elementsMap, point) <= tolerance;
@@ -776,7 +768,7 @@ const isPointOnElementOutline = (
  */
 export const isPointInElement = (
   point: GlobalPoint,
-  element: ExcalidrawElement,
+  element: CauscapeElement,
   elementsMap: ElementsMap,
 ) => {
   if (
@@ -812,13 +804,13 @@ export const isPointInElement = (
 };
 
 export const isBindableElementInsideOtherBindable = (
-  innerElement: ExcalidrawBindableElement,
-  outerElement: ExcalidrawBindableElement,
+  innerElement: CauscapeBindableElement,
+  outerElement: CauscapeBindableElement,
   elementsMap: ElementsMap,
 ): boolean => {
   // Get corner points of the inner element based on its type
   const getCornerPoints = (
-    element: ExcalidrawElement,
+    element: CauscapeElement,
     offset: number,
   ): GlobalPoint[] => {
     const { x, y, width, height, angle } = element;

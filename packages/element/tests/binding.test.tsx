@@ -1,32 +1,32 @@
-import { KEYS, arrayToMap } from "@excalidraw/common";
+import { KEYS, arrayToMap } from "@causcape/common";
 
-import { pointFrom } from "@excalidraw/math";
+import { pointFrom } from "@causcape/math";
 
-import { actionWrapTextInContainer } from "@excalidraw/excalidraw/actions/actionBoundText";
+import { actionWrapTextInContainer } from "@causcape/causcape/actions/actionBoundText";
 
-import { Excalidraw, isLinearElement } from "@excalidraw/excalidraw";
+import { Causcape, isLinearElement } from "@causcape/causcape";
 
-import { API } from "@excalidraw/excalidraw/tests/helpers/api";
-import { UI, Pointer, Keyboard } from "@excalidraw/excalidraw/tests/helpers/ui";
-import {
-  act,
-  fireEvent,
-  render,
-} from "@excalidraw/excalidraw/tests/test-utils";
+import { API } from "@causcape/causcape/tests/helpers/api";
+import { UI, Pointer, Keyboard } from "@causcape/causcape/tests/helpers/ui";
+import { act, fireEvent, render } from "@causcape/causcape/tests/test-utils";
 
-import { defaultLang, setLanguage } from "@excalidraw/excalidraw/i18n";
+import { defaultLang, setLanguage } from "@causcape/causcape/i18n";
 
 import { bindBindingElement, updateBoundElements } from "../src/binding";
+import {
+  newCauscapeEdgeElement,
+  newCauscapeNodeElement,
+} from "../src/newElement";
 import { getTransformHandles } from "../src/transformHandles";
 import {
   getTextEditor,
   TEXT_EDITOR_SELECTOR,
-} from "../../excalidraw/tests/queries/dom";
+} from "../../causcape/tests/queries/dom";
 
 import type {
-  ExcalidrawArrowElement,
-  ExcalidrawBindableElement,
-  ExcalidrawLinearElement,
+  CauscapeArrowElement,
+  CauscapeBindableElement,
+  CauscapeLinearElement,
   FixedPointBinding,
   NonDeleted,
 } from "../src/types";
@@ -43,7 +43,7 @@ describe("binding for simple arrows", () => {
       await act(() => {
         return setLanguage(defaultLang);
       });
-      await render(<Excalidraw handleKeyboardGlobally={true} />);
+      await render(<Causcape handleKeyboardGlobally={true} />);
     });
 
     it("should create an `inside` binding", () => {
@@ -62,7 +62,7 @@ describe("binding for simple arrows", () => {
       mouse.moveTo(160, 160);
       mouse.up();
 
-      const arrow = API.getSelectedElement() as ExcalidrawLinearElement;
+      const arrow = API.getSelectedElement() as CauscapeLinearElement;
       expect(arrow.x).toBe(110);
       expect(arrow.y).toBe(110);
 
@@ -191,7 +191,7 @@ describe("binding for simple arrows", () => {
     beforeEach(async () => {
       mouse.reset();
       await act(() => setLanguage(defaultLang));
-      await render(<Excalidraw handleKeyboardGlobally={true} />);
+      await render(<Causcape handleKeyboardGlobally={true} />);
       UI.createElement("rectangle", {
         x: 200,
         y: 200,
@@ -213,7 +213,7 @@ describe("binding for simple arrows", () => {
     it("orbit -> orbit finalizes on a single click", () => {
       drawSelfArrow(ORBIT_LEFT, ORBIT_RIGHT);
 
-      const arrow = h.elements[h.elements.length - 1] as ExcalidrawArrowElement;
+      const arrow = h.elements[h.elements.length - 1] as CauscapeArrowElement;
       expect(h.state.multiElement).toBe(null);
       expect(h.state.activeTool.type).toBe("selection");
       expect(arrow.startBinding?.elementId).toBe(arrow.endBinding?.elementId);
@@ -223,7 +223,7 @@ describe("binding for simple arrows", () => {
     it("inside -> orbit finalizes on a single click", () => {
       drawSelfArrow(INSIDE, ORBIT_RIGHT);
 
-      const arrow = h.elements[h.elements.length - 1] as ExcalidrawArrowElement;
+      const arrow = h.elements[h.elements.length - 1] as CauscapeArrowElement;
       expect(h.state.multiElement).toBe(null);
       expect(h.state.activeTool.type).toBe("selection");
       expect(arrow.startBinding?.elementId).toBe(arrow.endBinding?.elementId);
@@ -246,7 +246,7 @@ describe("binding for simple arrows", () => {
       await act(() => {
         return setLanguage(defaultLang);
       });
-      await render(<Excalidraw handleKeyboardGlobally={true} />);
+      await render(<Causcape handleKeyboardGlobally={true} />);
     });
 
     it("should handle new arrow start point binding", () => {
@@ -264,7 +264,7 @@ describe("binding for simple arrows", () => {
       mouse.moveTo(250, 150); // End outside
       mouse.up();
 
-      const arrow = API.getSelectedElement() as ExcalidrawLinearElement;
+      const arrow = API.getSelectedElement() as CauscapeLinearElement;
 
       // Arrow should have start binding to rectangle
       expect(arrow.startBinding?.elementId).toBe(rectangle.id);
@@ -287,7 +287,7 @@ describe("binding for simple arrows", () => {
       mouse.moveTo(95, 95); // End near rectangle edge (should bind as orbit)
       mouse.up();
 
-      const arrow = API.getSelectedElement() as ExcalidrawLinearElement;
+      const arrow = API.getSelectedElement() as CauscapeLinearElement;
 
       // Arrow should have end binding to rectangle
       expect(arrow.endBinding?.elementId).toBe(rectangle.id);
@@ -315,7 +315,7 @@ describe("binding for simple arrows", () => {
       mouse.moveTo(160, 160);
       mouse.up();
 
-      const arrow = API.getSelectedElement() as ExcalidrawLinearElement;
+      const arrow = API.getSelectedElement() as CauscapeLinearElement;
       expect(arrow.x).toBe(10);
       expect(arrow.y).toBe(10);
       expect(arrow.width).toBeCloseTo(85.75985931287957);
@@ -379,7 +379,7 @@ describe("binding for simple arrows", () => {
       await act(() => {
         return setLanguage(defaultLang);
       });
-      await render(<Excalidraw handleKeyboardGlobally={true} />);
+      await render(<Causcape handleKeyboardGlobally={true} />);
     });
 
     it(
@@ -511,7 +511,7 @@ describe("binding for simple arrows", () => {
       mouse.clickAt(410, 251);
       mouse.clickAt(410, 251);
 
-      const arrow = API.getSelectedElement() as ExcalidrawArrowElement;
+      const arrow = API.getSelectedElement() as CauscapeArrowElement;
 
       expect(arrow.startBinding?.elementId).toBe(rectLeft.id);
       expect(arrow.endBinding?.elementId).toBe(rectRight.id);
@@ -588,7 +588,7 @@ describe("binding for simple arrows", () => {
       await act(() => {
         return setLanguage(defaultLang);
       });
-      await render(<Excalidraw handleKeyboardGlobally={true} />);
+      await render(<Causcape handleKeyboardGlobally={true} />);
     });
 
     it("should update binding when text containerized", async () => {
@@ -759,11 +759,73 @@ describe("binding for simple arrows", () => {
   });
 });
 
+describe("binding for Causcape flows", () => {
+  beforeEach(async () => {
+    mouse.reset();
+    await act(() => setLanguage(defaultLang));
+    await render(<Causcape handleKeyboardGlobally={true} />);
+  });
+
+  it("keeps a bound endpoint attached when its node moves", () => {
+    const source = newCauscapeNodeElement({
+      id: "source-node",
+      label: "Source",
+      x: 100,
+      y: 100,
+      width: 200,
+      height: 100,
+      boundElements: [{ id: "flow", type: "causcape-edge" }],
+    });
+    const target = newCauscapeNodeElement({
+      id: "target-node",
+      label: "Target",
+      x: 500,
+      y: 100,
+      width: 200,
+      height: 100,
+      boundElements: [{ id: "flow", type: "causcape-edge" }],
+    });
+    const flow = newCauscapeEdgeElement({
+      id: "flow",
+      fromNodeId: source.id,
+      toNodeId: target.id,
+      x: 300,
+      y: 150,
+      points: [pointFrom(0, 0), pointFrom(200, 0)],
+      startBinding: {
+        elementId: source.id,
+        focus: 0,
+        gap: 0,
+        fixedPoint: [1, 0.5],
+        mode: "inside",
+      },
+      endBinding: {
+        elementId: target.id,
+        focus: 0,
+        gap: 0,
+        fixedPoint: [0, 0.5],
+        mode: "inside",
+      },
+    });
+    API.setElements([source, target, flow]);
+
+    act(() => {
+      h.scene.mutateElement(source, { x: 160, y: 140 });
+      updateBoundElements(source, h.scene);
+    });
+
+    expect(flow.x + flow.points[0][0]).toBeCloseTo(360);
+    expect(flow.y + flow.points[0][1]).toBeCloseTo(190, 1);
+    expect(flow.x + flow.points.at(-1)![0]).toBeCloseTo(500);
+    expect(flow.y + flow.points.at(-1)![1]).toBeCloseTo(150, 1);
+  });
+});
+
 describe("binding to a point-like (sub-pixel) element", () => {
   beforeEach(async () => {
     mouse.reset();
     await act(() => setLanguage(defaultLang));
-    await render(<Excalidraw handleKeyboardGlobally={true} />);
+    await render(<Causcape handleKeyboardGlobally={true} />);
   });
 
   // Regression: binding to a zero/near-zero-size element used to yield an
@@ -782,7 +844,7 @@ describe("binding to a point-like (sub-pixel) element", () => {
         y: 50,
         width: 0.00005,
         height: 0.00005,
-      }) as NonDeleted<ExcalidrawBindableElement>;
+      }) as NonDeleted<CauscapeBindableElement>;
       const arrow = API.createElement({
         type: "arrow",
         elbowed,
@@ -791,7 +853,7 @@ describe("binding to a point-like (sub-pixel) element", () => {
         width: 195,
         height: 0,
         points: [pointFrom(0, 0), pointFrom(195, 0)],
-      }) as NonDeleted<ExcalidrawArrowElement>;
+      }) as NonDeleted<CauscapeArrowElement>;
       API.setElements([rect, arrow]);
 
       bindBindingElement(arrow, rect, "orbit", "end", h.scene);

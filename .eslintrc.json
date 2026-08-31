@@ -1,5 +1,5 @@
 {
-  "extends": ["@excalidraw/eslint-config", "react-app"],
+  "extends": ["@causcape/eslint-config", "react-app"],
   "rules": {
     "import/order": [
       "warn",
@@ -7,7 +7,7 @@
         "groups": ["builtin", "external", "internal", "parent", "sibling", "index", "object", "type"],
         "pathGroups": [
           {
-            "pattern": "@excalidraw/**",
+            "pattern": "@causcape/**",
             "group": "external",
             "position": "after"
           }
@@ -42,15 +42,15 @@
   },
   "overrides": [
     {
-      "files": ["packages/excalidraw/**/*.{ts,tsx}"],
-      "excludedFiles": ["packages/excalidraw/**/*.test.{ts,tsx}", "packages/excalidraw/**/*.test.*.{ts,tsx}"],
+      "files": ["packages/causcape/**/*.{ts,tsx}"],
+      "excludedFiles": ["packages/causcape/**/*.test.{ts,tsx}", "packages/causcape/**/*.test.*.{ts,tsx}"],
       "rules": {
         "@typescript-eslint/no-restricted-imports": [
           "error",
           {
             "patterns": [
               {
-                "group": ["@excalidraw/excalidraw"],
+                "group": ["@causcape/causcape"],
                 "message": "Do not import from the barrel 'index.tsx' files. Use direct relative imports to the specific module instead.",
                 "allowTypeImports": true
               }

@@ -31,7 +31,7 @@ The canonical definitions in [`packages/graph/src/mcp.ts`](../../packages/graph/
 | GitHub | `setGithubToken`, `clearGithubToken`, `refreshGithubNode`, `refreshAllGithubNodes` | Hydrate cached GitHub data | Refresh output is not a provenance-bearing evidence record; no incident timeline expansion |
 | Destructive control | `resetCanvas` | Remove the scene | Destructive action has no confirmation, expected revision, checkpoint, or recoverable operation result |
 
-The implementation additionally exposes aliases and a debug `window.CauscapeMCP` map in [`excalidraw-app/mcp/graphMCP.ts`](../../excalidraw-app/mcp/graphMCP.ts). The modern registration path separately defines the extended GitHub tools. This creates schema drift risk: there are two places to keep descriptions and schemas synchronized, and the canonical list does not describe every registered extended tool.
+The implementation additionally exposes aliases and a debug `window.CauscapeMCP` map in [`causcape-app/mcp/graphMCP.ts`](../../causcape-app/mcp/graphMCP.ts). The modern registration path separately defines the extended GitHub tools. This creates schema drift risk: there are two places to keep descriptions and schemas synchronized, and the canonical list does not describe every registered extended tool.
 
 The graph model in [`packages/graph/src/types.ts`](../../packages/graph/src/types.ts) contains node geometry, a free-form edge label, GitHub references, and a cache snapshot. It has no first-class node settings, relation semantics, evidence/provenance, actor, revision, confidence, time interval, or layout/routing metadata. The ADR explicitly limits the current contract to labels, coordinates, GitHub snapshots, and a small free-form edge-label pool. [`ADR-001`](../../docs/adr/ADR-001-github-nodes-postmortem.md)
 
@@ -51,7 +51,7 @@ Finally, WebMCP’s security section explicitly calls out prompt injection throu
 
 ### 1. Settings are not a graph capability yet
 
-The Excalidraw element already has visual fields such as `backgroundColor`, `strokeColor`, `strokeWidth`, `fillStyle`, `roundness`, `roughness`, and `opacity`, but the Causcape node data and `updateElement` schema do not expose a controlled settings object. That explains why agents must guess at low-level element patches and why style changes are difficult to make consistent.
+The Causcape element already has visual fields such as `backgroundColor`, `strokeColor`, `strokeWidth`, `fillStyle`, `roundness`, `roughness`, and `opacity`, but the Causcape node data and `updateElement` schema do not expose a controlled settings object. That explains why agents must guess at low-level element patches and why style changes are difficult to make consistent.
 
 Recommendation: add a versioned, constrained `settings` object to node data, for example:
 
@@ -67,7 +67,7 @@ type CauscapeNodeSettings = {
 };
 ```
 
-Expose it through the same operation as labels and positions, not a separate tool per property. Validate the palette/size enums, clamp dimensions, preserve unknown future fields on load, and return the normalized settings actually applied. Keep raw Excalidraw fields as the renderer projection rather than the primary agent contract.
+Expose it through the same operation as labels and positions, not a separate tool per property. Validate the palette/size enums, clamp dimensions, preserve unknown future fields on load, and return the normalized settings actually applied. Keep raw Causcape fields as the renderer projection rather than the primary agent contract.
 
 Recommended operation: `updateNodes` with an array of `{ id, patch }`, `expectedRevision`, `operationId`, and `dryRun`. It should support settings, label, position, pinning, and optionally selection/focus metadata in one atomic history entry.
 
@@ -94,7 +94,7 @@ This also gives the UI a single place to record human and agent changes, undo th
 
 ### 3. The renderer/interaction boundary is not total
 
-The reported `deconstructLinearOrFreeDrawElement(... reading 'length')` exception means a Causcape element reached generic Excalidraw distance/collision code without satisfying the linear-element invariant. The failure is especially damaging in a collaborative canvas: a human cannot select or move the element that an agent created.
+The reported `deconstructLinearOrFreeDrawElement(... reading 'length')` exception means a Causcape element reached generic Causcape distance/collision code without satisfying the linear-element invariant. The failure is especially damaging in a collaborative canvas: a human cannot select or move the element that an agent created.
 
 Recommendation, in priority order:
 

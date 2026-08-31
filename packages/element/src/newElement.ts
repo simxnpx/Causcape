@@ -14,16 +14,16 @@ import {
   getFontString,
   getUpdatedTimestamp,
   getLineHeight,
-} from "@excalidraw/common";
+} from "@causcape/common";
 
 import {
   isValidPoint,
   pointFrom,
   type LocalPoint,
   type Radians,
-} from "@excalidraw/math";
+} from "@causcape/math";
 
-import type { MarkOptional, Merge } from "@excalidraw/common/utility-types";
+import type { MarkOptional, Merge } from "@causcape/common/utility-types";
 
 import {
   getElementAbsoluteCoords,
@@ -43,36 +43,37 @@ import {
 import { isLineElement } from "./typeChecks";
 
 import type {
-  ExcalidrawElement,
-  ExcalidrawImageElement,
-  ExcalidrawTextElement,
-  ExcalidrawLinearElement,
-  ExcalidrawGenericElement,
+  CauscapeElement,
+  CauscapeImageElement,
+  CauscapeTextElement,
+  CauscapeLinearElement,
+  CauscapeGenericElement,
   NonDeleted,
   TextAlign,
   VerticalAlign,
   Arrowhead,
-  ExcalidrawFreeDrawElement,
+  CauscapeFreeDrawElement,
   FontFamilyValues,
-  ExcalidrawTextContainer,
-  ExcalidrawFrameElement,
-  ExcalidrawEmbeddableElement,
-  ExcalidrawMagicFrameElement,
-  ExcalidrawIframeElement,
+  CauscapeTextContainer,
+  CauscapeFrameElement,
+  CauscapeEmbeddableElement,
+  CauscapeMagicFrameElement,
+  CauscapeIframeElement,
   ElementsMap,
-  ExcalidrawArrowElement,
-  ExcalidrawElbowArrowElement,
-  ExcalidrawLineElement,
-  ExcalidrawCauscapeNodeElement,
-  ExcalidrawCauscapeEdgeElement,
+  CauscapeArrowElement,
+  CauscapeElbowArrowElement,
+  CauscapeLineElement,
+  CauscapeNodeElement,
+  CauscapeEdgeElement,
   CauscapeNodeKind,
   CauscapeArchitectureNodeMetadata,
   GithubRef,
   GithubCache,
+  FixedPointBinding,
 } from "./types";
 
 export type ElementConstructorOpts = MarkOptional<
-  Omit<ExcalidrawGenericElement, "id" | "type" | "isDeleted" | "updated">,
+  Omit<CauscapeGenericElement, "id" | "type" | "isDeleted" | "updated">,
   | "width"
   | "height"
   | "angle"
@@ -96,7 +97,7 @@ export type ElementConstructorOpts = MarkOptional<
   | "customData"
 >;
 
-const _newElementBase = <T extends ExcalidrawElement>(
+const _newElementBase = <T extends CauscapeElement>(
   type: T["type"],
   {
     x,
@@ -119,7 +120,7 @@ const _newElementBase = <T extends ExcalidrawElement>(
     link = null,
     locked = DEFAULT_ELEMENT_PROPS.locked,
     ...rest
-  }: ElementConstructorOpts & Omit<Partial<ExcalidrawGenericElement>, "type">,
+  }: ElementConstructorOpts & Omit<Partial<CauscapeGenericElement>, "type">,
 ) => {
   // NOTE (mtolmacs): This is a temporary check to detect extremely large
   // element position or sizing
@@ -145,7 +146,7 @@ const _newElementBase = <T extends ExcalidrawElement>(
 
   // assign type to guard against excess properties
   const element: Merge<
-    ExcalidrawGenericElement,
+    CauscapeGenericElement,
     { type: T["type"]; isDeleted: false }
   > = {
     id: rest.id || randomId(),
@@ -181,26 +182,26 @@ const _newElementBase = <T extends ExcalidrawElement>(
 
 export const newElement = (
   opts: {
-    type: ExcalidrawGenericElement["type"];
+    type: CauscapeGenericElement["type"];
   } & ElementConstructorOpts,
-): NonDeleted<ExcalidrawGenericElement> =>
-  _newElementBase<ExcalidrawGenericElement>(opts.type, opts);
+): NonDeleted<CauscapeGenericElement> =>
+  _newElementBase<CauscapeGenericElement>(opts.type, opts);
 
 export const newEmbeddableElement = (
   opts: {
     type: "embeddable";
   } & ElementConstructorOpts,
-): NonDeleted<ExcalidrawEmbeddableElement> => {
-  return _newElementBase<ExcalidrawEmbeddableElement>("embeddable", opts);
+): NonDeleted<CauscapeEmbeddableElement> => {
+  return _newElementBase<CauscapeEmbeddableElement>("embeddable", opts);
 };
 
 export const newIframeElement = (
   opts: {
     type: "iframe";
   } & ElementConstructorOpts,
-): NonDeleted<ExcalidrawIframeElement> => {
+): NonDeleted<CauscapeIframeElement> => {
   return {
-    ..._newElementBase<ExcalidrawIframeElement>("iframe", opts),
+    ..._newElementBase<CauscapeIframeElement>("iframe", opts),
   };
 };
 
@@ -208,10 +209,10 @@ export const newFrameElement = (
   opts: {
     name?: string;
   } & ElementConstructorOpts,
-): NonDeleted<ExcalidrawFrameElement> => {
+): NonDeleted<CauscapeFrameElement> => {
   const frameElement = newElementWith(
     {
-      ..._newElementBase<ExcalidrawFrameElement>("frame", opts),
+      ..._newElementBase<CauscapeFrameElement>("frame", opts),
       type: "frame",
       name: opts?.name || null,
     },
@@ -225,10 +226,10 @@ export const newMagicFrameElement = (
   opts: {
     name?: string;
   } & ElementConstructorOpts,
-): NonDeleted<ExcalidrawMagicFrameElement> => {
+): NonDeleted<CauscapeMagicFrameElement> => {
   const frameElement = newElementWith(
     {
-      ..._newElementBase<ExcalidrawMagicFrameElement>("magicframe", opts),
+      ..._newElementBase<CauscapeMagicFrameElement>("magicframe", opts),
       type: "magicframe",
       name: opts?.name || null,
     },
@@ -245,8 +246,8 @@ export const newMagicFrameElement = (
  * `adjustXYWithRotation` in `getAdjustedDimensions`.
  */
 export const getTextAnchorRatios = (opts: {
-  textAlign: ExcalidrawTextElement["textAlign"];
-  verticalAlign: ExcalidrawTextElement["verticalAlign"];
+  textAlign: CauscapeTextElement["textAlign"];
+  verticalAlign: CauscapeTextElement["verticalAlign"];
 }) => ({
   x: opts.textAlign === "center" ? 0.5 : opts.textAlign === "right" ? 1 : 0,
   y:
@@ -260,8 +261,8 @@ export const getTextAnchorRatios = (opts: {
 /** computes element x/y offset based on textAlign/verticalAlign */
 const getTextElementPositionOffsets = (
   opts: {
-    textAlign: ExcalidrawTextElement["textAlign"];
-    verticalAlign: ExcalidrawTextElement["verticalAlign"];
+    textAlign: CauscapeTextElement["textAlign"];
+    verticalAlign: CauscapeTextElement["verticalAlign"];
   },
   metrics: {
     width: number;
@@ -284,11 +285,11 @@ export const newTextElement = (
     fontFamily?: FontFamilyValues;
     textAlign?: TextAlign;
     verticalAlign?: VerticalAlign;
-    containerId?: ExcalidrawTextContainer["id"] | null;
-    lineHeight?: ExcalidrawTextElement["lineHeight"];
-    autoResize?: ExcalidrawTextElement["autoResize"];
+    containerId?: CauscapeTextContainer["id"] | null;
+    lineHeight?: CauscapeTextElement["lineHeight"];
+    autoResize?: CauscapeTextElement["autoResize"];
   } & ElementConstructorOpts,
-): NonDeleted<ExcalidrawTextElement> => {
+): NonDeleted<CauscapeTextElement> => {
   const fontFamily = opts.fontFamily || DEFAULT_FONT_FAMILY;
   const fontSize = opts.fontSize || DEFAULT_FONT_SIZE;
   const lineHeight = opts.lineHeight || getLineHeight(fontFamily);
@@ -305,8 +306,8 @@ export const newTextElement = (
     metrics,
   );
 
-  const textElementProps: NonDeleted<ExcalidrawTextElement> = {
-    ..._newElementBase<ExcalidrawTextElement>("text", opts),
+  const textElementProps: NonDeleted<CauscapeTextElement> = {
+    ..._newElementBase<CauscapeTextElement>("text", opts),
     text,
     fontSize,
     fontFamily,
@@ -322,7 +323,7 @@ export const newTextElement = (
     lineHeight,
   };
 
-  const textElement: NonDeleted<ExcalidrawTextElement> = newElementWith(
+  const textElement: NonDeleted<CauscapeTextElement> = newElementWith(
     textElementProps,
     {},
   );
@@ -331,7 +332,7 @@ export const newTextElement = (
 };
 
 const getAdjustedDimensions = (
-  element: ExcalidrawTextElement,
+  element: CauscapeTextElement,
   elementsMap: ElementsMap,
   nextText: string,
 ): {
@@ -467,8 +468,8 @@ const adjustXYWithRotation = (
 };
 
 export const refreshTextDimensions = (
-  textElement: ExcalidrawTextElement,
-  container: ExcalidrawTextContainer | null,
+  textElement: CauscapeTextElement,
+  container: CauscapeTextContainer | null,
   elementsMap: ElementsMap,
   text = textElement.text,
 ) => {
@@ -491,14 +492,14 @@ export const refreshTextDimensions = (
 export const newFreeDrawElement = (
   opts: {
     type: "freedraw";
-    points?: ExcalidrawFreeDrawElement["points"];
+    points?: CauscapeFreeDrawElement["points"];
     simulatePressure: boolean;
-    strokeOptions?: ExcalidrawFreeDrawElement["strokeOptions"];
-    pressures?: ExcalidrawFreeDrawElement["pressures"];
+    strokeOptions?: CauscapeFreeDrawElement["strokeOptions"];
+    pressures?: CauscapeFreeDrawElement["pressures"];
   } & ElementConstructorOpts,
-): NonDeleted<ExcalidrawFreeDrawElement> => {
+): NonDeleted<CauscapeFreeDrawElement> => {
   return {
-    ..._newElementBase<ExcalidrawFreeDrawElement>(opts.type, opts),
+    ..._newElementBase<CauscapeFreeDrawElement>(opts.type, opts),
     points: opts.points || [],
     pressures: opts.pressures || [],
     simulatePressure: opts.simulatePressure,
@@ -511,13 +512,13 @@ export const newFreeDrawElement = (
 
 export const newLinearElement = (
   opts: {
-    type: ExcalidrawLinearElement["type"];
-    points?: ExcalidrawLinearElement["points"];
-    polygon?: ExcalidrawLineElement["polygon"];
+    type: CauscapeLinearElement["type"];
+    points?: CauscapeLinearElement["points"];
+    polygon?: CauscapeLineElement["polygon"];
   } & ElementConstructorOpts,
-): NonDeleted<ExcalidrawLinearElement> => {
+): NonDeleted<CauscapeLinearElement> => {
   const element = {
-    ..._newElementBase<ExcalidrawLinearElement>(opts.type, opts),
+    ..._newElementBase<CauscapeLinearElement>(opts.type, opts),
     points: opts.points || [],
 
     startBinding: null,
@@ -527,7 +528,7 @@ export const newLinearElement = (
   };
 
   if (isLineElement(element)) {
-    const lineElement: NonDeleted<ExcalidrawLineElement> = {
+    const lineElement: NonDeleted<CauscapeLineElement> = {
       ...element,
       polygon: opts.polygon ?? false,
     };
@@ -540,19 +541,19 @@ export const newLinearElement = (
 
 export const newArrowElement = <T extends boolean>(
   opts: {
-    type: ExcalidrawArrowElement["type"];
+    type: CauscapeArrowElement["type"];
     startArrowhead?: Arrowhead | null;
     endArrowhead?: Arrowhead | null;
-    points?: ExcalidrawArrowElement["points"];
+    points?: CauscapeArrowElement["points"];
     elbowed?: T;
-    fixedSegments?: ExcalidrawElbowArrowElement["fixedSegments"] | null;
+    fixedSegments?: CauscapeElbowArrowElement["fixedSegments"] | null;
   } & ElementConstructorOpts,
 ): T extends true
-  ? NonDeleted<ExcalidrawElbowArrowElement>
-  : NonDeleted<ExcalidrawArrowElement> => {
+  ? NonDeleted<CauscapeElbowArrowElement>
+  : NonDeleted<CauscapeArrowElement> => {
   if (opts.elbowed) {
     return {
-      ..._newElementBase<ExcalidrawElbowArrowElement>(opts.type, opts),
+      ..._newElementBase<CauscapeElbowArrowElement>(opts.type, opts),
       points: opts.points || [],
       startBinding: null,
       endBinding: null,
@@ -562,11 +563,11 @@ export const newArrowElement = <T extends boolean>(
       fixedSegments: opts.fixedSegments || [],
       startIsSpecial: false,
       endIsSpecial: false,
-    } as NonDeleted<ExcalidrawElbowArrowElement>;
+    } as NonDeleted<CauscapeElbowArrowElement>;
   }
 
   return {
-    ..._newElementBase<ExcalidrawArrowElement>(opts.type, opts),
+    ..._newElementBase<CauscapeArrowElement>(opts.type, opts),
     points: opts.points || [],
     startBinding: null,
     endBinding: null,
@@ -574,21 +575,21 @@ export const newArrowElement = <T extends boolean>(
     endArrowhead: opts.endArrowhead || null,
     elbowed: false,
   } as T extends true
-    ? NonDeleted<ExcalidrawElbowArrowElement>
-    : NonDeleted<ExcalidrawArrowElement>;
+    ? NonDeleted<CauscapeElbowArrowElement>
+    : NonDeleted<CauscapeArrowElement>;
 };
 
 export const newImageElement = (
   opts: {
-    type: ExcalidrawImageElement["type"];
-    status?: ExcalidrawImageElement["status"];
-    fileId?: ExcalidrawImageElement["fileId"];
-    scale?: ExcalidrawImageElement["scale"];
-    crop?: ExcalidrawImageElement["crop"];
+    type: CauscapeImageElement["type"];
+    status?: CauscapeImageElement["status"];
+    fileId?: CauscapeImageElement["fileId"];
+    scale?: CauscapeImageElement["scale"];
+    crop?: CauscapeImageElement["crop"];
   } & ElementConstructorOpts,
-): NonDeleted<ExcalidrawImageElement> => {
+): NonDeleted<CauscapeImageElement> => {
   return {
-    ..._newElementBase<ExcalidrawImageElement>("image", opts),
+    ..._newElementBase<CauscapeImageElement>("image", opts),
     // in the future we'll support changing stroke color for some SVG elements,
     // and `transparent` will likely mean "use original colors of the image"
     strokeColor: "transparent",
@@ -607,7 +608,7 @@ export const newCauscapeNodeElement = (
     cache?: GithubCache & { snapshotAt: string };
   } & CauscapeArchitectureNodeMetadata &
     ElementConstructorOpts,
-): NonDeleted<ExcalidrawCauscapeNodeElement> => {
+): NonDeleted<CauscapeNodeElement> => {
   const {
     label,
     kind = "variable",
@@ -634,7 +635,7 @@ export const newCauscapeNodeElement = (
   const defaultSize = getCauscapeNodeSize(nodeData);
   const isArchitecture = isCauscapeArchitectureNodeKind(kind);
 
-  const base = _newElementBase<ExcalidrawCauscapeNodeElement>("causcape-node", {
+  const base = _newElementBase<CauscapeNodeElement>("causcape-node", {
     ...elementOpts,
     width: elementOpts.width ?? defaultSize.width,
     height: elementOpts.height ?? defaultSize.height,
@@ -660,16 +661,20 @@ export const newCauscapeEdgeElement = (
     fromNodeId: string;
     toNodeId: string;
     label?: string;
-    points?: ExcalidrawCauscapeEdgeElement["points"];
+    points?: CauscapeEdgeElement["points"];
+    startBinding?: FixedPointBinding | null;
+    endBinding?: FixedPointBinding | null;
     startArrowhead?: Arrowhead | null;
     endArrowhead?: Arrowhead | null;
   } & ElementConstructorOpts,
-): NonDeleted<ExcalidrawCauscapeEdgeElement> => {
+): NonDeleted<CauscapeEdgeElement> => {
   const {
     fromNodeId,
     toNodeId,
     label,
     points: requestedPoints,
+    startBinding = null,
+    endBinding = null,
     startArrowhead = null,
     endArrowhead = "arrow",
     ...elementOpts
@@ -689,14 +694,14 @@ export const newCauscapeEdgeElement = (
   const safePoints = points.length >= 2 ? points : fallbackPoints;
   const { width, height } = getSizeFromPoints(safePoints);
   return {
-    ..._newElementBase<ExcalidrawCauscapeEdgeElement>("causcape-edge", {
+    ..._newElementBase<CauscapeEdgeElement>("causcape-edge", {
       ...elementOpts,
       width,
       height,
     }),
     points: safePoints,
-    startBinding: null,
-    endBinding: null,
+    startBinding,
+    endBinding,
     startArrowhead,
     endArrowhead,
     elbowed: false,

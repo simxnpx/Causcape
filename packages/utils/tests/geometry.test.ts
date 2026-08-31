@@ -5,14 +5,14 @@ import {
   pointOnLineSegment,
   polygonIncludesPoint,
   segmentsIntersectAt,
-} from "@excalidraw/math";
+} from "@causcape/math";
 
 import type {
   GlobalPoint,
   LineSegment,
   Polygon,
   Radians,
-} from "@excalidraw/math";
+} from "@causcape/math";
 
 import { pointInEllipse, pointOnEllipse, type Ellipse } from "../src/shape";
 

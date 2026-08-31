@@ -1,21 +1,21 @@
-import { arrayToMap } from "@excalidraw/common";
+import { arrayToMap } from "@causcape/common";
 
-import type { ExcalidrawElement } from "./types";
+import type { CauscapeElement } from "./types";
 
-const defragmentGroups = (elements: readonly ExcalidrawElement[]) => {
-  const groupIdAtLevel = (element: ExcalidrawElement, level: number) => {
+const defragmentGroups = (elements: readonly CauscapeElement[]) => {
+  const groupIdAtLevel = (element: CauscapeElement, level: number) => {
     return element.groupIds[element.groupIds.length - level - 1];
   };
 
   const orderLevel = (
-    levelElements: readonly ExcalidrawElement[],
+    levelElements: readonly CauscapeElement[],
     level: number,
-  ): ExcalidrawElement[] => {
-    const buckets = new Map<string, ExcalidrawElement[]>();
+  ): CauscapeElement[] => {
+    const buckets = new Map<string, CauscapeElement[]>();
     // Slots preserve first-occurrence order: a groupId reserves its slot
     // the first time one of its members is seen; loose elements occupy
     // their own slot. Groups are then expanded (and recursed into) in place.
-    const slots: (ExcalidrawElement | string)[] = [];
+    const slots: (CauscapeElement | string)[] = [];
 
     for (const element of levelElements) {
       const groupId = groupIdAtLevel(element, level);
@@ -62,7 +62,7 @@ const defragmentGroups = (elements: readonly ExcalidrawElement[]) => {
  * original z-index of container (i.e. it moves bound text elements after
  * containers).
  */
-export const normalizeBoundElementsOrder = <T extends ExcalidrawElement>(
+export const normalizeBoundElementsOrder = <T extends CauscapeElement>(
   elements: readonly T[],
 ) => {
   const elementsMap = arrayToMap(elements);
@@ -112,8 +112,6 @@ export const normalizeBoundElementsOrder = <T extends ExcalidrawElement>(
   return [...sortedElements];
 };
 
-export const normalizeElementOrder = (
-  elements: readonly ExcalidrawElement[],
-) => {
+export const normalizeElementOrder = (elements: readonly CauscapeElement[]) => {
   return normalizeBoundElementsOrder(defragmentGroups(elements));
 };

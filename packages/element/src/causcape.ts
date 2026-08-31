@@ -1,4 +1,4 @@
-import { THEME } from "@excalidraw/common";
+import { THEME } from "@causcape/common";
 
 import type {
   CauscapeArchitectureNodeKind,
@@ -8,8 +8,8 @@ import type {
   CauscapeNodeKind,
   CauscapeReference,
   CauscapeReferenceType,
-  ExcalidrawCauscapeEdgeElement,
-  ExcalidrawCauscapeNodeElement,
+  CauscapeEdgeElement,
+  CauscapeNodeElement,
   GithubRef,
   Theme,
 } from "./types";
@@ -23,33 +23,33 @@ export const CAUSCAPE_NODE_STYLE = {
   titleFontSize: 11,
   metaFontSize: 10,
   variableFontSize: 12,
-  architecturePadding: 24,
-  architectureIconSize: 58,
-  architectureIconTileSize: 104,
-  architectureIconGap: 22,
-  architectureTitleFontSize: 28,
-  kindFontSize: 15,
-  bodyFontSize: 16,
-  badgeFontSize: 14,
-  lineHeight: 23,
-  sectionGap: 16,
+  architecturePadding: 20,
+  architectureIconSize: 34,
+  architectureIconTileSize: 64,
+  architectureIconGap: 16,
+  architectureTitleFontSize: 26,
+  kindFontSize: 12,
+  bodyFontSize: 15,
+  badgeFontSize: 12,
+  lineHeight: 22,
+  sectionGap: 14,
   minWidth: 420,
   maxWidth: 720,
   defaultArchitectureWidth: 560,
   defaultArchitectureHeight: 180,
   defaultLegacyWidth: 180,
   defaultLegacyHeight: 60,
-  headerHeight: 104,
-  chipHeight: 32,
-  metadataRowHeight: 48,
-  metadataPanelPadding: 14,
-  metadataIconXOffset: 16,
-  metadataLabelXOffset: 52,
-  metadataValueXOffset: 206,
-  technologyPanelPadding: 14,
-  technologyChipGap: 4,
-  technologyRowGap: 4,
-  architecturePillHeight: 32,
+  headerHeight: 88,
+  chipHeight: 27,
+  metadataRowHeight: 36,
+  metadataPanelPadding: 6,
+  metadataIconXOffset: 10,
+  metadataLabelXOffset: 34,
+  metadataValueXOffset: 34,
+  technologyPanelPadding: 0,
+  technologyChipGap: 5,
+  technologyRowGap: 5,
+  architecturePillHeight: 24,
   staleColor: "#ffab00",
   variableAccent: "#6b7cff",
   lightForeground: "#24292f",
@@ -60,9 +60,9 @@ export const CAUSCAPE_NODE_STYLE = {
   darkSurface: "#1f2937",
   lightRule: "#d8e0ea",
   darkRule: "#3d4a5b",
-  descriptionTopGap: 15,
-  technologyChipTopPadding: 4,
-  sectionRuleGap: 8,
+  descriptionTopGap: 14,
+  technologyChipTopPadding: 0,
+  sectionRuleGap: 6,
 } as const;
 
 export const CAUSCAPE_GITHUB_ICON_PATH =
@@ -215,7 +215,7 @@ export const normalizeCauscapeNodeData = (
 
 export const normalizeCauscapeEdgeData = (
   value: unknown,
-): ExcalidrawCauscapeEdgeElement["causcape"] => {
+): CauscapeEdgeElement["causcape"] => {
   const raw = isRecord(value) ? value : {};
   return {
     ...raw,
@@ -513,6 +513,7 @@ export type CauscapeArchitectureLayout = Readonly<{
     iconRect: CauscapeLayoutRect;
     title: CauscapeLayoutText;
     kindPill: CauscapeLayoutPill;
+    environmentPill: CauscapeLayoutPill | null;
     healthPill: CauscapeLayoutPill | null;
   }>;
   rules: readonly number[];
@@ -546,7 +547,7 @@ const getCauscapePillLayout = (
   prefix = "",
 ): CauscapeLayoutPill => {
   const height = CAUSCAPE_NODE_STYLE.architecturePillHeight;
-  const horizontalPadding = 14;
+  const horizontalPadding = 10;
   const content = `${prefix ? `${prefix} ` : ""}${text}`;
   const width = Math.max(
     height + 2,
@@ -859,18 +860,29 @@ export const getCauscapeArchitectureLayout = (
     titleWidth,
     CAUSCAPE_NODE_STYLE.architectureTitleFontSize,
   );
-  const title = getCauscapeTextLayout(titleLines, titleX, padding + 38);
-  const pillY = padding + (titleLines.length > 1 ? 80 : 58);
+  const title = getCauscapeTextLayout(titleLines, titleX, padding + 55);
+  const pillY = padding;
   const kindPill = getCauscapePillLayout(
     data.kindLabel ?? "Component",
     titleX,
     pillY,
     CAUSCAPE_NODE_STYLE.kindFontSize,
   );
+  const environmentPill = data.environment
+    ? getCauscapePillLayout(
+        data.environment,
+        kindPill.rect.x + kindPill.rect.width + 6,
+        pillY,
+        CAUSCAPE_NODE_STYLE.kindFontSize,
+        "◉",
+      )
+    : null;
   const healthPill = data.health
     ? getCauscapePillLayout(
         data.health.label,
-        kindPill.rect.x + kindPill.rect.width + 10,
+        (environmentPill?.rect.x ?? kindPill.rect.x) +
+          (environmentPill?.rect.width ?? kindPill.rect.width) +
+          6,
         pillY,
         CAUSCAPE_NODE_STYLE.kindFontSize,
         data.health.glyph,
@@ -903,16 +915,6 @@ export const getCauscapeArchitectureLayout = (
     icon: CauscapeMetadataIcon;
     reference: CauscapeReference | null;
   }>[] = [
-    ...(data.environment
-      ? [
-          {
-            label: "Environment",
-            value: data.environment,
-            icon: "environment" as const,
-            reference: null,
-          },
-        ]
-      : []),
     ...data.references.map((reference) => ({
       label: REFERENCE_LABELS[reference.type],
       value: getCauscapeReferenceLabel(reference),
@@ -923,36 +925,34 @@ export const getCauscapeArchitectureLayout = (
   const metadata = metadataValues.length
     ? (() => {
         cursorY += CAUSCAPE_NODE_STYLE.sectionGap;
+        const columnGap = 6;
+        const columnCount = Math.min(2, metadataValues.length);
+        const rowCount = Math.ceil(metadataValues.length / columnCount);
         const rect = {
           x: padding,
           y: cursorY,
           width: contentWidth,
           height:
             CAUSCAPE_NODE_STYLE.metadataPanelPadding * 2 +
-            metadataValues.length * CAUSCAPE_NODE_STYLE.metadataRowHeight,
+            rowCount * CAUSCAPE_NODE_STYLE.metadataRowHeight,
         };
-        const valueX =
-          rect.x +
-          Math.min(
-            CAUSCAPE_NODE_STYLE.metadataValueXOffset,
-            Math.max(
-              CAUSCAPE_NODE_STYLE.metadataLabelXOffset + 120,
-              rect.width - 140,
-            ),
-          );
         const rows = metadataValues.map((row, index) => {
+          const column = index % columnCount;
+          const rowIndex = Math.floor(index / columnCount);
+          const rowWidth =
+            (rect.width - columnGap * (columnCount - 1)) / columnCount;
           const rowTop =
             rect.y +
             CAUSCAPE_NODE_STYLE.metadataPanelPadding +
-            index * CAUSCAPE_NODE_STYLE.metadataRowHeight;
+            rowIndex * CAUSCAPE_NODE_STYLE.metadataRowHeight;
           const rowRect = {
-            x: rect.x,
+            x: rect.x + column * (rowWidth + columnGap),
             y: rowTop,
-            width: rect.width,
+            width: rowWidth,
             height: CAUSCAPE_NODE_STYLE.metadataRowHeight,
           };
           const iconRect = {
-            x: rect.x + CAUSCAPE_NODE_STYLE.metadataIconXOffset,
+            x: rowRect.x + CAUSCAPE_NODE_STYLE.metadataIconXOffset,
             y: rowTop + (CAUSCAPE_NODE_STYLE.metadataRowHeight - 20) / 2,
             width: 20,
             height: 20,
@@ -964,11 +964,11 @@ export const getCauscapeArchitectureLayout = (
             label: row.label,
             value: getCauscapeSingleLine(
               row.value,
-              rect.x + rect.width - 16 - valueX,
+              rowRect.width - CAUSCAPE_NODE_STYLE.metadataValueXOffset - 10,
             ),
-            labelX: rect.x + CAUSCAPE_NODE_STYLE.metadataLabelXOffset,
-            valueX,
-            baseline: rowTop + 30,
+            labelX: rowRect.x + CAUSCAPE_NODE_STYLE.metadataLabelXOffset,
+            valueX: rowRect.x + CAUSCAPE_NODE_STYLE.metadataValueXOffset,
+            baseline: rowTop + 24,
             reference: row.reference,
           };
         });
@@ -1023,6 +1023,7 @@ export const getCauscapeArchitectureLayout = (
       iconRect,
       title,
       kindPill,
+      environmentPill,
       healthPill,
     },
     rules,
@@ -1054,10 +1055,10 @@ export const getCauscapeNodeSize = (value: unknown): CauscapeNodeSize => {
 /**
  * Returns the architecture reference painted under a scene point. Keeping
  * this geometry next to the renderer lets the editor make the same pixels
- * interactive without introducing DOM children into the Excalidraw scene.
+ * interactive without introducing DOM children into the Causcape scene.
  */
 export const getCauscapeReferenceAtPoint = (
-  element: ExcalidrawCauscapeNodeElement,
+  element: CauscapeNodeElement,
   point: Readonly<{ x: number; y: number }>,
   theme: Theme,
 ): CauscapeReference | null => {

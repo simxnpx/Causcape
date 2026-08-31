@@ -1,5 +1,5 @@
 {
-  "name": "@excalidraw/graph",
+  "name": "@causcape/graph",
   "version": "0.1.0",
   "type": "module",
   "types": "./dist/types/graph/src/index.d.ts",
@@ -32,9 +32,9 @@
     "build:esm": "rimraf dist && node ../../scripts/buildBase.js && yarn gen:types"
   },
   "dependencies": {
-    "@excalidraw/common": "0.18.0",
-    "@excalidraw/element": "0.18.0",
-    "@excalidraw/math": "0.18.0",
-    "@excalidraw/fractional-indexing": "3.3.0"
+    "@causcape/common": "0.18.0",
+    "@causcape/element": "0.18.0",
+    "@causcape/math": "0.18.0",
+    "@causcape/fractional-indexing": "3.3.0"
   }
 }

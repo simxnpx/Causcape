@@ -7,15 +7,15 @@ import {
   isWritableElement,
   mapFind,
   reduceToCommonValue,
-} from "@excalidraw/common";
+} from "@causcape/common";
 import { vi } from "vitest";
 
-// Import directly to avoid the @excalidraw/common throttleRAF mock from setupTests.ts.
+// Import directly to avoid the @causcape/common throttleRAF mock from setupTests.ts.
 import { throttleRAF } from "./utils";
 
 type RafCallback = FrameRequestCallback;
 
-describe("@excalidraw/common/utils", () => {
+describe("@causcape/common/utils", () => {
   describe("cross-document element guards", () => {
     it("uses constructors from the target element's window", () => {
       const iframe = document.createElement("iframe");

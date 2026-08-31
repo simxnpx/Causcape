@@ -6,12 +6,12 @@ import {
   type GlobalPoint,
   type LocalPoint,
   type LineSegment,
-} from "@excalidraw/math";
-import { type Bounds, isBounds } from "@excalidraw/common";
+} from "@causcape/math";
+import { type Bounds, isBounds } from "@causcape/common";
 
-import type { ElementsMap, ExcalidrawElement } from "@excalidraw/element/types";
+import type { ElementsMap, CauscapeElement } from "@causcape/element/types";
 
-import type { Curve } from "@excalidraw/math";
+import type { Curve } from "@causcape/math";
 
 import { getElementBounds } from "./bounds";
 import { intersectElementWithLineSegment } from "./collision";
@@ -42,7 +42,7 @@ export type DebugPolygon = {
 };
 
 export const debugDrawHitVolume = (
-  element: ExcalidrawElement,
+  element: CauscapeElement,
   elementsMap: ElementsMap,
   options?: {
     rays?: number;

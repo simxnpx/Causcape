@@ -1,4 +1,4 @@
-import { API } from "@excalidraw/excalidraw/tests/helpers/api";
+import { API } from "@causcape/causcape/tests/helpers/api";
 
 import { newElementWith } from "../src/mutateElement";
 import {
@@ -8,11 +8,11 @@ import {
 } from "../src/typeChecks";
 
 import type {
-  ExcalidrawElement,
-  ExcalidrawLinearElement,
-  ExcalidrawTextElement,
+  CauscapeElement,
+  CauscapeLinearElement,
+  CauscapeTextElement,
   NonDeleted,
-  NonDeletedExcalidrawElement,
+  NonDeletedCauscapeElement,
 } from "../src/types";
 
 describe("Test TypeChecks", () => {
@@ -82,31 +82,31 @@ describe("Test TypeChecks", () => {
 describe("Test NonDeleted type", () => {
   it("should only allow `isDeleted: false` elements", () => {
     const element = API.createElement({ type: "rectangle" });
-    const deletedElement = newElementWith(element as ExcalidrawElement, {
+    const deletedElement = newElementWith(element as CauscapeElement, {
       isDeleted: true,
     });
 
     // @ts-expect-error deleted elements are not assignable to NonDeleted
-    const nonDeleted: NonDeletedExcalidrawElement = deletedElement;
+    const nonDeleted: NonDeletedCauscapeElement = deletedElement;
 
     // runtime narrowing is still required to treat an element as non-deleted
     // @ts-expect-error generic elements are not assignable to NonDeleted
-    const nonDeletedGeneric: NonDeletedExcalidrawElement =
-      deletedElement as ExcalidrawElement;
+    const nonDeletedGeneric: NonDeletedCauscapeElement =
+      deletedElement as CauscapeElement;
 
     expect(nonDeleted.isDeleted).toBe(true);
     expect(nonDeletedGeneric.isDeleted).toBe(true);
   });
 
   it("should be preserved by type guards", () => {
-    const elements: NonDeletedExcalidrawElement[] = [
+    const elements: NonDeletedCauscapeElement[] = [
       API.createElement({ type: "text", text: "text" }),
       API.createElement({ type: "arrow" }),
     ];
 
-    const textElements: NonDeleted<ExcalidrawTextElement>[] =
+    const textElements: NonDeleted<CauscapeTextElement>[] =
       elements.filter(isTextElement);
-    const linearElements: NonDeleted<ExcalidrawLinearElement>[] =
+    const linearElements: NonDeleted<CauscapeLinearElement>[] =
       elements.filter(isLinearElement);
 
     expect(textElements.length).toBe(1);

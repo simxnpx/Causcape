@@ -1,7 +1,9 @@
 import {
   getCauscapeEdgeLabel,
   getCauscapeEdgeLabelBounds,
-} from "@excalidraw/element";
+} from "@causcape/element";
+
+import type { FixedPointBinding } from "@causcape/element/types";
 
 import { isArchitectureNodeKind } from "./types";
 
@@ -24,6 +26,11 @@ export type CauscapeEdgeGeometry = {
   height: number;
   points: Point[];
 };
+
+export type CauscapeEdgeBindings = Readonly<{
+  startBinding: FixedPointBinding;
+  endBinding: FixedPointBinding;
+}>;
 
 export type GraphQualityMetrics = Readonly<{
   nodeCount: number;
@@ -235,7 +242,7 @@ const getOrthogonalRoutePoints = (
   ];
 };
 
-const getFlowEndpointIds = (
+export const getCauscapeFlowEndpointIds = (
   edge: Pick<CauscapeEdge, "fromNodeId" | "toNodeId" | "relationship">,
 ): readonly [string, string] =>
   edge.relationship === "subscribes"
@@ -243,9 +250,9 @@ const getFlowEndpointIds = (
     : [edge.fromNodeId, edge.toNodeId];
 
 /**
- * Build compact orthogonal routes. When the node rectangles overlap on one
- * axis, use a straight segment on the other axis. Otherwise use a one-bend L
- * route, with the Z-shaped route retained as a fallback for obstacles.
+ * Build compact orthogonal candidates whose endpoints use side midpoints.
+ * Aligned cards can connect directly; offset cards use an L- or Z-shaped
+ * channel so the first and last segments remain perpendicular to each card.
  */
 const getLRouteCandidates = (from: Box, to: Box): Point[][] => {
   const fromCenter = centerOf(from);
@@ -253,21 +260,16 @@ const getLRouteCandidates = (from: Box, to: Box): Point[][] => {
   const verticalOverlap =
     Math.min(from.y + from.height, to.y + to.height) - Math.max(from.y, to.y);
   if (verticalOverlap > EPSILON) {
-    const y =
-      Math.max(from.y, to.y) +
-      Math.min(verticalOverlap / 2, verticalOverlap - EPSILON);
-    if (from.x <= to.x) {
-      return [
-        [
-          [from.x + from.width, y],
-          [to.x, y],
-        ],
-      ];
-    }
+    const fromIsLeft = from.x <= to.x;
+    const fromSideX = fromIsLeft ? from.x + from.width : from.x;
+    const toSideX = fromIsLeft ? to.x : to.x + to.width;
+    const channelX = (fromSideX + toSideX) / 2;
     return [
       [
-        [from.x, y],
-        [to.x + to.width, y],
+        [fromSideX, fromCenter[1]],
+        [channelX, fromCenter[1]],
+        [channelX, toCenter[1]],
+        [toSideX, toCenter[1]],
       ],
     ];
   }
@@ -275,21 +277,16 @@ const getLRouteCandidates = (from: Box, to: Box): Point[][] => {
   const horizontalOverlap =
     Math.min(from.x + from.width, to.x + to.width) - Math.max(from.x, to.x);
   if (horizontalOverlap > EPSILON) {
-    const x =
-      Math.max(from.x, to.x) +
-      Math.min(horizontalOverlap / 2, horizontalOverlap - EPSILON);
-    if (from.y <= to.y) {
-      return [
-        [
-          [x, from.y + from.height],
-          [x, to.y],
-        ],
-      ];
-    }
+    const fromIsAbove = from.y <= to.y;
+    const fromSideY = fromIsAbove ? from.y + from.height : from.y;
+    const toSideY = fromIsAbove ? to.y : to.y + to.height;
+    const channelY = (fromSideY + toSideY) / 2;
     return [
       [
-        [x, from.y],
-        [x, to.y + to.height],
+        [fromCenter[0], fromSideY],
+        [fromCenter[0], channelY],
+        [toCenter[0], channelY],
+        [toCenter[0], toSideY],
       ],
     ];
   }
@@ -329,6 +326,39 @@ export const routeCauscapeEdge = (
   return geometryFromAbsolutePoints(
     getPreferredOrthogonalRoutePoints(from, to),
   );
+};
+
+const fixedPointForEndpoint = (
+  point: Point,
+  node: Pick<CauscapeNode, "x" | "y" | "width" | "height">,
+): [number, number] => {
+  const ratioX = node.width ? (point[0] - node.x) / node.width : 0.5;
+  const ratioY = node.height ? (point[1] - node.y) / node.height : 0.5;
+  return [
+    Math.max(0, Math.min(1, Number(ratioX.toFixed(4)))),
+    Math.max(0, Math.min(1, Number(ratioY.toFixed(4)))),
+  ];
+};
+
+/** Persist the routed endpoint positions as fixed bindings on both cards. */
+export const getCauscapeEdgeBindings = (
+  fromNode: Pick<CauscapeNode, "id" | "x" | "y" | "width" | "height">,
+  toNode: Pick<CauscapeNode, "id" | "x" | "y" | "width" | "height">,
+  geometry: CauscapeEdgeGeometry,
+): CauscapeEdgeBindings => {
+  const points = absolutePoints(geometry);
+  return {
+    startBinding: {
+      elementId: fromNode.id,
+      fixedPoint: fixedPointForEndpoint(points[0], fromNode),
+      mode: "inside",
+    },
+    endBinding: {
+      elementId: toNode.id,
+      fixedPoint: fixedPointForEndpoint(points[points.length - 1], toNode),
+      mode: "inside",
+    },
+  };
 };
 
 const orientation = (p: Point, q: Point, r: Point): number =>
@@ -488,7 +518,7 @@ const validEdges = (graph: CauscapeGraph): readonly CauscapeEdge[] => {
 const getFlowGraph = (graph: CauscapeGraph): CauscapeGraph => ({
   ...graph,
   edges: validEdges(graph).map((edge) => {
-    const [fromNodeId, toNodeId] = getFlowEndpointIds(edge);
+    const [fromNodeId, toNodeId] = getCauscapeFlowEndpointIds(edge);
     return { ...edge, fromNodeId, toNodeId };
   }),
 });
@@ -645,6 +675,15 @@ const countCrossingsAgainst = (
     0,
   );
 
+const routeIntersectsBox = (route: CauscapeEdgeGeometry, box: Box): boolean => {
+  const points = absolutePoints(route);
+  return points
+    .slice(1)
+    .some((_, index) =>
+      segmentIntersectsInterior(points[index], points[index + 1], box),
+    );
+};
+
 const routeAroundNodes = (
   edge: CauscapeEdge,
   nodes: readonly CauscapeNode[],
@@ -654,7 +693,7 @@ const routeAroundNodes = (
   clearance: number,
   labelClearance: number,
 ): CauscapeEdgeGeometry => {
-  const [fromNodeId, toNodeId] = getFlowEndpointIds(edge);
+  const [fromNodeId, toNodeId] = getCauscapeFlowEndpointIds(edge);
   const from = nodes.find((node) => node.id === fromNodeId);
   const to = nodes.find((node) => node.id === toNodeId);
   if (!from || !to) {
@@ -749,10 +788,22 @@ const routeAroundNodes = (
           0,
         )
       : 0;
-    const labelRouteHits = labelBox
+    const labelBoxHits = labelBox
       ? existingLabelBoxes.reduce(
           (count, existingLabelBox) =>
             count + (boxesOverlap(labelBox, existingLabelBox) ? 1 : 0),
+          0,
+        )
+      : 0;
+    const labelRouteHits = labelBox
+      ? existingRoutes.reduce(
+          (count, existingRoute) =>
+            count + (routeIntersectsBox(existingRoute, labelBox) ? 1 : 0),
+          0,
+        ) +
+        existingLabelBoxes.reduce(
+          (count, existingLabelBox) =>
+            count + (routeIntersectsBox(route, existingLabelBox) ? 1 : 0),
           0,
         )
       : 0;
@@ -771,6 +822,7 @@ const routeAroundNodes = (
       routeOverlapLength: routeOverlapLengthValue,
       crossings,
       labelNodeHits,
+      labelBoxHits,
       labelRouteHits,
       bends: route.points.length - 2,
       length,
@@ -783,6 +835,7 @@ const routeAroundNodes = (
       a.routeOverlaps - b.routeOverlaps ||
       a.routeOverlapLength - b.routeOverlapLength ||
       a.labelNodeHits - b.labelNodeHits ||
+      a.labelBoxHits - b.labelBoxHits ||
       a.labelRouteHits - b.labelRouteHits ||
       a.bends - b.bends ||
       a.length - b.length ||
@@ -847,7 +900,7 @@ export const analyzeGraphQuality = (
   const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
   const routes = new Map<string, CauscapeEdgeGeometry>();
   for (const edge of validEdges(graph)) {
-    const [fromNodeId, toNodeId] = getFlowEndpointIds(edge);
+    const [fromNodeId, toNodeId] = getCauscapeFlowEndpointIds(edge);
     const from = nodeById.get(fromNodeId) as CauscapeNode;
     const to = nodeById.get(toNodeId) as CauscapeNode;
     routes.set(
@@ -884,7 +937,7 @@ export const analyzeGraphQuality = (
       continue;
     }
     const points = absolutePoints(route);
-    const [fromNodeId, toNodeId] = getFlowEndpointIds(edge);
+    const [fromNodeId, toNodeId] = getCauscapeFlowEndpointIds(edge);
     const fromNode = nodeById.get(fromNodeId);
     const toNode = nodeById.get(toNodeId);
     if (
@@ -1011,6 +1064,29 @@ export const analyzeGraphQuality = (
             "EDGE_LABEL_OVERLAP",
             `Label for edge ${edge.id} overlaps node ${node.id}`,
             [edge.id, node.id],
+          ),
+        );
+      }
+    }
+  }
+  for (const edge of validEdges(graph)) {
+    const labelBox = edgeLabelBoxes.get(edge.id);
+    if (!labelBox) {
+      continue;
+    }
+    for (const routedEdge of validEdges(graph)) {
+      if (routedEdge.id === edge.id) {
+        continue;
+      }
+      const route = routes.get(routedEdge.id);
+      if (route && routeIntersectsBox(route, labelBox)) {
+        edgeLabelOverlapCount += 1;
+        diagnostics.push(
+          getQualityDiagnostic(
+            "warning",
+            "EDGE_LABEL_ROUTE_OVERLAP",
+            `Route for edge ${routedEdge.id} crosses label for edge ${edge.id}`,
+            [edge.id, routedEdge.id],
           ),
         );
       }

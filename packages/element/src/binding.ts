@@ -4,7 +4,7 @@ import {
   getGridPoint,
   invariant,
   isTransparent,
-} from "@excalidraw/common";
+} from "@causcape/common";
 
 import {
   PRECISION,
@@ -21,12 +21,12 @@ import {
   vectorNormalize,
   vectorScale,
   type GlobalPoint,
-} from "@excalidraw/math";
+} from "@causcape/math";
 
-import type { LineSegment, LocalPoint, Radians } from "@excalidraw/math";
-import type { AppState, NullableGridSize } from "@excalidraw/excalidraw/types";
-import type { MapEntry, Mutable } from "@excalidraw/common/utility-types";
-import type { Bounds } from "@excalidraw/common";
+import type { LineSegment, LocalPoint, Radians } from "@causcape/math";
+import type { AppState, NullableGridSize } from "@causcape/causcape/types";
+import type { MapEntry, Mutable } from "@causcape/common/utility-types";
+import type { Bounds } from "@causcape/common";
 
 import { getCenterForBounds } from "./bounds";
 import {
@@ -51,6 +51,7 @@ import {
   isArrowElement,
   isBindableElement,
   isBoundToContainer,
+  isCauscapeEdgeElement,
   isElbowArrow,
   isRectangularElement,
   isRectanguloidElement,
@@ -73,16 +74,17 @@ import type { ElementUpdate } from "./mutateElement";
 import type {
   BindMode,
   ElementsMap,
-  ExcalidrawArrowElement,
-  ExcalidrawBindableElement,
-  ExcalidrawElbowArrowElement,
-  ExcalidrawElement,
-  ExcalidrawRectanguloidElement,
-  ExcalidrawTextElement,
+  CauscapeArrowElement,
+  CauscapeBindableElement,
+  CauscapeElbowArrowElement,
+  CauscapeEdgeElement,
+  CauscapeElement,
+  CauscapeRectanguloidElement,
+  CauscapeTextElement,
   FixedPoint,
   FixedPointBinding,
   NonDeleted,
-  NonDeletedExcalidrawElement,
+  NonDeletedCauscapeElement,
   NonDeletedSceneElementsMap,
   Ordered,
   PointsPositionUpdates,
@@ -92,7 +94,7 @@ export type BindingStrategy =
   // Create a new binding with this mode
   | {
       mode: BindMode;
-      element: NonDeleted<ExcalidrawBindableElement>;
+      element: NonDeleted<CauscapeBindableElement>;
       focusPoint: GlobalPoint;
     }
   // Break the binding
@@ -125,8 +127,8 @@ const MIN_BINDABLE_SIZE = 1;
 export const getBindingGap = (
   // only the stroke width is needed, so the gap can also be computed for a
   // bind target that doesn't exist yet (see `getTextBindingForArrowEndpoint`)
-  bindTarget: Pick<ExcalidrawBindableElement, "strokeWidth">,
-  opts: Pick<ExcalidrawArrowElement, "elbowed">,
+  bindTarget: Pick<CauscapeBindableElement, "strokeWidth">,
+  opts: Pick<CauscapeArrowElement, "elbowed">,
 ): number => {
   return (
     (opts.elbowed ? BASE_BINDING_GAP_ELBOW : BASE_BINDING_GAP) +
@@ -153,7 +155,7 @@ export const isBindingEnabled = (appState: {
 };
 
 export const bindOrUnbindBindingElement = (
-  arrow: NonDeleted<ExcalidrawArrowElement>,
+  arrow: NonDeleted<CauscapeArrowElement>,
   draggingPoints: PointsPositionUpdates,
   scenePointerX: number,
   scenePointerY: number,
@@ -240,7 +242,7 @@ export const bindOrUnbindBindingElement = (
 };
 
 const bindOrUnbindBindingElementEdge = (
-  arrow: NonDeleted<ExcalidrawArrowElement>,
+  arrow: NonDeleted<CauscapeArrowElement>,
   { mode, element, focusPoint }: BindingStrategy,
   startOrEnd: "start" | "end",
   scene: Scene,
@@ -265,10 +267,10 @@ const bindOrUnbindBindingElementEdge = (
 };
 
 const bindingStrategyForElbowArrowEndpointDragging = (
-  arrow: NonDeleted<ExcalidrawArrowElement>,
+  arrow: NonDeleted<CauscapeArrowElement>,
   draggingPoints: PointsPositionUpdates,
   elementsMap: NonDeletedSceneElementsMap,
-  elements: readonly Ordered<NonDeletedExcalidrawElement>[],
+  elements: readonly Ordered<NonDeletedCauscapeElement>[],
   zoom?: AppState["zoom"],
 ): {
   start: BindingStrategy;
@@ -317,10 +319,10 @@ const bindingStrategyForElbowArrowEndpointDragging = (
 };
 
 const bindingStrategyForNewSimpleArrowEndpointDragging = (
-  arrow: NonDeleted<ExcalidrawArrowElement>,
+  arrow: NonDeleted<CauscapeArrowElement>,
   draggingPoints: PointsPositionUpdates,
   elementsMap: NonDeletedSceneElementsMap,
-  elements: readonly Ordered<NonDeletedExcalidrawElement>[],
+  elements: readonly Ordered<NonDeletedCauscapeElement>[],
   startDragged: boolean,
   endDragged: boolean,
   startIdx: number,
@@ -391,7 +393,7 @@ const bindingStrategyForNewSimpleArrowEndpointDragging = (
       if (allHits.find((el) => el.id === startBinding.elementId)) {
         const otherElement = elementsMap.get(
           arrow.startBinding.elementId,
-        ) as NonDeleted<ExcalidrawBindableElement>;
+        ) as NonDeleted<CauscapeBindableElement>;
 
         invariant(otherElement, "Other element must be in the elements map");
 
@@ -416,7 +418,7 @@ const bindingStrategyForNewSimpleArrowEndpointDragging = (
     if (arrow.startBinding && arrow.startBinding.elementId !== hit?.id) {
       const otherElement = elementsMap.get(
         arrow.startBinding.elementId,
-      ) as NonDeleted<ExcalidrawBindableElement>;
+      ) as NonDeleted<CauscapeBindableElement>;
       invariant(otherElement, "Other element must be in the elements map");
 
       const otherIsInsideBinding =
@@ -479,9 +481,9 @@ const bindingStrategyForSimpleArrowEndpointDragging_complex = (
   currentBinding: FixedPointBinding | null,
   oppositeBinding: FixedPointBinding | null,
   elementsMap: NonDeletedSceneElementsMap,
-  elements: readonly Ordered<NonDeletedExcalidrawElement>[],
+  elements: readonly Ordered<NonDeletedCauscapeElement>[],
   globalBindMode: AppState["bindMode"],
-  arrow: NonDeleted<ExcalidrawArrowElement>,
+  arrow: NonDeleted<CauscapeArrowElement>,
   finalize?: boolean,
 ): { current: BindingStrategy; other: BindingStrategy } => {
   let current: BindingStrategy = { mode: undefined };
@@ -497,7 +499,7 @@ const bindingStrategyForSimpleArrowEndpointDragging_complex = (
   const oppositeElement = oppositeBinding
     ? (elementsMap.get(
         oppositeBinding.elementId,
-      ) as NonDeleted<ExcalidrawBindableElement>)
+      ) as NonDeleted<CauscapeBindableElement>)
     : null;
   const otherIsTransparent =
     isOverlapping && oppositeElement
@@ -601,12 +603,12 @@ const bindingStrategyForSimpleArrowEndpointDragging_complex = (
 };
 
 export const getBindingStrategyForDraggingBindingElementEndpoints = (
-  arrow: NonDeleted<ExcalidrawArrowElement>,
+  arrow: NonDeleted<CauscapeArrowElement>,
   draggingPoints: PointsPositionUpdates,
   screenPointerX: number,
   screenPointerY: number,
   elementsMap: NonDeletedSceneElementsMap,
-  elements: readonly Ordered<NonDeletedExcalidrawElement>[],
+  elements: readonly Ordered<NonDeletedCauscapeElement>[],
   appState: AppState,
   opts?: {
     newArrow?: boolean;
@@ -642,12 +644,12 @@ export const getBindingStrategyForDraggingBindingElementEndpoints = (
 };
 
 const getBindingStrategyForDraggingBindingElementEndpoints_simple = (
-  arrow: NonDeleted<ExcalidrawArrowElement>,
+  arrow: NonDeleted<CauscapeArrowElement>,
   draggingPoints: PointsPositionUpdates,
   scenePointerX: number,
   scenePointerY: number,
   elementsMap: NonDeletedSceneElementsMap,
-  elements: readonly Ordered<NonDeletedExcalidrawElement>[],
+  elements: readonly Ordered<NonDeletedCauscapeElement>[],
   appState: AppState,
   opts?: {
     newArrow?: boolean;
@@ -741,7 +743,7 @@ const getBindingStrategyForDraggingBindingElementEndpoints_simple = (
   const otherBindableElement = otherBinding
     ? (elementsMap.get(
         otherBinding.elementId,
-      ) as NonDeleted<ExcalidrawBindableElement>)
+      ) as NonDeleted<CauscapeBindableElement>)
     : undefined;
   const otherFocusPoint =
     otherBinding &&
@@ -953,10 +955,10 @@ const getBindingStrategyForDraggingBindingElementEndpoints_simple = (
 };
 
 const getBindingStrategyForDraggingBindingElementEndpoints_complex = (
-  arrow: NonDeleted<ExcalidrawArrowElement>,
+  arrow: NonDeleted<CauscapeArrowElement>,
   draggingPoints: PointsPositionUpdates,
   elementsMap: NonDeletedSceneElementsMap,
-  elements: readonly Ordered<NonDeletedExcalidrawElement>[],
+  elements: readonly Ordered<NonDeletedCauscapeElement>[],
   appState: AppState,
   opts?: {
     newArrow?: boolean;
@@ -1084,7 +1086,7 @@ const getBindingStrategyForDraggingBindingElementEndpoints_complex = (
 };
 
 export const bindOrUnbindBindingElements = (
-  selectedArrows: NonDeleted<ExcalidrawArrowElement>[],
+  selectedArrows: NonDeleted<CauscapeArrowElement>[],
   scene: Scene,
   appState: AppState,
 ): void => {
@@ -1105,8 +1107,8 @@ export const bindOrUnbindBindingElements = (
  * keeping the two sides of the relationship in step.
  */
 const applyBinding = (
-  arrow: NonDeleted<ExcalidrawArrowElement>,
-  bindableElement: NonDeleted<ExcalidrawBindableElement>,
+  arrow: NonDeleted<CauscapeArrowElement>,
+  bindableElement: NonDeleted<CauscapeBindableElement>,
   binding: FixedPointBinding,
   startOrEnd: "start" | "end",
   scene: Scene,
@@ -1127,8 +1129,8 @@ const applyBinding = (
 };
 
 export const bindBindingElement = (
-  arrow: NonDeleted<ExcalidrawArrowElement>,
-  hoveredElement: NonDeleted<ExcalidrawBindableElement>,
+  arrow: NonDeleted<CauscapeArrowElement>,
+  hoveredElement: NonDeleted<CauscapeBindableElement>,
   mode: BindMode,
   startOrEnd: "start" | "end",
   scene: Scene,
@@ -1171,10 +1173,10 @@ export const bindBindingElement = (
 };
 
 export const unbindBindingElement = (
-  arrow: ExcalidrawArrowElement,
+  arrow: CauscapeArrowElement,
   startOrEnd: "start" | "end",
   scene: Scene,
-): ExcalidrawBindableElement["id"] | null => {
+): CauscapeBindableElement["id"] | null => {
   const field = startOrEnd === "start" ? "startBinding" : "endBinding";
   const binding = arrow[field];
 
@@ -1189,7 +1191,7 @@ export const unbindBindingElement = (
     // end is not bound to the same element
     const boundElement = scene
       .getNonDeletedElementsMap()
-      .get(binding.elementId) as NonDeleted<ExcalidrawBindableElement>;
+      .get(binding.elementId) as NonDeleted<CauscapeBindableElement>;
     scene.mutateElement(boundElement, {
       boundElements: boundElement.boundElements?.filter(
         (element) => element.id !== arrow.id,
@@ -1205,11 +1207,11 @@ export const unbindBindingElement = (
 // Supports translating, rotating and scaling `changedElement` with bound
 // linear elements.
 export const updateBoundElements = (
-  changedElement: NonDeletedExcalidrawElement,
+  changedElement: NonDeletedCauscapeElement,
   scene: Scene,
   options?: {
-    simultaneouslyUpdated?: readonly NonDeletedExcalidrawElement[];
-    changedElements?: Map<string, ExcalidrawElement>;
+    simultaneouslyUpdated?: readonly NonDeletedCauscapeElement[];
+    changedElements?: Map<string, CauscapeElement>;
   },
 ) => {
   if (!isBindableElement(changedElement)) {
@@ -1229,7 +1231,7 @@ export const updateBoundElements = (
     });
   }
 
-  const visitor = (element: ExcalidrawElement | undefined) => {
+  const visitor = (element: CauscapeElement | undefined) => {
     // SAFETY: This should never happen, but log it just in case
     if (element && !isNonDeletedElement(element)) {
       console.error(
@@ -1237,7 +1239,10 @@ export const updateBoundElements = (
       );
     }
 
-    if (!isArrowElement(element) || !isNonDeletedElement(element)) {
+    if (
+      (!isArrowElement(element) && !isCauscapeEdgeElement(element)) ||
+      !isNonDeletedElement(element)
+    ) {
       return;
     }
 
@@ -1277,7 +1282,7 @@ export const updateBoundElements = (
               ]?.elementId)
         ) {
           const point = updateBoundPoint(
-            element,
+            element as unknown as NonDeleted<CauscapeArrowElement>,
             bindingProp,
             element[bindingProp],
             bindableElement,
@@ -1298,11 +1303,18 @@ export const updateBoundElements = (
       (update): update is MapEntry<PointsPositionUpdates> => update !== null,
     );
 
-    LinearElementEditor.movePoints(element, scene, new Map(updates), {
-      moveMidPointsWithElement:
-        !!startBindingElement &&
-        startBindingElement?.id === endBindingElement?.id,
-    });
+    LinearElementEditor.movePoints(
+      element as unknown as NonDeleted<
+        CauscapeArrowElement & { type: "arrow" }
+      >,
+      scene,
+      new Map(updates),
+      {
+        moveMidPointsWithElement:
+          !!startBindingElement &&
+          startBindingElement?.id === endBindingElement?.id,
+      },
+    );
 
     const boundText = getBoundTextElement(element, elementsMap);
     if (boundText && !boundText.isDeleted) {
@@ -1314,7 +1326,7 @@ export const updateBoundElements = (
 };
 
 const updateArrowBindings = (
-  latestElement: NonDeleted<ExcalidrawArrowElement>,
+  latestElement: NonDeleted<CauscapeArrowElement>,
   startOrEnd: "startBinding" | "endBinding",
   elementsMap: NonDeletedSceneElementsMap,
   scene: Scene,
@@ -1328,9 +1340,7 @@ const updateArrowBindings = (
   const binding = latestElement[startOrEnd];
   const bindableElement =
     binding &&
-    (elementsMap.get(
-      binding.elementId,
-    ) as NonDeleted<ExcalidrawBindableElement>);
+    (elementsMap.get(binding.elementId) as NonDeleted<CauscapeBindableElement>);
   const point = LinearElementEditor.getPointAtIndexGlobalCoordinates(
     latestElement,
     startOrEnd === "startBinding" ? 0 : -1,
@@ -1378,11 +1388,11 @@ const updateArrowBindings = (
 };
 
 export const updateBindings = (
-  latestElement: NonDeletedExcalidrawElement,
+  latestElement: NonDeletedCauscapeElement,
   scene: Scene,
   appState: AppState,
   options?: {
-    simultaneouslyUpdated?: readonly NonDeletedExcalidrawElement[];
+    simultaneouslyUpdated?: readonly NonDeletedCauscapeElement[];
     newSize?: { width: number; height: number };
   },
 ) => {
@@ -1417,8 +1427,8 @@ export const updateBindings = (
 };
 
 const doesNeedUpdate = (
-  boundElement: NonDeleted<ExcalidrawArrowElement>,
-  changedElement: ExcalidrawBindableElement,
+  boundElement: NonDeleted<CauscapeArrowElement | CauscapeEdgeElement>,
+  changedElement: CauscapeBindableElement,
 ) => {
   return (
     boundElement.startBinding?.elementId === changedElement.id ||
@@ -1427,15 +1437,15 @@ const doesNeedUpdate = (
 };
 
 const getSimultaneouslyUpdatedElementIds = (
-  simultaneouslyUpdated: readonly ExcalidrawElement[] | undefined,
-): Set<ExcalidrawElement["id"]> => {
+  simultaneouslyUpdated: readonly CauscapeElement[] | undefined,
+): Set<CauscapeElement["id"]> => {
   return new Set((simultaneouslyUpdated || []).map((element) => element.id));
 };
 
 export const getHeadingForElbowArrowSnap = (
   p: Readonly<GlobalPoint>,
   otherPoint: Readonly<GlobalPoint>,
-  bindableElement: ExcalidrawBindableElement | undefined | null,
+  bindableElement: CauscapeBindableElement | undefined | null,
   aabb: Bounds | undefined | null,
   origPoint: GlobalPoint,
   elementsMap: ElementsMap,
@@ -1465,7 +1475,7 @@ export const getHeadingForElbowArrowSnap = (
 
 const getDistanceForBinding = (
   point: Readonly<GlobalPoint>,
-  bindableElement: ExcalidrawBindableElement,
+  bindableElement: CauscapeBindableElement,
   elementsMap: ElementsMap,
   zoom?: AppState["zoom"],
 ) => {
@@ -1476,8 +1486,8 @@ const getDistanceForBinding = (
 };
 
 export const bindPointToSnapToElementOutline = (
-  arrowElement: ExcalidrawArrowElement,
-  bindableElement: ExcalidrawBindableElement,
+  arrowElement: CauscapeArrowElement,
+  bindableElement: CauscapeBindableElement,
   startOrEnd: "start" | "end",
   elementsMap: ElementsMap,
   customIntersector?: LineSegment<GlobalPoint>,
@@ -1614,8 +1624,8 @@ export const bindPointToSnapToElementOutline = (
 };
 
 export const avoidRectangularCorner = (
-  arrowElement: ExcalidrawArrowElement,
-  bindTarget: ExcalidrawBindableElement,
+  arrowElement: CauscapeArrowElement,
+  bindTarget: CauscapeBindableElement,
   elementsMap: ElementsMap,
   p: GlobalPoint,
 ): GlobalPoint => {
@@ -1705,11 +1715,11 @@ export const avoidRectangularCorner = (
 };
 
 export const snapToMid = (
-  bindTarget: ExcalidrawBindableElement,
+  bindTarget: CauscapeBindableElement,
   elementsMap: ElementsMap,
   p: GlobalPoint,
   tolerance: number = 0.05,
-  arrowElement?: ExcalidrawArrowElement,
+  arrowElement?: CauscapeArrowElement,
 ): GlobalPoint | undefined => {
   const { x, y, width, height, angle } = bindTarget;
   const center = elementCenterPoint(bindTarget, elementsMap, -0.1, -0.1);
@@ -1820,7 +1830,7 @@ export const snapToMid = (
 };
 
 const extractBinding = (
-  arrow: ExcalidrawArrowElement,
+  arrow: CauscapeArrowElement,
   startOrEnd: "startBinding" | "endBinding",
   elementsMap: ElementsMap,
 ) => {
@@ -1837,7 +1847,7 @@ const extractBinding = (
 
   const element = elementsMap.get(
     binding.elementId,
-  ) as NonDeleted<ExcalidrawBindableElement>;
+  ) as NonDeleted<CauscapeBindableElement>;
 
   return {
     element,
@@ -1861,10 +1871,10 @@ const extractBinding = (
  */
 const snapBoundPointToGrid = (
   outlinePoint: GlobalPoint,
-  bindableElement: ExcalidrawBindableElement,
+  bindableElement: CauscapeBindableElement,
   elementsMap: ElementsMap,
   gridSize: NullableGridSize,
-  arrowElement: ExcalidrawArrowElement,
+  arrowElement: CauscapeArrowElement,
   adjacentPoint?: GlobalPoint,
 ): GlobalPoint => {
   if (!gridSize) {
@@ -1932,14 +1942,14 @@ const snapBoundPointToGrid = (
   return intersection ?? pointFrom<GlobalPoint>(snappedX, outlinePoint[1]);
 };
 
-const elementArea = (element: ExcalidrawBindableElement) =>
+const elementArea = (element: CauscapeBindableElement) =>
   element.width * element.height;
 
 export const updateBoundPoint = (
-  arrow: NonDeleted<ExcalidrawArrowElement>,
+  arrow: NonDeleted<CauscapeArrowElement>,
   startOrEnd: "startBinding" | "endBinding",
   binding: FixedPointBinding | null | undefined,
-  bindableElement: ExcalidrawBindableElement,
+  bindableElement: CauscapeBindableElement,
   elementsMap: ElementsMap,
   dragging?: boolean,
 ): LocalPoint | null => {
@@ -2094,8 +2104,8 @@ export const updateBoundPoint = (
 };
 
 export const calculateFixedPointForElbowArrowBinding = (
-  linearElement: NonDeleted<ExcalidrawElbowArrowElement>,
-  hoveredElement: ExcalidrawBindableElement,
+  linearElement: NonDeleted<CauscapeElbowArrowElement>,
+  hoveredElement: CauscapeBindableElement,
   startOrEnd: "start" | "end",
   elementsMap: ElementsMap,
   shouldSnapToOutline = true,
@@ -2158,8 +2168,8 @@ export const calculateFixedPointForElbowArrowBinding = (
 };
 
 export const calculateFixedPointForNonElbowArrowBinding = (
-  linearElement: NonDeleted<ExcalidrawArrowElement>,
-  hoveredElement: NonDeleted<ExcalidrawBindableElement>,
+  linearElement: NonDeleted<CauscapeArrowElement>,
+  hoveredElement: NonDeleted<CauscapeBindableElement>,
   startOrEnd: "start" | "end",
   elementsMap: ElementsMap,
   focusPoint?: GlobalPoint,
@@ -2211,8 +2221,8 @@ export const calculateFixedPointForNonElbowArrowBinding = (
 };
 
 export const fixDuplicatedBindingsAfterDuplication = (
-  duplicatedElements: ExcalidrawElement[],
-  origIdToDuplicateId: Map<ExcalidrawElement["id"], ExcalidrawElement["id"]>,
+  duplicatedElements: CauscapeElement[],
+  origIdToDuplicateId: Map<CauscapeElement["id"], CauscapeElement["id"]>,
   duplicateElementsMap: NonDeletedSceneElementsMap,
 ) => {
   for (const duplicateElement of duplicatedElements) {
@@ -2220,7 +2230,7 @@ export const fixDuplicatedBindingsAfterDuplication = (
       Object.assign(duplicateElement, {
         boundElements: duplicateElement.boundElements.reduce(
           (
-            acc: Mutable<NonNullable<ExcalidrawElement["boundElements"]>>,
+            acc: Mutable<NonNullable<CauscapeElement["boundElements"]>>,
             binding,
           ) => {
             const newBindingId = origIdToDuplicateId.get(binding.id);
@@ -2283,8 +2293,8 @@ export const fixDuplicatedBindingsAfterDuplication = (
 };
 
 export const fixBindingsAfterDeletion = (
-  sceneElements: readonly ExcalidrawElement[],
-  deletedElements: readonly ExcalidrawElement[],
+  sceneElements: readonly CauscapeElement[],
+  deletedElements: readonly CauscapeElement[],
 ): void => {
   const elements = arrayToMap(sceneElements);
 
@@ -2299,9 +2309,9 @@ export const fixBindingsAfterDeletion = (
 };
 
 const newBoundElements = (
-  boundElements: ExcalidrawElement["boundElements"],
-  idsToRemove: Set<ExcalidrawElement["id"]>,
-  elementsToAdd: Array<ExcalidrawElement> = [],
+  boundElements: CauscapeElement["boundElements"],
+  idsToRemove: Set<CauscapeElement["id"]>,
+  elementsToAdd: Array<CauscapeElement> = [],
 ) => {
   if (!boundElements) {
     return null;
@@ -2315,8 +2325,9 @@ const newBoundElements = (
     ...elementsToAdd.map(
       (x) =>
         ({ id: x.id, type: x.type } as
-          | ExcalidrawArrowElement
-          | ExcalidrawTextElement),
+          | CauscapeArrowElement
+          | CauscapeEdgeElement
+          | CauscapeTextElement),
     ),
   );
 
@@ -2340,13 +2351,13 @@ export type BindingProp =
   | "endBinding";
 
 type BoundElementsVisitingFunc = (
-  boundElement: ExcalidrawElement | undefined,
+  boundElement: CauscapeElement | undefined,
   bindingProp: BindableProp,
   bindingId: string,
 ) => void;
 
 type BindableElementVisitingFunc<T> = (
-  bindableElement: ExcalidrawElement | undefined,
+  bindableElement: CauscapeElement | undefined,
   bindingProp: BindingProp,
   bindingId: string,
 ) => T;
@@ -2356,7 +2367,7 @@ type BindableElementVisitingFunc<T> = (
  */
 const boundElementsVisitor = (
   elements: ElementsMap,
-  element: ExcalidrawElement,
+  element: CauscapeElement,
   visit: BoundElementsVisitingFunc,
 ) => {
   if (isBindableElement(element)) {
@@ -2375,7 +2386,7 @@ const boundElementsVisitor = (
  */
 const bindableElementsVisitor = <T>(
   elements: ElementsMap,
-  element: ExcalidrawElement,
+  element: CauscapeElement,
   visit: BindableElementVisitingFunc<T>,
 ): T[] => {
   const result: T[] = [];
@@ -2390,7 +2401,7 @@ const bindableElementsVisitor = <T>(
     result.push(visit(elements.get(id), "containerId", id));
   }
 
-  if (isArrowElement(element)) {
+  if (isArrowElement(element) || isCauscapeEdgeElement(element)) {
     if (element.startBinding) {
       const id = element.startBinding.elementId;
       result.push(visit(elements.get(id), "startBinding", id));
@@ -2416,10 +2427,10 @@ export class BoundElement {
    */
   public static unbindAffected(
     elements: ElementsMap,
-    boundElement: ExcalidrawElement | undefined,
+    boundElement: CauscapeElement | undefined,
     updateElementWith: (
-      affected: ExcalidrawElement,
-      updates: ElementUpdate<ExcalidrawElement>,
+      affected: CauscapeElement,
+      updates: ElementUpdate<CauscapeElement>,
     ) => void,
   ) {
     if (!boundElement) {
@@ -2458,10 +2469,10 @@ export class BoundElement {
    */
   public static rebindAffected = (
     elements: ElementsMap,
-    boundElement: ExcalidrawElement | undefined,
+    boundElement: CauscapeElement | undefined,
     updateElementWith: (
-      affected: ExcalidrawElement,
-      updates: ElementUpdate<ExcalidrawElement>,
+      affected: CauscapeElement,
+      updates: ElementUpdate<CauscapeElement>,
     ) => void,
   ) => {
     // don't try to rebind element that is deleted
@@ -2490,7 +2501,10 @@ export class BoundElement {
           return;
         }
 
-        if (isArrowElement(boundElement)) {
+        if (
+          isArrowElement(boundElement) ||
+          isCauscapeEdgeElement(boundElement)
+        ) {
           // rebind if not found!
           updateElementWith(bindableElement, {
             boundElements: newBoundElements(
@@ -2532,10 +2546,10 @@ export class BindableElement {
    */
   public static unbindAffected(
     elements: ElementsMap,
-    bindableElement: ExcalidrawElement | undefined,
+    bindableElement: CauscapeElement | undefined,
     updateElementWith: (
-      affected: ExcalidrawElement,
-      updates: ElementUpdate<ExcalidrawElement>,
+      affected: CauscapeElement,
+      updates: ElementUpdate<CauscapeElement>,
     ) => void,
   ) {
     if (!bindableElement) {
@@ -2570,10 +2584,10 @@ export class BindableElement {
    */
   public static rebindAffected = (
     elements: ElementsMap,
-    bindableElement: ExcalidrawElement | undefined,
+    bindableElement: CauscapeElement | undefined,
     updateElementWith: (
-      affected: ExcalidrawElement,
-      updates: ElementUpdate<ExcalidrawElement>,
+      affected: CauscapeElement,
+      updates: ElementUpdate<CauscapeElement>,
     ) => void,
   ) => {
     // don't try to rebind element that is deleted (i.e. updated as deleted)
@@ -2607,14 +2621,14 @@ export class BindableElement {
               // rebind if not bound already!
               updateElementWith(boundElement, {
                 containerId: bindableElement.id,
-              } as ElementUpdate<ExcalidrawTextElement>);
+              } as ElementUpdate<CauscapeTextElement>);
             }
           } else {
             if (boundElement.containerId !== null) {
               // unbind if not unbound already
               updateElementWith(boundElement, {
                 containerId: null,
-              } as ElementUpdate<ExcalidrawTextElement>);
+              } as ElementUpdate<CauscapeTextElement>);
             }
 
             // unbind from boundElements as the element got bound to some other element in the meantime
@@ -2633,7 +2647,7 @@ export class BindableElement {
 
 export const getGlobalFixedPointForBindableElement = (
   fixedPointRatio: FixedPoint,
-  element: ExcalidrawBindableElement,
+  element: CauscapeBindableElement,
   elementsMap: ElementsMap,
 ): GlobalPoint => {
   const [fixedX, fixedY] = normalizeFixedPoint(fixedPointRatio);
@@ -2649,24 +2663,24 @@ export const getGlobalFixedPointForBindableElement = (
 };
 
 export const getGlobalFixedPoints = (
-  arrow: ExcalidrawArrowElement,
+  arrow: CauscapeArrowElement,
   elementsMap: ElementsMap,
 ): [GlobalPoint, GlobalPoint] => {
   const startElement =
     arrow.startBinding &&
     (elementsMap.get(arrow.startBinding.elementId) as
-      | ExcalidrawBindableElement
+      | CauscapeBindableElement
       | undefined);
   const endElement =
     arrow.endBinding &&
     (elementsMap.get(arrow.endBinding.elementId) as
-      | ExcalidrawBindableElement
+      | CauscapeBindableElement
       | undefined);
   const startPoint =
     startElement && arrow.startBinding
       ? getGlobalFixedPointForBindableElement(
           arrow.startBinding.fixedPoint,
-          startElement as ExcalidrawBindableElement,
+          startElement as CauscapeBindableElement,
           elementsMap,
         )
       : pointFrom<GlobalPoint>(
@@ -2677,7 +2691,7 @@ export const getGlobalFixedPoints = (
     endElement && arrow.endBinding
       ? getGlobalFixedPointForBindableElement(
           arrow.endBinding.fixedPoint,
-          endElement as ExcalidrawBindableElement,
+          endElement as CauscapeBindableElement,
           elementsMap,
         )
       : pointFrom<GlobalPoint>(
@@ -2689,7 +2703,7 @@ export const getGlobalFixedPoints = (
 };
 
 export const getArrowLocalFixedPoints = (
-  arrow: ExcalidrawElbowArrowElement,
+  arrow: CauscapeElbowArrowElement,
   elementsMap: ElementsMap,
 ) => {
   const [startPoint, endPoint] = getGlobalFixedPoints(arrow, elementsMap);
@@ -2750,7 +2764,7 @@ type Side =
   | "left"
   | "top-left";
 type ShapeType = "rectangle" | "ellipse" | "diamond";
-const getShapeType = (element: ExcalidrawBindableElement): ShapeType => {
+const getShapeType = (element: CauscapeBindableElement): ShapeType => {
   if (element.type === "ellipse" || element.type === "diamond") {
     return element.type;
   }
@@ -3064,7 +3078,7 @@ export const getBindingSideMidPoint = (
 
   if (isRectangularElement(bindableElement)) {
     const [sides, corners] = deconstructRectanguloidElement(
-      bindableElement as ExcalidrawRectanguloidElement,
+      bindableElement as CauscapeRectanguloidElement,
     );
     const [top, right, bottom, left] = sides;
 
@@ -3178,8 +3192,8 @@ const getMidPoint = (p1: GlobalPoint, p2: GlobalPoint): GlobalPoint => {
  * the arrow rather than the other way round.
  */
 export const bindBindingElementToFixedPoint = (
-  arrow: NonDeleted<ExcalidrawArrowElement>,
-  bindableElement: NonDeleted<ExcalidrawBindableElement>,
+  arrow: NonDeleted<CauscapeArrowElement>,
+  bindableElement: NonDeleted<CauscapeBindableElement>,
   startOrEnd: "start" | "end",
   fixedPoint: FixedPoint,
   scene: Scene,

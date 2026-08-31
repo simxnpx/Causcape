@@ -6,13 +6,13 @@ import "@testing-library/jest-dom";
 import { configure } from "@testing-library/react";
 import { vi } from "vitest";
 
-import polyfill from "./packages/excalidraw/polyfill";
-import { mockThrottleRAF } from "./packages/excalidraw/tests/helpers/mocks";
-import { yellow } from "./packages/excalidraw/tests/helpers/colorize";
+import polyfill from "./packages/causcape/polyfill";
+import { mockThrottleRAF } from "./packages/causcape/tests/helpers/mocks";
+import { yellow } from "./packages/causcape/tests/helpers/colorize";
 import {
   PolyfillLocalStorage,
   testPolyfills,
-} from "./packages/excalidraw/tests/helpers/polyfills";
+} from "./packages/causcape/tests/helpers/polyfills";
 
 Object.assign(globalThis, testPolyfills);
 PolyfillLocalStorage();
@@ -32,8 +32,8 @@ if (!debugDom) {
   });
 }
 
-vi.mock("@excalidraw/common", async (importOriginal) => {
-  const module = await importOriginal<typeof import("@excalidraw/common")>();
+vi.mock("@causcape/common", async (importOriginal) => {
+  const module = await importOriginal<typeof import("@causcape/common")>();
 
   return {
     ...module,
@@ -94,22 +94,22 @@ Object.defineProperty(document, "fonts", {
   },
 });
 
-Object.defineProperty(window, "EXCALIDRAW_ASSET_PATH", {
+Object.defineProperty(window, "CAUSCAPE_ASSET_PATH", {
   value: `file://${__dirname}/`,
 });
 
 // mock the font fetch only, so that everything else, as font subsetting, can run inside of the (snapshot) tests
 vi.mock(
-  "./packages/excalidraw/fonts/ExcalidrawFontFace",
+  "./packages/causcape/fonts/CauscapeFontFace",
   async (importOriginal) => {
     const mod = await importOriginal<
-      typeof import("./packages/excalidraw/fonts/ExcalidrawFontFace")
+      typeof import("./packages/causcape/fonts/CauscapeFontFace")
     >();
-    const ExcalidrawFontFaceImpl = mod.ExcalidrawFontFace;
+    const CauscapeFontFaceImpl = mod.CauscapeFontFace;
 
     return {
       ...mod,
-      ExcalidrawFontFace: class extends ExcalidrawFontFaceImpl {
+      CauscapeFontFace: class extends CauscapeFontFaceImpl {
         public async fetchFont(url: URL): Promise<ArrayBuffer> {
           if (!url.toString().startsWith("file://")) {
             return super.fetchFont(url);

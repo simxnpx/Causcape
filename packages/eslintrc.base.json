@@ -8,8 +8,8 @@
           {
             "patterns": [
               {
-                "group": ["../../excalidraw", "../../../packages/excalidraw", "@excalidraw/excalidraw"],
-                "message": "Do not import from '@excalidraw/excalidraw' package anything but types, as this package must be independent.",
+                "group": ["../../causcape", "../../../packages/causcape", "@causcape/causcape"],
+                "message": "Do not import from '@causcape/causcape' package anything but types, as this package must be independent.",
                 "allowTypeImports": true
               }
             ]

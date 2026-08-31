@@ -1,0 +1,16 @@
+[
+  {
+    "path": "dist/causcape.production.min.js",
+    "limit": "340 kB"
+  },
+  {
+    "path": "dist/causcape-assets/locales",
+    "name": "dist/causcape-assets/locales",
+    "limit": "290 kB"
+  },
+  {
+    "path": "dist/causcape-assets/vendor-*.js",
+    "name": "dist/causcape-assets/vendor*.js",
+    "limit": "900 kB"
+  }
+]

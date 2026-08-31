@@ -1,15 +1,15 @@
 import type {
-  ExcalidrawElement,
+  CauscapeElement,
   FontFamilyValues,
-} from "@excalidraw/element/types";
-import type { AppProps, AppState } from "@excalidraw/excalidraw/types";
+} from "@causcape/element/types";
+import type { AppProps, AppState } from "@causcape/causcape/types";
 
 import { COLOR_PALETTE } from "./colors";
 
 export const supportsResizeObserver =
   typeof window !== "undefined" && "ResizeObserver" in window;
 
-export const APP_NAME = "Excalidraw";
+export const APP_NAME = "Causcape";
 
 // distance when creating text before it's considered `autoResize: false`
 // we're using higher threshold so that clicks that end up being drags
@@ -77,7 +77,7 @@ export enum EVENT {
   VISIBILITY_CHANGE = "visibilitychange",
   SCROLL = "scroll",
   // custom events
-  EXCALIDRAW_LINK = "excalidraw-link",
+  CAUSCAPE_LINK = "causcape-link",
   MENU_ITEM_SELECT = "menu.itemSelect",
   MESSAGE = "message",
   FULLSCREENCHANGE = "fullscreenchange",
@@ -194,13 +194,13 @@ export const THEME = {
 export const DARK_THEME_FILTER = "invert(93%) hue-rotate(180deg)";
 
 export const FRAME_STYLE = {
-  strokeColor: "#bbb" as ExcalidrawElement["strokeColor"],
-  strokeWidth: 2 as ExcalidrawElement["strokeWidth"],
-  strokeStyle: "solid" as ExcalidrawElement["strokeStyle"],
-  fillStyle: "solid" as ExcalidrawElement["fillStyle"],
-  roughness: 0 as ExcalidrawElement["roughness"],
-  roundness: null as ExcalidrawElement["roundness"],
-  backgroundColor: "transparent" as ExcalidrawElement["backgroundColor"],
+  strokeColor: "#bbb" as CauscapeElement["strokeColor"],
+  strokeWidth: 2 as CauscapeElement["strokeWidth"],
+  strokeStyle: "solid" as CauscapeElement["strokeStyle"],
+  fillStyle: "solid" as CauscapeElement["fillStyle"],
+  roughness: 0 as CauscapeElement["roughness"],
+  roundness: null as CauscapeElement["roundness"],
+  backgroundColor: "transparent" as CauscapeElement["backgroundColor"],
   radius: 8,
   nameOffsetY: 3,
   nameColorLightTheme: "#999999",
@@ -250,20 +250,20 @@ export const STRING_MIME_TYPES = {
   text: "text/plain",
   html: "text/html",
   json: "application/json",
-  // excalidraw data
-  excalidraw: "application/vnd.excalidraw+json",
-  excalidrawClipboard: "application/vnd.excalidraw.clipboard+json",
+  // causcape data
+  causcape: "application/vnd.causcape+json",
+  causcapeClipboard: "application/vnd.causcape.clipboard+json",
   // LEGACY: fully-qualified library JSON data
-  excalidrawlib: "application/vnd.excalidrawlib+json",
-  // list of excalidraw library item ids
-  excalidrawlibIds: "application/vnd.excalidrawlib.ids+json",
+  causcapelib: "application/vnd.causcapelib+json",
+  // list of causcape library item ids
+  causcapelibIds: "application/vnd.causcapelib.ids+json",
 } as const;
 
 export const MIME_TYPES = {
   ...STRING_MIME_TYPES,
-  // image-encoded excalidraw data
-  "excalidraw.svg": "image/svg+xml",
-  "excalidraw.png": "image/png",
+  // image-encoded causcape data
+  "causcape.svg": "image/svg+xml",
+  "causcape.png": "image/png",
   // binary
   binary: "application/octet-stream",
   // image
@@ -283,14 +283,14 @@ export const EXPORT_IMAGE_TYPES = {
 } as const;
 
 export const EXPORT_DATA_TYPES = {
-  excalidraw: "excalidraw",
-  excalidrawClipboard: "excalidraw/clipboard",
-  excalidrawLibrary: "excalidrawlib",
-  excalidrawClipboardWithAPI: "excalidraw-api/clipboard",
+  causcape: "causcape",
+  causcapeClipboard: "causcape/clipboard",
+  causcapeLibrary: "causcapelib",
+  causcapeClipboardWithAPI: "causcape-api/clipboard",
 } as const;
 
 export const getExportSource = () =>
-  window.EXCALIDRAW_EXPORT_SOURCE || window.location.origin;
+  window.CAUSCAPE_EXPORT_SOURCE || window.location.origin;
 
 // time in milliseconds
 export const IMAGE_RENDER_TIMEOUT = 500;
@@ -350,8 +350,8 @@ export const SVG_DOCUMENT_PREAMBLE = `<?xml version="1.0" standalone="no"?>
 export const ENCRYPTION_KEY_BITS = 128;
 
 export const VERSIONS = {
-  excalidraw: 2,
-  excalidrawLibrary: 2,
+  causcape: 2,
+  causcapeLibrary: 2,
 } as const;
 
 export const BOUND_TEXT_PADDING = 5;
@@ -414,7 +414,7 @@ export const STROKE_WIDTH_KEYS: readonly StrokeWidthKey[] = [
 ];
 
 export const STROKE_WIDTH: Readonly<
-  Record<StrokeWidthKey | "extraBold", ExcalidrawElement["strokeWidth"]>
+  Record<StrokeWidthKey | "extraBold", CauscapeElement["strokeWidth"]>
 > = {
   thin: 1,
   medium: 2,
@@ -428,7 +428,7 @@ export const STROKE_WIDTH: Readonly<
 //
 // note that in the UI, STROKE_WIDTH.thin == FREEDRAW_STROKE_WIDTH.thin still
 export const FREEDRAW_STROKE_WIDTH: Readonly<
-  Record<StrokeWidthKey | "extraBold", ExcalidrawElement["strokeWidth"]>
+  Record<StrokeWidthKey | "extraBold", CauscapeElement["strokeWidth"]>
 > = {
   thin: 0.5,
   medium: 1,
@@ -437,9 +437,9 @@ export const FREEDRAW_STROKE_WIDTH: Readonly<
 };
 
 export const getStrokeWidthByKey = (
-  elementType: ExcalidrawElement["type"],
+  elementType: CauscapeElement["type"],
   strokeWidthKey: StrokeWidthKey,
-): ExcalidrawElement["strokeWidth"] => {
+): CauscapeElement["strokeWidth"] => {
   return elementType === "freedraw"
     ? FREEDRAW_STROKE_WIDTH[strokeWidthKey]
     : STROKE_WIDTH[strokeWidthKey];
@@ -448,14 +448,14 @@ export const getStrokeWidthByKey = (
 export const DEFAULT_ELEMENT_STROKE_WIDTH_KEY: StrokeWidthKey = "medium";
 
 export const DEFAULT_ELEMENT_PROPS: {
-  strokeColor: ExcalidrawElement["strokeColor"];
-  backgroundColor: ExcalidrawElement["backgroundColor"];
-  fillStyle: ExcalidrawElement["fillStyle"];
-  strokeWidth: ExcalidrawElement["strokeWidth"];
-  strokeStyle: ExcalidrawElement["strokeStyle"];
-  roughness: ExcalidrawElement["roughness"];
-  opacity: ExcalidrawElement["opacity"];
-  locked: ExcalidrawElement["locked"];
+  strokeColor: CauscapeElement["strokeColor"];
+  backgroundColor: CauscapeElement["backgroundColor"];
+  fillStyle: CauscapeElement["fillStyle"];
+  strokeWidth: CauscapeElement["strokeWidth"];
+  strokeStyle: CauscapeElement["strokeStyle"];
+  roughness: CauscapeElement["roughness"];
+  opacity: CauscapeElement["opacity"];
+  locked: CauscapeElement["locked"];
 } = {
   strokeColor: COLOR_PALETTE.black,
   backgroundColor: COLOR_PALETTE.transparent,
@@ -504,9 +504,9 @@ export const TOOL_TYPE = {
 } as const;
 
 export const EDITOR_LS_KEYS = {
-  OAI_API_KEY: "excalidraw-oai-api-key",
+  OAI_API_KEY: "causcape-oai-api-key",
   // legacy naming (non)scheme
-  MERMAID_TO_EXCALIDRAW: "mermaid-to-excalidraw",
+  MERMAID_TO_CAUSCAPE: "mermaid-to-causcape",
   PUBLISH_LIBRARY: "publish-library-data",
 } as const;
 

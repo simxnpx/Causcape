@@ -2,11 +2,11 @@ import {
   curvePointDistance,
   distanceToLineSegment,
   pointRotateRads,
-} from "@excalidraw/math";
+} from "@causcape/math";
 
-import { ellipse, ellipseDistanceFromPoint } from "@excalidraw/math/ellipse";
+import { ellipse, ellipseDistanceFromPoint } from "@causcape/math/ellipse";
 
-import type { GlobalPoint, Radians } from "@excalidraw/math";
+import type { GlobalPoint, Radians } from "@causcape/math";
 
 import {
   deconstructDiamondElement,
@@ -18,16 +18,16 @@ import { elementCenterPoint } from "./bounds";
 
 import type {
   ElementsMap,
-  ExcalidrawDiamondElement,
-  ExcalidrawElement,
-  ExcalidrawEllipseElement,
-  ExcalidrawFreeDrawElement,
-  ExcalidrawLinearElement,
-  ExcalidrawRectanguloidElement,
+  CauscapeDiamondElement,
+  CauscapeElement,
+  CauscapeEllipseElement,
+  CauscapeFreeDrawElement,
+  CauscapeLinearElement,
+  CauscapeRectanguloidElement,
 } from "./types";
 
 export const distanceToElement = (
-  element: ExcalidrawElement,
+  element: CauscapeElement,
   elementsMap: ElementsMap,
   p: GlobalPoint,
 ): number => {
@@ -51,7 +51,7 @@ export const distanceToElement = (
     case "freedraw":
     case "causcape-edge":
       return distanceToLinearOrFreeDraElement(
-        element as unknown as import("./types").ExcalidrawLinearElement,
+        element as unknown as import("./types").CauscapeLinearElement,
         elementsMap,
         p,
       );
@@ -68,7 +68,7 @@ export const distanceToElement = (
  * @returns The eucledian distance to the outline of the rectanguloid element
  */
 const distanceToRectanguloidElement = (
-  element: ExcalidrawRectanguloidElement,
+  element: CauscapeRectanguloidElement,
   elementsMap: ElementsMap,
   p: GlobalPoint,
 ) => {
@@ -95,7 +95,7 @@ const distanceToRectanguloidElement = (
  * @returns The eucledian distance to the outline of the diamond
  */
 const distanceToDiamondElement = (
-  element: ExcalidrawDiamondElement,
+  element: CauscapeDiamondElement,
   elementsMap: ElementsMap,
   p: GlobalPoint,
 ): number => {
@@ -122,7 +122,7 @@ const distanceToDiamondElement = (
  * @returns The eucledian distance to the outline of the ellipse
  */
 const distanceToEllipseElement = (
-  element: ExcalidrawEllipseElement,
+  element: CauscapeEllipseElement,
   elementsMap: ElementsMap,
   p: GlobalPoint,
 ): number => {
@@ -135,7 +135,7 @@ const distanceToEllipseElement = (
 };
 
 const distanceToLinearOrFreeDraElement = (
-  element: ExcalidrawLinearElement | ExcalidrawFreeDrawElement,
+  element: CauscapeLinearElement | CauscapeFreeDrawElement,
   elementsMap: ElementsMap,
   p: GlobalPoint,
 ) => {

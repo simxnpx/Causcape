@@ -1,4 +1,4 @@
-import type { AppState } from "@excalidraw/excalidraw/types";
+import type { AppState } from "@causcape/causcape/types";
 
 import { updateBoundElements } from "./binding";
 import { getCommonBoundingBox } from "./bounds";
@@ -9,7 +9,7 @@ import { getNonDeletedElements } from "./elementHelpers";
 
 import type { Scene } from "./Scene";
 
-import type { ElementsMap, NonDeletedExcalidrawElement } from "./types";
+import type { ElementsMap, NonDeletedCauscapeElement } from "./types";
 
 export interface Distribution {
   space: "between";
@@ -17,12 +17,12 @@ export interface Distribution {
 }
 
 export const distributeElements = (
-  selectedElements: NonDeletedExcalidrawElement[],
+  selectedElements: NonDeletedCauscapeElement[],
   elementsMap: ElementsMap,
   distribution: Distribution,
   appState: Readonly<AppState>,
   scene: Scene,
-): NonDeletedExcalidrawElement[] => {
+): NonDeletedCauscapeElement[] => {
   const [start, mid, end, extent] =
     distribution.axis === "x"
       ? (["minX", "midX", "maxX", "width"] as const)

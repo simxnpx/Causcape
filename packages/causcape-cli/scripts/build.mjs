@@ -8,13 +8,13 @@ const packageDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repositoryDirectory = resolve(packageDirectory, "../..");
 const packageSources = {
   "@causcape/core": "causcape-core",
-  "@excalidraw/common": "common",
-  "@excalidraw/element": "element",
-  "@excalidraw/excalidraw": "excalidraw",
-  "@excalidraw/fractional-indexing": "fractional-indexing",
-  "@excalidraw/laser-pointer": "laser-pointer",
-  "@excalidraw/math": "math",
-  "@excalidraw/utils": "utils",
+  "@causcape/common": "common",
+  "@causcape/element": "element",
+  "@causcape/causcape": "causcape",
+  "@causcape/fractional-indexing": "fractional-indexing",
+  "@causcape/laser-pointer": "laser-pointer",
+  "@causcape/math": "math",
+  "@causcape/utils": "utils",
 };
 
 const resolveSource = (basePath) => {
@@ -35,7 +35,7 @@ const resolveSource = (basePath) => {
 const workspaceSources = {
   name: "workspace-sources",
   setup(buildApi) {
-    buildApi.onResolve({ filter: /^@(causcape|excalidraw)\// }, (args) => {
+    buildApi.onResolve({ filter: /^@(causcape|causcape)\// }, (args) => {
       const matchingPackage = Object.keys(packageSources)
         .sort((left, right) => right.length - left.length)
         .find(
@@ -58,7 +58,7 @@ const workspaceSources = {
       );
       return source ? { path: source } : null;
     });
-    // CLI renders use system fonts; inlining the complete Excalidraw font set
+    // CLI renders use system fonts; inlining the complete Causcape font set
     // would make the headless-only bundle unnecessarily large.
     buildApi.onLoad({ filter: /\.woff2$/ }, () => ({
       contents: 'export default "";',

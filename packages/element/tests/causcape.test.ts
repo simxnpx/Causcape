@@ -1,13 +1,14 @@
-import { THEME } from "@excalidraw/common";
-import { pointFrom, type LocalPoint } from "@excalidraw/math";
+import { THEME } from "@causcape/common";
+import { pointFrom, type LocalPoint } from "@causcape/math";
 
 import { vi } from "vitest";
 
-import type { StaticCanvasRenderConfig } from "@excalidraw/excalidraw/scene/types";
+import type { StaticCanvasRenderConfig } from "@causcape/causcape/scene/types";
 
 import {
   drawCauscapeEdgeOnCanvas,
   drawCauscapeNodeOnCanvas,
+  getCauscapeArchitectureLayout,
   getCauscapeEdgeLabelBounds,
   getCauscapeReferenceAtPoint,
   getCauscapeNodeSize,
@@ -191,6 +192,7 @@ describe("Causcape elements", () => {
     });
     expect(rich.width).toBeGreaterThanOrEqual(sparse.width);
     expect(rich.height).toBeGreaterThan(sparse.height);
+    expect(rich.height).toBeLessThan(300);
   });
 
   it("draws architecture metadata through the canvas node renderer", () => {
@@ -223,7 +225,7 @@ describe("Causcape elements", () => {
       expect.any(Number),
     );
     expect(fillText).toHaveBeenCalledWith(
-      "✓ Healthy",
+      "● Healthy",
       expect.any(Number),
       expect.any(Number),
     );
@@ -253,11 +255,19 @@ describe("Causcape elements", () => {
         },
       ],
     });
+    const referenceRect = getCauscapeArchitectureLayout(node.causcape, {
+      width: node.width,
+      height: node.height,
+      theme: THEME.LIGHT,
+    }).metadata!.rows[0].rect;
 
     expect(
       getCauscapeReferenceAtPoint(
         node,
-        { x: node.x + 160, y: node.y + 190 },
+        {
+          x: node.x + referenceRect.x + referenceRect.width / 2,
+          y: node.y + referenceRect.y + referenceRect.height / 2,
+        },
         THEME.LIGHT,
       ),
     ).toMatchObject({
@@ -330,6 +340,27 @@ describe("Causcape elements", () => {
       expect.any(Number),
       expect.any(Number),
     );
+  });
+
+  it("can leave edge labels to a richer DOM overlay", () => {
+    const edge = newCauscapeEdgeElement({
+      x: 0,
+      y: 0,
+      fromNodeId: "source",
+      toNodeId: "target",
+      label: "submits a reservation request",
+      points: [pointFrom<LocalPoint>(0, 0), pointFrom<LocalPoint>(180, 0)],
+    });
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d")!;
+    const fillText = vi.spyOn(context, "fillText");
+
+    drawCauscapeEdgeOnCanvas(edge, context, {
+      theme: THEME.LIGHT,
+      renderCauscapeEdgeLabels: false,
+    } as StaticCanvasRenderConfig);
+
+    expect(fillText).not.toHaveBeenCalled();
   });
 
   it("reports the full label bounds for short horizontal and vertical edges", () => {

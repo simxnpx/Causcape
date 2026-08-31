@@ -1,7 +1,7 @@
 import type {
-  ExcalidrawCauscapeEdgeElement,
-  ExcalidrawCauscapeNodeElement,
-} from "@excalidraw/element/types";
+  CauscapeEdgeElement,
+  CauscapeNodeElement,
+} from "@causcape/element/types";
 
 import { CAUSCAPE_EDGE_LABEL_POOL } from "./constants";
 
@@ -165,7 +165,7 @@ export type CauscapeNode = Readonly<{
   github?: GithubRef;
   cache?: GithubCache | GithubCacheWithSnapshot;
   architecture?: CauscapeArchitectureMetadata;
-  element: ExcalidrawCauscapeNodeElement;
+  element: CauscapeNodeElement;
 }>;
 
 export type CauscapeEdge = Readonly<{
@@ -174,7 +174,7 @@ export type CauscapeEdge = Readonly<{
   toNodeId: string;
   label?: string;
   relationship?: ArchitectureRelationshipType;
-  element: ExcalidrawCauscapeEdgeElement;
+  element: CauscapeEdgeElement;
 }>;
 
 export type CauscapeGraph = Readonly<{

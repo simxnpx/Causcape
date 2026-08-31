@@ -1,14 +1,14 @@
-import { arrayToMap, reseed } from "@excalidraw/common";
-import { type GlobalPoint, type LocalPoint, pointFrom } from "@excalidraw/math";
+import { arrayToMap, reseed } from "@causcape/common";
+import { type GlobalPoint, type LocalPoint, pointFrom } from "@causcape/math";
 import {
   newCauscapeEdgeElement,
   newCauscapeNodeElement,
-} from "@excalidraw/element";
-import { Excalidraw } from "@excalidraw/excalidraw";
-import { API } from "@excalidraw/excalidraw/tests/helpers/api";
-import { UI } from "@excalidraw/excalidraw/tests/helpers/ui";
-import "@excalidraw/utils/test-utils";
-import { render } from "@excalidraw/excalidraw/tests/test-utils";
+} from "@causcape/element";
+import { Causcape } from "@causcape/causcape";
+import { API } from "@causcape/causcape/tests/helpers/api";
+import { UI } from "@causcape/causcape/tests/helpers/ui";
+import "@causcape/utils/test-utils";
+import { render } from "@causcape/causcape/tests/test-utils";
 
 import * as distance from "../src/distance";
 import { hitElementItself, shouldTestInside } from "../src/collision";
@@ -40,7 +40,7 @@ describe("check rotated elements can be hit:", () => {
   beforeEach(async () => {
     localStorage.clear();
     reseed(7);
-    await render(<Excalidraw handleKeyboardGlobally={true} />);
+    await render(<Causcape handleKeyboardGlobally={true} />);
   });
 
   it("arrow", () => {
@@ -106,7 +106,7 @@ describe("hitElementItself cache", () => {
 
     localStorage.clear();
     reseed(7);
-    await render(<Excalidraw handleKeyboardGlobally={true} />);
+    await render(<Causcape handleKeyboardGlobally={true} />);
   });
 
   it("reuses cached result when threshold increases", () => {

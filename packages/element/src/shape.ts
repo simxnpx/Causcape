@@ -1,6 +1,6 @@
 import { simplify } from "points-on-curve";
 import { getStroke, getStrokePoints } from "perfect-freehand";
-import { LaserPointer } from "@excalidraw/laser-pointer";
+import { LaserPointer } from "@causcape/laser-pointer";
 
 import {
   type GeometricShape,
@@ -9,14 +9,14 @@ import {
   getEllipseShape,
   getFreedrawShape,
   getPolygonShape,
-} from "@excalidraw/utils/shape";
+} from "@causcape/utils/shape";
 
 import {
   pointFrom,
   pointDistance,
   type LocalPoint,
   pointRotateRads,
-} from "@excalidraw/math";
+} from "@causcape/math";
 import {
   ROUGHNESS,
   THEME,
@@ -26,23 +26,23 @@ import {
   LINE_POLYGON_POINT_MERGE_DISTANCE,
   applyDarkModeFilter,
   DEFAULT_STROKE_STREAMLINE,
-} from "@excalidraw/common";
+} from "@causcape/common";
 
 import { RoughGenerator } from "roughjs/bin/generator";
 
-import type { GlobalPoint } from "@excalidraw/math";
+import type { GlobalPoint } from "@causcape/math";
 
-import type { Mutable } from "@excalidraw/common/utility-types";
+import type { Mutable } from "@causcape/common/utility-types";
 
 import type {
   AppState,
   EmbedsValidationStatus,
-} from "@excalidraw/excalidraw/types";
+} from "@causcape/causcape/types";
 import type {
   ElementShape,
   ElementShapes,
   SVGPathString,
-} from "@excalidraw/excalidraw/scene/types";
+} from "@causcape/causcape/scene/types";
 
 import { elementWithCanvasCache } from "./renderElement";
 
@@ -66,16 +66,16 @@ import {
 } from "./bounds";
 import { shouldTestInside } from "./collision";
 
-import type { ExcalidrawArrowElement } from "./types";
+import type { CauscapeArrowElement } from "./types";
 
 import type {
-  ExcalidrawElement,
-  ExcalidrawSelectionElement,
-  ExcalidrawLinearElement,
-  ExcalidrawFreeDrawElement,
-  ExcalidrawCauscapeEdgeElement,
+  CauscapeElement,
+  CauscapeSelectionElement,
+  CauscapeLinearElement,
+  CauscapeFreeDrawElement,
+  CauscapeEdgeElement,
   ElementsMap,
-  ExcalidrawLineElement,
+  CauscapeLineElement,
   Arrowhead,
 } from "./types";
 
@@ -85,7 +85,7 @@ import type { Point as RoughPoint } from "roughjs/bin/geometry";
 export class ShapeCache {
   private static rg = new RoughGenerator();
   private static cache = new WeakMap<
-    ExcalidrawElement,
+    CauscapeElement,
     { shape: ElementShape; theme: AppState["theme"] }
   >();
 
@@ -93,7 +93,7 @@ export class ShapeCache {
    * Retrieves shape from cache if available. Use this only if shape
    * is optional and you have a fallback in case it's not cached.
    */
-  public static get = <T extends ExcalidrawElement>(
+  public static get = <T extends CauscapeElement>(
     element: T,
     theme: AppState["theme"] | null,
   ) => {
@@ -106,7 +106,7 @@ export class ShapeCache {
     return undefined;
   };
 
-  public static delete = (element: ExcalidrawElement) => {
+  public static delete = (element: CauscapeElement) => {
     ShapeCache.cache.delete(element);
     elementWithCanvasCache.delete(element);
   };
@@ -120,7 +120,7 @@ export class ShapeCache {
    * returns cached shape.
    */
   public static generateElementShape = <
-    T extends Exclude<ExcalidrawElement, ExcalidrawSelectionElement>,
+    T extends Exclude<CauscapeElement, CauscapeSelectionElement>,
   >(
     element: T,
     renderConfig: {
@@ -171,7 +171,7 @@ const getDashArrayDashed = (strokeWidth: number) => [8, 8 + strokeWidth];
 
 const getDashArrayDotted = (strokeWidth: number) => [1.5, 6 + strokeWidth];
 
-function adjustRoughness(element: ExcalidrawElement): number {
+function adjustRoughness(element: CauscapeElement): number {
   const roughness = element.roughness;
 
   const maxSize = Math.max(element.width, element.height);
@@ -195,7 +195,7 @@ function adjustRoughness(element: ExcalidrawElement): number {
 }
 
 export const generateRoughOptions = (
-  element: ExcalidrawElement,
+  element: CauscapeElement,
   continuousPath = false,
   isDarkMode: boolean = false,
 ): Options => {
@@ -264,7 +264,7 @@ export const generateRoughOptions = (
 };
 
 const modifyIframeLikeForRoughOptions = (
-  element: ExcalidrawElement,
+  element: CauscapeElement,
   isExporting: boolean,
   embedsValidationStatus: EmbedsValidationStatus | null,
 ) => {
@@ -328,7 +328,7 @@ const generateArrowheadLinesToTip = (
 };
 
 const getArrowheadLineOptions = (
-  element: ExcalidrawLinearElement,
+  element: CauscapeLinearElement,
   options: Options,
 ) => {
   const lineOptions = { ...options };
@@ -373,7 +373,7 @@ const generateArrowheadOutlineCircle = (
 };
 
 const getArrowheadShapes = (
-  element: ExcalidrawLinearElement,
+  element: CauscapeLinearElement,
   shape: Drawable[],
   position: "start" | "end",
   arrowhead: Arrowhead,
@@ -582,9 +582,9 @@ const getArrowheadShapes = (
 
 export const generateLinearCollisionShape = (
   element:
-    | ExcalidrawLinearElement
-    | ExcalidrawFreeDrawElement
-    | ExcalidrawCauscapeEdgeElement,
+    | CauscapeLinearElement
+    | CauscapeFreeDrawElement
+    | CauscapeEdgeElement,
   elementsMap: ElementsMap,
 ): {
   op: string;
@@ -604,9 +604,9 @@ export const generateLinearCollisionShape = (
     case "line":
     case "arrow":
     case "causcape-edge": {
-      // Causcape edges use the same point/arrow geometry as Excalidraw
+      // Causcape edges use the same point/arrow geometry as Causcape
       // linear elements, but have their own element type for graph metadata.
-      const linearElement = element as ExcalidrawLinearElement;
+      const linearElement = element as CauscapeLinearElement;
       // points array can be empty in the beginning, so it is important to add
       // initial position to it
       const points = linearElement.points.length
@@ -774,7 +774,7 @@ export const generateLinearCollisionShape = (
  * @private
  */
 const _generateElementShape = (
-  element: Exclude<ExcalidrawElement, ExcalidrawSelectionElement>,
+  element: Exclude<CauscapeElement, CauscapeSelectionElement>,
   generator: RoughGenerator,
   {
     isExporting,
@@ -945,7 +945,7 @@ const _generateElementShape = (
 
       // add arrowheads for arrow and causcape-edge
       if (element.type === "arrow" || element.type === "causcape-edge") {
-        const arrowLike = element as unknown as ExcalidrawArrowElement;
+        const arrowLike = element as unknown as CauscapeArrowElement;
         const { startArrowhead = null, endArrowhead = "arrow" } = arrowLike;
 
         if (startArrowhead !== null) {
@@ -1091,11 +1091,11 @@ const generateElbowArrowShape = (
 };
 
 /**
- * get the pure geometric shape of an excalidraw elementw
+ * get the pure geometric shape of a Causcape element
  * which is then used for hit detection
  */
 export const getElementShape = <Point extends GlobalPoint | LocalPoint>(
-  element: ExcalidrawElement,
+  element: CauscapeElement,
   elementsMap: ElementsMap,
 ): GeometricShape<Point> => {
   switch (element.type) {
@@ -1110,22 +1110,22 @@ export const getElementShape = <Point extends GlobalPoint | LocalPoint>(
     case "text":
     case "selection":
       return getPolygonShape(
-        element as unknown as import("./types").ExcalidrawRectangleElement,
+        element as unknown as import("./types").CauscapeRectangleElement,
       );
     case "arrow":
     case "causcape-edge":
     case "line": {
       const roughShape = ShapeCache.generateElementShape(
-        element as unknown as import("./types").ExcalidrawLinearElement,
+        element as unknown as import("./types").CauscapeLinearElement,
         null,
       )[0];
       const [, , , , cx, cy] = getElementAbsoluteCoords(element, elementsMap);
 
       return shouldTestInside(
-        element as unknown as import("./types").ExcalidrawLinearElement,
+        element as unknown as import("./types").CauscapeLinearElement,
       )
         ? getClosedCurveShape<Point>(
-            element as unknown as import("./types").ExcalidrawLinearElement,
+            element as unknown as import("./types").CauscapeLinearElement,
             roughShape,
             pointFrom<Point>(element.x, element.y),
             element.angle,
@@ -1154,11 +1154,11 @@ export const getElementShape = <Point extends GlobalPoint | LocalPoint>(
 };
 
 export const toggleLinePolygonState = (
-  element: ExcalidrawLineElement,
+  element: CauscapeLineElement,
   nextPolygonState: boolean,
 ): {
-  polygon: ExcalidrawLineElement["polygon"];
-  points: ExcalidrawLineElement["points"];
+  polygon: CauscapeLineElement["polygon"];
+  points: CauscapeLineElement["points"];
 } | null => {
   const updatedPoints = [...element.points];
 
@@ -1188,7 +1188,7 @@ export const toggleLinePolygonState = (
     }
   }
 
-  // TODO: satisfies ElementUpdate<ExcalidrawLineElement>
+  // TODO: satisfies ElementUpdate<CauscapeLineElement>
   const ret = {
     polygon: nextPolygonState,
     points: updatedPoints,
@@ -1202,7 +1202,7 @@ export const toggleLinePolygonState = (
 // -----------------------------------------------------------------------------
 
 // NOTE not cached (-> for SVG export)
-const getFreeDrawSvgPath = (element: ExcalidrawFreeDrawElement) => {
+const getFreeDrawSvgPath = (element: CauscapeFreeDrawElement) => {
   return getSvgPathFromStroke(
     getFreedrawOutlinePoints(element),
   ) as SVGPathString;
@@ -1227,15 +1227,15 @@ const CONSTANT_WIDTH_FREEDRAW = {
   SIZE_FACTOR: 1.4,
 } as const;
 
-const getFreedrawStreamline = (element: ExcalidrawFreeDrawElement) =>
+const getFreedrawStreamline = (element: CauscapeFreeDrawElement) =>
   element.strokeOptions?.streamline ?? DEFAULT_STROKE_STREAMLINE;
 
 /**
  * Pressure-sensitive (variable width) freedraw outline, rendered with
- * perfect-freehand. This is the original Excalidraw freedraw look.
+ * perfect-freehand. This is the original Causcape freedraw look.
  */
 const getVariableWidthFreedrawOutline = (
-  element: ExcalidrawFreeDrawElement,
+  element: CauscapeFreeDrawElement,
 ): [number, number][] => {
   // If input points are empty (should they ever be?) return a dot
   const inputPoints = element.simulatePressure
@@ -1257,7 +1257,7 @@ const getVariableWidthFreedrawOutline = (
   }) as [number, number][];
 };
 
-const createLaserPointer = (element: ExcalidrawFreeDrawElement) =>
+const createLaserPointer = (element: CauscapeFreeDrawElement) =>
   new LaserPointer({
     size: element.strokeWidth * CONSTANT_WIDTH_FREEDRAW.SIZE_FACTOR,
     streamline: getFreedrawStreamline(element),
@@ -1270,7 +1270,7 @@ const createLaserPointer = (element: ExcalidrawFreeDrawElement) =>
  * geometry. Pressure is pinned to 1 so the stroke keeps a constant width.
  */
 const getConstantWidthFreedrawOutline = (
-  element: ExcalidrawFreeDrawElement,
+  element: CauscapeFreeDrawElement,
 ): [number, number][] => {
   const laserPointer = createLaserPointer(element);
   element.points.map(([x, y]) => laserPointer.addPoint([x, y, 1]));
@@ -1281,7 +1281,7 @@ const getConstantWidthFreedrawOutline = (
 };
 
 export const getFreedrawOutlinePoints = (
-  element: ExcalidrawFreeDrawElement,
+  element: CauscapeFreeDrawElement,
 ): [number, number][] => {
   // Unknown/absent variability falls back to the original variable rendering.
   return element.strokeOptions?.variability === "constant"
@@ -1301,7 +1301,7 @@ export const getFreedrawOutlinePoints = (
  * `streamline` is a close approximation the stroke width hides.
  */
 export const getFreedrawStrokeCenterPoints = (
-  element: ExcalidrawFreeDrawElement,
+  element: CauscapeFreeDrawElement,
 ): [number, number][] =>
   getStrokePoints(element.points as unknown as number[][], {
     size: element.strokeWidth * VARIABLE_WIDTH_FREEDRAW.SIZE_FACTOR,

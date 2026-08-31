@@ -2,11 +2,11 @@ import {
   getSizeFromPoints,
   randomInteger,
   getUpdatedTimestamp,
-} from "@excalidraw/common";
+} from "@causcape/common";
 
-import type { Radians } from "@excalidraw/math";
+import type { Radians } from "@causcape/math";
 
-import type { Mutable } from "@excalidraw/common/utility-types";
+import type { Mutable } from "@causcape/common/utility-types";
 
 import { ShapeCache } from "./shape";
 
@@ -16,12 +16,12 @@ import { isElbowArrow } from "./typeChecks";
 
 import type {
   ElementsMap,
-  ExcalidrawElbowArrowElement,
-  ExcalidrawElement,
+  CauscapeElbowArrowElement,
+  CauscapeElement,
   NonDeletedSceneElementsMap,
 } from "./types";
 
-export type ElementUpdate<TElement extends ExcalidrawElement> = Omit<
+export type ElementUpdate<TElement extends CauscapeElement> = Omit<
   Partial<TElement>,
   "id" | "updated"
 >;
@@ -32,9 +32,9 @@ export type ElementUpdate<TElement extends ExcalidrawElement> = Omit<
  * the same drawing.
  *
  * WARNING: this won't trigger the component to update, so if you need to trigger component update,
- * use `scene.mutateElement` or `ExcalidrawImperativeAPI.mutateElement` instead.
+ * use `scene.mutateElement` or `CauscapeImperativeAPI.mutateElement` instead.
  */
-export const mutateElement = <TElement extends Mutable<ExcalidrawElement>>(
+export const mutateElement = <TElement extends Mutable<CauscapeElement>>(
   element: TElement,
   elementsMap: ElementsMap,
   updates: ElementUpdate<TElement>,
@@ -61,12 +61,12 @@ export const mutateElement = <TElement extends Mutable<ExcalidrawElement>>(
       angle: 0 as Radians,
       ...updateElbowArrowPoints(
         {
-          ...(element as ExcalidrawElbowArrowElement),
+          ...(element as CauscapeElbowArrowElement),
           x: updates.x || element.x,
           y: updates.y || element.y,
         },
         elementsMap as NonDeletedSceneElementsMap,
-        updates as ElementUpdate<ExcalidrawElbowArrowElement>,
+        updates as ElementUpdate<CauscapeElbowArrowElement>,
         options,
       ),
     };
@@ -143,7 +143,7 @@ export const mutateElement = <TElement extends Mutable<ExcalidrawElement>>(
   return element;
 };
 
-export const newElementWith = <TElement extends ExcalidrawElement>(
+export const newElementWith = <TElement extends CauscapeElement>(
   element: TElement,
   updates: ElementUpdate<TElement>,
   /** pass `true` to always regenerate */
@@ -182,9 +182,9 @@ export const newElementWith = <TElement extends ExcalidrawElement>(
  *
  * NOTE: does not trigger re-render.
  */
-export const bumpVersion = <T extends Mutable<ExcalidrawElement>>(
+export const bumpVersion = <T extends Mutable<CauscapeElement>>(
   element: T,
-  version?: ExcalidrawElement["version"],
+  version?: CauscapeElement["version"],
 ) => {
   element.version = (version ?? element.version) + 1;
   element.versionNonce = randomInteger();

@@ -11,7 +11,7 @@ import {
   pointFromVector,
   clamp,
   isCloseTo,
-} from "@excalidraw/math";
+} from "@causcape/math";
 import { type Point } from "points-on-curve";
 
 import {
@@ -23,15 +23,15 @@ import {
 import type { TransformHandleType } from "./transformHandles";
 import type {
   ElementsMap,
-  ExcalidrawElement,
-  ExcalidrawImageElement,
+  CauscapeElement,
+  CauscapeImageElement,
   ImageCrop,
 } from "./types";
 
 export const MINIMAL_CROP_SIZE = 10;
 
 export const cropElement = (
-  element: ExcalidrawImageElement,
+  element: CauscapeImageElement,
   elementsMap: ElementsMap,
   transformHandle: TransformHandleType,
   naturalWidth: number,
@@ -405,7 +405,7 @@ export const cropElement = (
 };
 
 const recomputeOrigin = (
-  stateAtCropStart: ExcalidrawElement,
+  stateAtCropStart: CauscapeElement,
   transformHandle: TransformHandleType,
   width: number,
   height: number,
@@ -474,9 +474,9 @@ const recomputeOrigin = (
   return newOrigin;
 };
 
-// refer to https://link.excalidraw.com/l/6rfy1007QOo/6stx5PmRn0k
+// refer to https://link.causcape.com/l/6rfy1007QOo/6stx5PmRn0k
 export const getUncroppedImageElement = (
-  element: ExcalidrawImageElement,
+  element: CauscapeImageElement,
   elementsMap: ElementsMap,
 ) => {
   if (element.crop) {
@@ -531,7 +531,7 @@ export const getUncroppedImageElement = (
       -element.angle as Radians,
     );
 
-    const uncroppedElement: ExcalidrawImageElement = {
+    const uncroppedElement: CauscapeImageElement = {
       ...element,
       x: unrotatedTopLeft[0],
       y: unrotatedTopLeft[1],
@@ -546,7 +546,7 @@ export const getUncroppedImageElement = (
   return element;
 };
 
-export const getUncroppedWidthAndHeight = (element: ExcalidrawImageElement) => {
+export const getUncroppedWidthAndHeight = (element: CauscapeImageElement) => {
   if (element.crop) {
     const width =
       element.width / (element.crop.width / element.crop.naturalWidth);
@@ -567,7 +567,7 @@ export const getUncroppedWidthAndHeight = (element: ExcalidrawImageElement) => {
 
 const adjustCropPosition = (
   crop: ImageCrop,
-  scale: ExcalidrawImageElement["scale"],
+  scale: CauscapeImageElement["scale"],
 ) => {
   let cropX = crop.x;
   let cropY = crop.y;
@@ -590,7 +590,7 @@ const adjustCropPosition = (
 };
 
 export const getFlipAdjustedCropPosition = (
-  element: ExcalidrawImageElement,
+  element: CauscapeImageElement,
   natural = false,
 ) => {
   const crop = element.crop;

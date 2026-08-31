@@ -1,4 +1,4 @@
-import type { LocalPoint, Radians } from "@excalidraw/math";
+import type { LocalPoint, Radians } from "@causcape/math";
 
 import type {
   FONT_FAMILY,
@@ -6,14 +6,14 @@ import type {
   TEXT_ALIGN,
   THEME,
   VERTICAL_ALIGN,
-} from "@excalidraw/common";
+} from "@causcape/common";
 
 import type {
   MakeBrand,
   MarkNonNullable,
   Merge,
   ValueOf,
-} from "@excalidraw/common/utility-types";
+} from "@causcape/common/utility-types";
 
 export type ChartType = "bar" | "line" | "radar";
 export type FillStyle = "hachure" | "cross-hatch" | "solid" | "zigzag";
@@ -33,11 +33,11 @@ export type VerticalAlign = typeof VERTICAL_ALIGN[VerticalAlignKeys];
 export type FractionalIndex = string & { _brand: "franctionalIndex" };
 
 export type BoundElement = Readonly<{
-  id: ExcalidrawLinearElement["id"];
-  type: "arrow" | "text";
+  id: CauscapeLinearElement["id"];
+  type: "arrow" | "causcape-edge" | "text";
 }>;
 
-type _ExcalidrawElementBase = Readonly<{
+type _CauscapeElementBase = Readonly<{
   id: string;
   x: number;
   y: number;
@@ -81,23 +81,23 @@ type _ExcalidrawElementBase = Readonly<{
   customData?: Record<string, any>;
 }>;
 
-export type ExcalidrawSelectionElement = _ExcalidrawElementBase & {
+export type CauscapeSelectionElement = _CauscapeElementBase & {
   type: "selection";
 };
 
-export type ExcalidrawRectangleElement = _ExcalidrawElementBase & {
+export type CauscapeRectangleElement = _CauscapeElementBase & {
   type: "rectangle";
 };
 
-export type ExcalidrawDiamondElement = _ExcalidrawElementBase & {
+export type CauscapeDiamondElement = _CauscapeElementBase & {
   type: "diamond";
 };
 
-export type ExcalidrawEllipseElement = _ExcalidrawElementBase & {
+export type CauscapeEllipseElement = _CauscapeElementBase & {
   type: "ellipse";
 };
 
-export type ExcalidrawEmbeddableElement = _ExcalidrawElementBase &
+export type CauscapeEmbeddableElement = _CauscapeElementBase &
   Readonly<{
     type: "embeddable";
   }>;
@@ -113,16 +113,16 @@ export type MagicGenerationData =
       code: "ERR_GENERATION_INTERRUPTED" | string;
     };
 
-export type ExcalidrawIframeElement = _ExcalidrawElementBase &
+export type CauscapeIframeElement = _CauscapeElementBase &
   Readonly<{
     type: "iframe";
     // TODO move later to AI-specific frame
     customData?: { generationData?: MagicGenerationData };
   }>;
 
-export type ExcalidrawIframeLikeElement =
-  | ExcalidrawIframeElement
-  | ExcalidrawEmbeddableElement;
+export type CauscapeIframeLikeElement =
+  | CauscapeIframeElement
+  | CauscapeEmbeddableElement;
 
 export type IframeData =
   | {
@@ -143,7 +143,7 @@ export type ImageCrop = {
   naturalHeight: number;
 };
 
-export type ExcalidrawImageElement = _ExcalidrawElementBase &
+export type CauscapeImageElement = _CauscapeElementBase &
   Readonly<{
     type: "image";
     fileId: FileId | null;
@@ -155,17 +155,17 @@ export type ExcalidrawImageElement = _ExcalidrawElementBase &
     crop: ImageCrop | null;
   }>;
 
-export type InitializedExcalidrawImageElement = MarkNonNullable<
-  ExcalidrawImageElement,
+export type InitializedCauscapeImageElement = MarkNonNullable<
+  CauscapeImageElement,
   "fileId"
 >;
 
-export type ExcalidrawFrameElement = _ExcalidrawElementBase & {
+export type CauscapeFrameElement = _CauscapeElementBase & {
   type: "frame";
   name: string | null;
 };
 
-export type ExcalidrawMagicFrameElement = _ExcalidrawElementBase & {
+export type CauscapeMagicFrameElement = _CauscapeElementBase & {
   type: "magicframe";
   name: string | null;
 };
@@ -277,78 +277,78 @@ export type CauscapeNodeData =
       cache?: GithubCache & { snapshotAt: string };
     };
 
-export type ExcalidrawCauscapeNodeElement = _ExcalidrawElementBase &
+export type CauscapeNodeElement = _CauscapeElementBase &
   Readonly<{
     type: "causcape-node";
     causcape: CauscapeNodeData & Record<string, unknown>;
   }>;
 
-export type ExcalidrawFrameLikeElement =
-  | ExcalidrawFrameElement
-  | ExcalidrawMagicFrameElement;
+export type CauscapeFrameLikeElement =
+  | CauscapeFrameElement
+  | CauscapeMagicFrameElement;
 
 /**
  * These are elements that don't have any additional properties.
  */
-export type ExcalidrawGenericElement =
-  | ExcalidrawSelectionElement
-  | ExcalidrawRectangleElement
-  | ExcalidrawDiamondElement
-  | ExcalidrawEllipseElement;
+export type CauscapeGenericElement =
+  | CauscapeSelectionElement
+  | CauscapeRectangleElement
+  | CauscapeDiamondElement
+  | CauscapeEllipseElement;
 
-export type ExcalidrawFlowchartNodeElement =
-  | ExcalidrawRectangleElement
-  | ExcalidrawDiamondElement
-  | ExcalidrawEllipseElement;
+export type CauscapeFlowchartNodeElement =
+  | CauscapeRectangleElement
+  | CauscapeDiamondElement
+  | CauscapeEllipseElement;
 
-export type ExcalidrawRectanguloidElement =
-  | ExcalidrawRectangleElement
-  | ExcalidrawCauscapeNodeElement
-  | ExcalidrawImageElement
-  | ExcalidrawTextElement
-  | ExcalidrawFreeDrawElement
-  | ExcalidrawIframeLikeElement
-  | ExcalidrawFrameLikeElement
-  | ExcalidrawEmbeddableElement
-  | ExcalidrawSelectionElement;
+export type CauscapeRectanguloidElement =
+  | CauscapeRectangleElement
+  | CauscapeNodeElement
+  | CauscapeImageElement
+  | CauscapeTextElement
+  | CauscapeFreeDrawElement
+  | CauscapeIframeLikeElement
+  | CauscapeFrameLikeElement
+  | CauscapeEmbeddableElement
+  | CauscapeSelectionElement;
 
 /**
- * ExcalidrawElement should be JSON serializable and (eventually) contain
- * no computed data. The list of all ExcalidrawElements should be shareable
+ * CauscapeElement should be JSON serializable and (eventually) contain
+ * no computed data. The list of all CauscapeElements should be shareable
  * between peers and contain no state local to the peer.
  */
-export type ExcalidrawElement =
-  | ExcalidrawGenericElement
-  | ExcalidrawTextElement
-  | ExcalidrawLinearElement
-  | ExcalidrawArrowElement
-  | ExcalidrawFreeDrawElement
-  | ExcalidrawImageElement
-  | ExcalidrawFrameElement
-  | ExcalidrawMagicFrameElement
-  | ExcalidrawIframeElement
-  | ExcalidrawEmbeddableElement
-  | ExcalidrawCauscapeNodeElement
-  | ExcalidrawCauscapeEdgeElement;
+export type CauscapeElement =
+  | CauscapeGenericElement
+  | CauscapeTextElement
+  | CauscapeLinearElement
+  | CauscapeArrowElement
+  | CauscapeFreeDrawElement
+  | CauscapeImageElement
+  | CauscapeFrameElement
+  | CauscapeMagicFrameElement
+  | CauscapeIframeElement
+  | CauscapeEmbeddableElement
+  | CauscapeNodeElement
+  | CauscapeEdgeElement;
 
-export type ExcalidrawNonSelectionElement = Exclude<
-  ExcalidrawElement,
-  ExcalidrawSelectionElement
+export type CauscapeNonSelectionElement = Exclude<
+  CauscapeElement,
+  CauscapeSelectionElement
 >;
 
-export type Ordered<TElement extends ExcalidrawElement> = TElement & {
+export type Ordered<TElement extends CauscapeElement> = TElement & {
   index: FractionalIndex;
 };
 
-export type OrderedExcalidrawElement = Ordered<ExcalidrawElement>;
+export type OrderedCauscapeElement = Ordered<CauscapeElement>;
 
-export type NonDeleted<TElement extends ExcalidrawElement> = TElement & {
+export type NonDeleted<TElement extends CauscapeElement> = TElement & {
   isDeleted: false;
 };
 
-export type NonDeletedExcalidrawElement = NonDeleted<ExcalidrawElement>;
+export type NonDeletedCauscapeElement = NonDeleted<CauscapeElement>;
 
-export type ExcalidrawTextElement = _ExcalidrawElementBase &
+export type CauscapeTextElement = _CauscapeElementBase &
   Readonly<{
     type: "text";
     fontSize: number;
@@ -356,7 +356,7 @@ export type ExcalidrawTextElement = _ExcalidrawElementBase &
     text: string;
     textAlign: TextAlign;
     verticalAlign: VerticalAlign;
-    containerId: ExcalidrawGenericElement["id"] | null;
+    containerId: CauscapeGenericElement["id"] | null;
     originalText: string;
     /**
      * If `true` the width will fit the text. If `false`, the text will
@@ -372,34 +372,34 @@ export type ExcalidrawTextElement = _ExcalidrawElementBase &
     lineHeight: number & { _brand: "unitlessLineHeight" };
   }>;
 
-export type ExcalidrawBindableElement =
-  | ExcalidrawRectangleElement
-  | ExcalidrawDiamondElement
-  | ExcalidrawEllipseElement
-  | ExcalidrawTextElement
-  | ExcalidrawImageElement
-  | ExcalidrawIframeElement
-  | ExcalidrawEmbeddableElement
-  | ExcalidrawFrameElement
-  | ExcalidrawMagicFrameElement
-  | ExcalidrawCauscapeNodeElement;
+export type CauscapeBindableElement =
+  | CauscapeRectangleElement
+  | CauscapeDiamondElement
+  | CauscapeEllipseElement
+  | CauscapeTextElement
+  | CauscapeImageElement
+  | CauscapeIframeElement
+  | CauscapeEmbeddableElement
+  | CauscapeFrameElement
+  | CauscapeMagicFrameElement
+  | CauscapeNodeElement;
 
-export type ExcalidrawTextContainer =
-  | ExcalidrawRectangleElement
-  | ExcalidrawDiamondElement
-  | ExcalidrawEllipseElement
-  | ExcalidrawArrowElement;
+export type CauscapeTextContainer =
+  | CauscapeRectangleElement
+  | CauscapeDiamondElement
+  | CauscapeEllipseElement
+  | CauscapeArrowElement;
 
-export type ExcalidrawTextElementWithContainer = {
-  containerId: ExcalidrawTextContainer["id"];
-} & ExcalidrawTextElement;
+export type CauscapeTextElementWithContainer = {
+  containerId: CauscapeTextContainer["id"];
+} & CauscapeTextElement;
 
 export type FixedPoint = [number, number];
 
 export type BindMode = "inside" | "orbit" | "skip";
 
 export type FixedPointBinding = {
-  elementId: ExcalidrawBindableElement["id"];
+  elementId: CauscapeBindableElement["id"];
 
   // Represents the fixed point binding information in form of a vertical and
   // horizontal ratio (i.e. a percentage value in the 0.0-1.0 range). This ratio
@@ -447,7 +447,7 @@ export type Arrowhead =
 
 export type AnyArrowhead = Arrowhead | ArrowheadLegacy;
 
-export type ExcalidrawLinearElement = _ExcalidrawElementBase &
+export type CauscapeLinearElement = _CauscapeElementBase &
   Readonly<{
     type: "line" | "arrow";
     points: readonly LocalPoint[];
@@ -457,7 +457,7 @@ export type ExcalidrawLinearElement = _ExcalidrawElementBase &
     endArrowhead: Arrowhead | null;
   }>;
 
-export type ExcalidrawLineElement = ExcalidrawLinearElement &
+export type CauscapeLineElement = CauscapeLinearElement &
   Readonly<{
     type: "line";
     polygon: boolean;
@@ -469,14 +469,14 @@ export type FixedSegment = {
   index: Index;
 };
 
-export type ExcalidrawArrowElement = ExcalidrawLinearElement &
+export type CauscapeArrowElement = CauscapeLinearElement &
   Readonly<{
     type: "arrow";
     elbowed: boolean;
   }>;
 
-export type ExcalidrawElbowArrowElement = Merge<
-  ExcalidrawArrowElement,
+export type CauscapeElbowArrowElement = Merge<
+  CauscapeArrowElement,
   {
     elbowed: true;
     fixedSegments: readonly FixedSegment[] | null;
@@ -501,7 +501,7 @@ export type ExcalidrawElbowArrowElement = Merge<
   }
 >;
 
-export type ExcalidrawCauscapeEdgeElement = _ExcalidrawElementBase &
+export type CauscapeEdgeElement = _CauscapeElementBase &
   Readonly<{
     type: "causcape-edge";
     points: readonly LocalPoint[];
@@ -518,9 +518,7 @@ export type ExcalidrawCauscapeEdgeElement = _ExcalidrawElementBase &
     } & Record<string, unknown>;
   }>;
 
-export type ExcalidrawCauscapeElement =
-  | ExcalidrawCauscapeNodeElement
-  | ExcalidrawCauscapeEdgeElement;
+export type CauscapeGraphElement = CauscapeNodeElement | CauscapeEdgeElement;
 
 export type StrokeVariability = "variable" | "constant";
 
@@ -529,7 +527,7 @@ export type StrokeOptions = Readonly<{
   streamline: number;
 }>;
 
-export type ExcalidrawFreeDrawElement = _ExcalidrawElementBase &
+export type CauscapeFreeDrawElement = _CauscapeElementBase &
   Readonly<{
     type: "freedraw";
     points: readonly LocalPoint[];
@@ -540,32 +538,32 @@ export type ExcalidrawFreeDrawElement = _ExcalidrawElementBase &
 
 export type FileId = string & { _brand: "FileId" };
 
-export type ExcalidrawElementType = ExcalidrawElement["type"];
+export type CauscapeElementType = CauscapeElement["type"];
 
 /**
- * Map of excalidraw elements.
+ * Map of causcape elements.
  * Unspecified whether deleted or non-deleted.
  * Can be a subset of Scene elements.
  */
-export type ElementsMap = Map<ExcalidrawElement["id"], ExcalidrawElement>;
+export type ElementsMap = Map<CauscapeElement["id"], CauscapeElement>;
 
 /**
  * Map of non-deleted elements.
  * Can be a subset of Scene elements.
  */
 export type NonDeletedElementsMap = Map<
-  ExcalidrawElement["id"],
-  NonDeletedExcalidrawElement
+  CauscapeElement["id"],
+  NonDeletedCauscapeElement
 > &
   MakeBrand<"NonDeletedElementsMap">;
 
 /**
- * Map of all excalidraw Scene elements, including deleted.
+ * Map of all causcape Scene elements, including deleted.
  * Not a subset. Use this type when you need access to current Scene elements.
  */
 export type SceneElementsMap = Map<
-  ExcalidrawElement["id"],
-  Ordered<ExcalidrawElement>
+  CauscapeElement["id"],
+  Ordered<CauscapeElement>
 > &
   MakeBrand<"SceneElementsMap">;
 
@@ -574,25 +572,25 @@ export type SceneElementsMap = Map<
  * Not a subset. Use this type when you need access to current Scene elements.
  */
 export type NonDeletedSceneElementsMap = Map<
-  ExcalidrawElement["id"],
-  Ordered<NonDeletedExcalidrawElement>
+  CauscapeElement["id"],
+  Ordered<NonDeletedCauscapeElement>
 > &
   MakeBrand<"NonDeletedSceneElementsMap">;
 
 export type ElementsMapOrArray =
-  | readonly ExcalidrawElement[]
+  | readonly CauscapeElement[]
   | Readonly<ElementsMap>;
 
 export type NonDeletedElementsMapOrArray =
-  | readonly NonDeletedExcalidrawElement[]
+  | readonly NonDeletedCauscapeElement[]
   | Readonly<NonDeletedElementsMap | NonDeletedSceneElementsMap>;
 
-export type ExcalidrawLinearElementSubType =
+export type CauscapeLinearElementSubType =
   | "line"
   | "sharpArrow"
   | "curvedArrow"
   | "elbowArrow";
 
 export type ConvertibleGenericTypes = "rectangle" | "diamond" | "ellipse";
-export type ConvertibleLinearTypes = ExcalidrawLinearElementSubType;
+export type ConvertibleLinearTypes = CauscapeLinearElementSubType;
 export type ConvertibleTypes = ConvertibleGenericTypes | ConvertibleLinearTypes;
