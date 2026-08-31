@@ -2,7 +2,12 @@ import { randomId } from "@causcape/common";
 
 import { transactProject } from "@causcape/core";
 
-import type { CanvasObject, CauscapeDocument, Project } from "@causcape/core";
+import type {
+  CanvasObject,
+  CauscapeDocument,
+  DataFlowScenario,
+  Project,
+} from "@causcape/core";
 
 export type ProjectMCPContext = {
   getProject: () => Project | null;
@@ -15,6 +20,7 @@ export type ProjectDocumentSnapshot = {
   revision: number;
   document: CauscapeDocument;
   objects: Readonly<Record<string, CanvasObject>>;
+  dataFlows: readonly DataFlowScenario[];
 };
 
 export type ReplaceProjectDocumentInput = {
@@ -31,6 +37,7 @@ const toSnapshot = (project: Project): ProjectDocumentSnapshot => ({
   revision: project.revision,
   document: cloneSnapshotValue(project.document),
   objects: cloneSnapshotValue(project.canvas.objects),
+  dataFlows: cloneSnapshotValue(project.canvas.dataFlows ?? []),
 });
 
 const requireProject = (ctx: ProjectMCPContext): Project => {
@@ -164,7 +171,7 @@ export const PROJECT_MCP_TOOL_DEFINITIONS: readonly MCPToolDefinition[] = [
     name: "getProjectDocument",
     title: "Read project document",
     description:
-      "Read the open project's structured document, current revision, and canvas objects available for stable canvas-reference tokens.",
+      "Read the open project's structured document, current revision, canvas objects, and saved data-flow walkthroughs.",
     inputSchema: {
       type: "object",
       properties: {},
