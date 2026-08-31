@@ -75,6 +75,22 @@ export type CanvasObject = {
   readonly lastKnownName?: string;
 };
 
+export type DataFlowStepSignal = "default" | "success" | "cache-miss" | "error";
+
+export type DataFlowStep = {
+  readonly id: string;
+  readonly objectId: string;
+  readonly title: string;
+  readonly description?: string;
+  readonly signal: DataFlowStepSignal;
+};
+
+export type DataFlowScenario = {
+  readonly id: string;
+  readonly name: string;
+  readonly steps: readonly DataFlowStep[];
+};
+
 export type Provenance = {
   readonly actor: {
     readonly type: "human" | "agent" | "system";
@@ -101,6 +117,9 @@ export type Project = {
   readonly canvas: {
     readonly scene: SerializedScene;
     readonly objects: Readonly<Record<string, CanvasObject>>;
+    /** Optional for backwards compatibility with projects created before
+     * ordered data-flow playback was introduced. */
+    readonly dataFlows?: readonly DataFlowScenario[];
   };
   readonly document: CauscapeDocument;
   readonly provenance: readonly ProvenanceEntry[];
@@ -138,6 +157,8 @@ export type ProjectOperation =
       readonly objectId: string;
       readonly key: string;
     }
+  | { readonly type: "data-flow.upsert"; readonly flow: DataFlowScenario }
+  | { readonly type: "data-flow.delete"; readonly flowId: string }
   | { readonly type: "document.replace"; readonly document: CauscapeDocument };
 
 export type ProjectTransaction = {
