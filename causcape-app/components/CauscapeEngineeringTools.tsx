@@ -18,6 +18,7 @@ type CauscapeEngineeringToolsProps = {
   selectedObject: CanvasObject | null;
   onAddShape: (kind: PreparedEngineeringShapeKind) => void;
   onRename: (objectId: string, name: string) => void;
+  onDescriptionChange: (objectId: string, description: string) => void;
   onMetadataSet: (objectId: string, key: string, value: MetadataValue) => void;
   onMetadataDelete: (objectId: string, key: string) => void;
 };
@@ -35,17 +36,22 @@ export const CauscapeEngineeringTools = ({
   selectedObject,
   onAddShape,
   onRename,
+  onDescriptionChange,
   onMetadataSet,
   onMetadataDelete,
 }: CauscapeEngineeringToolsProps) => {
   const [showShapes, setShowShapes] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const [name, setName] = useState(selectedObject?.name ?? "");
+  const [description, setDescription] = useState(
+    selectedObject?.description ?? "",
+  );
   const [metadataKey, setMetadataKey] = useState("");
   const [metadataValue, setMetadataValue] = useState("");
 
   useEffect(() => {
     setName(selectedObject?.name ?? "");
+    setDescription(selectedObject?.description ?? "");
     if (!selectedObject) {
       setShowDetails(false);
     }
@@ -189,6 +195,28 @@ export const CauscapeEngineeringTools = ({
               />
             </label>
             <button type="submit">Save name</button>
+          </form>
+
+          <form
+            className="causcape-engineering-tools__description-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              onDescriptionChange(selectedObject.id, description.trim());
+            }}
+          >
+            <label>
+              Description
+              <textarea
+                aria-label="Object description"
+                rows={4}
+                placeholder="Explain what this component owns, why it exists, or how it behaves."
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+              />
+            </label>
+            <button type="submit" aria-label="Save description">
+              Save description
+            </button>
           </form>
 
           <div className="causcape-engineering-tools__metadata">

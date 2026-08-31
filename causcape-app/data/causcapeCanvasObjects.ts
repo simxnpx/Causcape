@@ -164,6 +164,8 @@ export const PREPARED_ENGINEERING_SHAPES: readonly PreparedEngineeringShape[] =
 type CauscapeElementData = {
   readonly objectId?: string;
   readonly name?: string;
+  readonly description?: string;
+  readonly descriptionIsAuthoritative?: boolean;
   readonly kind?: string;
   readonly prepared?: boolean;
   readonly metadata?: Readonly<Record<string, MetadataValue>>;
@@ -174,6 +176,10 @@ const getCauscapeData = (
 ): CauscapeElementData => {
   if (element.type === "causcape-node") {
     const { label, kind } = element.causcape;
+    const description =
+      typeof element.causcape.description === "string"
+        ? element.causcape.description.trim()
+        : undefined;
     const environment =
       typeof element.causcape.environment === "string"
         ? element.causcape.environment
@@ -185,6 +191,8 @@ const getCauscapeData = (
     return {
       name: label,
       kind,
+      descriptionIsAuthoritative: true,
+      ...(description !== undefined ? { description } : {}),
       metadata: {
         kind,
         ...(environment ? { environment } : {}),
@@ -326,6 +334,15 @@ export const deriveCanvasObjects = (
       storedName?.trim() ||
       previous?.name;
     const embeddedMetadata = data.find((entry) => entry.metadata)?.metadata;
+    const embeddedDescription = data.find(
+      (entry) => typeof entry.description === "string",
+    )?.description;
+    const description =
+      embeddedDescription !== undefined
+        ? embeddedDescription
+        : data.some((entry) => entry.descriptionIsAuthoritative)
+        ? undefined
+        : previous?.description;
     const kind = data.find(
       (entry) => typeof entry.kind === "string" && entry.kind,
     )?.kind;
@@ -335,6 +352,7 @@ export const deriveCanvasObjects = (
       elementIds:
         state === "active" ? activeElements.map((element) => element.id) : [],
       ...(name ? { name } : {}),
+      ...(description ? { description } : {}),
       metadata: {
         ...(!isPrepared ? previous?.metadata ?? {} : {}),
         ...(embeddedMetadata ?? {}),

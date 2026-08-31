@@ -157,6 +157,7 @@ describe("Causcape canvas objects", () => {
       id: "api-service",
       kind: "service",
       label: "Payments API",
+      description: "Coordinates payment authorization.",
       x: 0,
       y: 0,
     });
@@ -185,6 +186,7 @@ describe("Causcape canvas objects", () => {
       "api-service": {
         id: "api-service",
         name: "Payments API",
+        description: "Coordinates payment authorization.",
         metadata: { kind: "service" },
         state: "active",
       },
@@ -205,6 +207,30 @@ describe("Causcape canvas objects", () => {
         state: "active",
       },
     });
+  });
+
+  it("does not resurrect a component description after it is cleared", () => {
+    const api = newCauscapeNodeElement({
+      id: "api-service",
+      kind: "service",
+      label: "Payments API",
+      description: "",
+      x: 0,
+      y: 0,
+    });
+
+    expect(
+      deriveCanvasObjects([api] as OrderedCauscapeElement[], {
+        "api-service": {
+          id: "api-service",
+          elementIds: ["api-service"],
+          name: "Payments API",
+          description: "Old description",
+          metadata: { kind: "service" },
+          state: "active",
+        },
+      })["api-service"],
+    ).not.toHaveProperty("description");
   });
 
   it("treats a duplicated prepared group as a new canvas object", () => {

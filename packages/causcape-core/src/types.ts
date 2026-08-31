@@ -69,6 +69,7 @@ export type CanvasObject = {
   readonly id: string;
   readonly elementIds: readonly string[];
   readonly name?: string;
+  readonly description?: string;
   readonly metadata: Readonly<Record<string, MetadataValue>>;
   readonly state: "active" | "deleted";
   readonly lastKnownName?: string;

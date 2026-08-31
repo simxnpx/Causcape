@@ -10,6 +10,7 @@ describe("CauscapeEngineeringTools", () => {
         selectedObject={null}
         onAddShape={vi.fn()}
         onRename={vi.fn()}
+        onDescriptionChange={vi.fn()}
         onMetadataSet={vi.fn()}
         onMetadataDelete={vi.fn()}
       />,
@@ -40,6 +41,7 @@ describe("CauscapeEngineeringTools", () => {
         }}
         onAddShape={vi.fn()}
         onRename={vi.fn()}
+        onDescriptionChange={vi.fn()}
         onMetadataSet={vi.fn()}
         onMetadataDelete={vi.fn()}
       />,
@@ -58,6 +60,7 @@ describe("CauscapeEngineeringTools", () => {
         selectedObject={null}
         onAddShape={onAddShape}
         onRename={vi.fn()}
+        onDescriptionChange={vi.fn()}
         onMetadataSet={vi.fn()}
         onMetadataDelete={vi.fn()}
       />,
@@ -74,6 +77,7 @@ describe("CauscapeEngineeringTools", () => {
 
   it("keeps object identity and metadata behind an explicit details panel", () => {
     const onRename = vi.fn();
+    const onDescriptionChange = vi.fn();
     const onMetadataSet = vi.fn();
     render(
       <CauscapeEngineeringTools
@@ -81,11 +85,13 @@ describe("CauscapeEngineeringTools", () => {
           id: "payment-service",
           elementIds: ["payment-service-shape"],
           name: "Payment Service",
+          description: "Coordinates payment authorization.",
           metadata: { kind: "service", owner: "Checkout" },
           state: "active",
         }}
         onAddShape={vi.fn()}
         onRename={onRename}
+        onDescriptionChange={onDescriptionChange}
         onMetadataSet={onMetadataSet}
         onMetadataDelete={vi.fn()}
       />,
@@ -100,6 +106,20 @@ describe("CauscapeEngineeringTools", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Save name" }));
     expect(onRename).toHaveBeenCalledWith("payment-service", "Payments API");
+
+    fireEvent.change(
+      screen.getByRole("textbox", { name: "Object description" }),
+      {
+        target: {
+          value: "Owns authorization, retries, and provider failover.",
+        },
+      },
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Save description" }));
+    expect(onDescriptionChange).toHaveBeenCalledWith(
+      "payment-service",
+      "Owns authorization, retries, and provider failover.",
+    );
 
     fireEvent.change(screen.getByRole("textbox", { name: "Metadata key" }), {
       target: { value: "tier" },

@@ -452,7 +452,10 @@ import { activeEyeDropperAtom } from "./EyeDropper";
 import { ViewportStatusBorder } from "./ViewportStatusFrame/ViewportStatusFrame";
 import LayerUI from "./LayerUI";
 import { ElementCanvasButton } from "./MagicButton";
-import { CauscapeNodeOverlay } from "./CauscapeNodeOverlay";
+import {
+  CauscapeNodeDescriptionSheet,
+  CauscapeNodeOverlay,
+} from "./CauscapeNodeOverlay";
 import { SVGLayer } from "./SVGLayer";
 import Spinner from "./Spinner";
 import { searchItemInFocusAtom } from "./SearchMenu";
@@ -635,6 +638,19 @@ class App extends React.Component<AppProps, AppState> {
   );
 
   private causcapeContainerRef = React.createRef<HTMLDivElement>();
+  // Description inspection is transient canvas UI and deliberately stays out
+  // of the persisted AppState/history model.
+  private inspectedCauscapeNodeId: CauscapeNodeElement["id"] | null = null;
+
+  private inspectCauscapeNode = (elementId: CauscapeNodeElement["id"]) => {
+    this.inspectedCauscapeNodeId = elementId;
+    this.forceUpdate();
+  };
+
+  private closeCauscapeNodeDescription = () => {
+    this.inspectedCauscapeNodeId = null;
+    this.forceUpdate();
+  };
 
   public get ownerDocument(): Document {
     return (
@@ -2081,6 +2097,10 @@ class App extends React.Component<AppProps, AppState> {
           element.type === "causcape-node" &&
           isCauscapeArchitectureNodeKind(element.causcape.kind),
       );
+    const inspectedElement =
+      nodeElements.find(
+        (element) => element.id === this.inspectedCauscapeNodeId,
+      ) ?? null;
 
     return (
       <>
@@ -2134,11 +2154,17 @@ class App extends React.Component<AppProps, AppState> {
                   element={element}
                   theme={this.state.theme}
                   linksEnabled={this.isLinksEnabled()}
+                  onOpenDescription={this.inspectCauscapeNode}
                 />
               </div>
             </div>
           );
         })}
+        <CauscapeNodeDescriptionSheet
+          element={inspectedElement}
+          theme={this.state.theme}
+          onClose={this.closeCauscapeNodeDescription}
+        />
       </>
     );
   }

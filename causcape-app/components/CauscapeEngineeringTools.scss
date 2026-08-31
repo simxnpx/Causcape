@@ -338,6 +338,23 @@
     font: inherit;
   }
 
+  textarea {
+    min-width: 0;
+    resize: vertical;
+    padding: 0.55rem;
+    border: 1px solid #cbc8d0;
+    border-radius: 0.45rem;
+    background: white;
+    color: inherit;
+    font: inherit;
+    line-height: 1.45;
+
+    &:focus-visible {
+      outline: 2px solid #6965db;
+      outline-offset: 1px;
+    }
+  }
+
   form button {
     padding: 0.52rem 0.6rem;
     border: 0;
@@ -346,6 +363,16 @@
     color: #fff;
     font: inherit;
     cursor: pointer;
+  }
+}
+
+.causcape-engineering-tools__description-form {
+  margin-top: 0.75rem;
+  align-items: stretch !important;
+  flex-direction: column;
+
+  button {
+    align-self: flex-end;
   }
 }
 
@@ -435,7 +462,8 @@
     }
   }
 
-  input {
+  input,
+  textarea {
     border-color: #5b5862;
     background: #242329;
     color: #ecebf0;

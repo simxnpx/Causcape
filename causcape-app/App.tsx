@@ -1717,6 +1717,7 @@ const CauscapeProjectWorkspace = () => {
       objectId: string,
       updates: {
         readonly name?: string;
+        readonly description?: string;
         readonly metadata?: Readonly<Record<string, MetadataValue>>;
       },
     ) => {
@@ -1732,14 +1733,30 @@ const CauscapeProjectWorkspace = () => {
             return element;
           }
           const causcapeData = element.customData?.causcape ?? {};
+          const descriptionWasUpdated = "description" in updates;
           const customData = {
             ...element.customData,
             causcape: {
               ...causcapeData,
               ...(updates.name ? { name: updates.name } : {}),
+              ...(descriptionWasUpdated
+                ? { description: updates.description }
+                : {}),
               ...(updates.metadata ? { metadata: updates.metadata } : {}),
             },
           };
+          if (element.type === "causcape-node") {
+            return newElementWith(element, {
+              customData,
+              causcape: {
+                ...element.causcape,
+                ...(updates.name ? { label: updates.name } : {}),
+                ...(descriptionWasUpdated
+                  ? { description: updates.description ?? "" }
+                  : {}),
+              },
+            });
+          }
           return element.type === "text" && updates.name
             ? newElementWith(element, {
                 customData,
@@ -1759,6 +1776,13 @@ const CauscapeProjectWorkspace = () => {
   const renameCanvasObject = useCallback(
     (objectId: string, name: string) => {
       updateObjectElements(objectId, { name });
+    },
+    [updateObjectElements],
+  );
+
+  const updateCanvasObjectDescription = useCallback(
+    (objectId: string, description: string) => {
+      updateObjectElements(objectId, { description });
     },
     [updateObjectElements],
   );
@@ -1838,6 +1862,7 @@ const CauscapeProjectWorkspace = () => {
             selectedObject={selectedObject}
             onAddShape={addPreparedShape}
             onRename={renameCanvasObject}
+            onDescriptionChange={updateCanvasObjectDescription}
             onMetadataSet={setCanvasObjectMetadata}
             onMetadataDelete={deleteCanvasObjectMetadata}
           />

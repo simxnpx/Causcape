@@ -1,14 +1,23 @@
 import React from "react";
-import { render as renderDOM } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import {
+  fireEvent,
+  render as renderDOM,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 
 import { THEME } from "@causcape/common";
 import { newCauscapeNodeElement } from "@causcape/element";
 
-import { CauscapeNodeOverlay } from "./CauscapeNodeOverlay";
+import {
+  CauscapeNodeDescriptionSheet,
+  CauscapeNodeOverlay,
+} from "./CauscapeNodeOverlay";
 
 describe("CauscapeNodeOverlay", () => {
   it("renders architecture nodes as semantic HTML with native reference links", () => {
+    const onOpenDescription = vi.fn();
     const node = newCauscapeNodeElement({
       x: 0,
       y: 0,
@@ -37,6 +46,7 @@ describe("CauscapeNodeOverlay", () => {
         element={node}
         theme={THEME.LIGHT}
         linksEnabled={true}
+        onOpenDescription={onOpenDescription}
       />,
     );
 
@@ -45,7 +55,7 @@ describe("CauscapeNodeOverlay", () => {
     );
     expect(card?.tagName).toBe("ARTICLE");
     expect(card?.querySelector("h3")?.textContent).toBe("Booking API");
-    expect(card?.querySelectorAll("svg")).toHaveLength(4);
+    expect(card?.querySelectorAll("svg")).toHaveLength(5);
     expect(card?.querySelectorAll("a")).toHaveLength(2);
     expect(card?.querySelectorAll("a")[0]).toMatchObject({
       href: "https://github.com/acme/payments",
@@ -67,6 +77,14 @@ describe("CauscapeNodeOverlay", () => {
       card?.querySelector(".causcape-node-overlay-card__metadata"),
     ).toBeNull();
     expect(card).not.toHaveTextContent("Environmentprod-eu-west-1");
+    expect(
+      card?.querySelector(".causcape-node-overlay-card__description"),
+    ).toBeNull();
+
+    fireEvent.pointerDown(
+      screen.getByRole("button", { name: "About Booking API" }),
+    );
+    expect(onOpenDescription).toHaveBeenCalledWith(node.id);
   });
 
   it("omits optional sections without changing the node interface", () => {
@@ -82,6 +100,7 @@ describe("CauscapeNodeOverlay", () => {
         element={node}
         theme={THEME.LIGHT}
         linksEnabled={true}
+        onOpenDescription={vi.fn()}
       />,
     );
 
@@ -97,5 +116,38 @@ describe("CauscapeNodeOverlay", () => {
     expect(
       container.querySelector(".causcape-node-overlay-card__technologies"),
     ).toBeNull();
+  });
+
+  it("presents the selected component description in a dismissible sheet", async () => {
+    const onClose = vi.fn();
+    const node = newCauscapeNodeElement({
+      x: 0,
+      y: 0,
+      label: "Backend service",
+      kind: "service",
+      environment: "production",
+      description:
+        "Validates incoming requests and coordinates the checkout workflow.",
+    });
+
+    renderDOM(
+      <CauscapeNodeDescriptionSheet
+        element={node}
+        theme={THEME.LIGHT}
+        onClose={onClose}
+      />,
+    );
+
+    const sheet = screen.getByRole("dialog", { name: "Backend service" });
+    expect(sheet).toHaveTextContent(
+      "Validates incoming requests and coordinates the checkout workflow.",
+    );
+    expect(screen.getByText("Service · production")).toBeVisible();
+    await waitFor(() => expect(sheet).toHaveAttribute("data-open", "true"));
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Close Backend service description" }),
+    );
+    expect(onClose).toHaveBeenCalledOnce();
   });
 });
