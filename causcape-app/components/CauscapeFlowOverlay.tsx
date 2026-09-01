@@ -252,7 +252,7 @@ export const buildEngineeringFlowPaths = (
       presentation?.reverseDirection ||
       (element.startArrowhead && !element.endArrowhead)
     ) {
-      points = points.reverse();
+      points = [...points].reverse();
     }
 
     const xs = points.map(({ x }) => x);
@@ -514,6 +514,7 @@ export const CauscapeFlowOverlay = forwardRef<
             />
             {playbackState === "active" && playback?.isPlaying ? (
               <circle
+                key={`${path.id}:${playback.activeDirection ?? "forward"}`}
                 className="causcape-flow-overlay__playback-packet"
                 r="7"
                 fill={path.color}

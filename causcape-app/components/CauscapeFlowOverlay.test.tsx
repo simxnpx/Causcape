@@ -152,6 +152,51 @@ describe("CauscapeFlowOverlay", () => {
     expect(overlay.querySelectorAll("[data-flow-packet]")).toHaveLength(0);
   });
 
+  it("restarts motion when consecutive steps reverse the same connector", () => {
+    const paths = [
+      {
+        id: "cache-read",
+        color: "#7c3aed",
+        d: "M 220 80 L 20 80",
+        playbackForwardD: "M 20 80 L 220 80",
+        playbackReverseD: "M 220 80 L 20 80",
+        packetCount: 2,
+      },
+    ];
+    const { rerender } = render(
+      <CauscapeFlowOverlay
+        paths={paths}
+        playback={{
+          activeEdgeId: "cache-read",
+          activeDirection: "forward",
+          completedEdgeIds: [],
+          isPlaying: true,
+        }}
+      />,
+    );
+    const forwardMotion = screen
+      .getByTestId("causcape-flow-overlay")
+      .querySelector("[data-flow-playback-packet='cache-read']");
+
+    rerender(
+      <CauscapeFlowOverlay
+        paths={paths}
+        playback={{
+          activeEdgeId: "cache-read",
+          activeDirection: "reverse",
+          completedEdgeIds: [],
+          isPlaying: true,
+        }}
+      />,
+    );
+
+    const reverseMotion = screen
+      .getByTestId("causcape-flow-overlay")
+      .querySelector("[data-flow-playback-packet='cache-read']");
+    expect(reverseMotion).not.toBe(forwardMotion);
+    expect(reverseMotion).toHaveAttribute("path", "M 220 80 L 20 80");
+  });
+
   it("stops failed-flow packets at a visible interruption marker", () => {
     const interruptedArrow = arrow({
       customData: {
@@ -264,6 +309,8 @@ describe("CauscapeFlowOverlay", () => {
       expect(path.d).toBe(
         reversesDirection ? "M 210 20 L 10 20" : "M 10 20 L 210 20",
       );
+      expect(path.playbackForwardD).toBe("M 10 20 L 210 20");
+      expect(path.playbackReverseD).toBe("M 210 20 L 10 20");
     },
   );
 
