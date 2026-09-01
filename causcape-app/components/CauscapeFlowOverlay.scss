@@ -53,6 +53,47 @@
   vector-effect: non-scaling-stroke;
 }
 
+.causcape-flow-overlay[data-playback-active="true"] {
+  .causcape-flow-overlay__flow {
+    transition: opacity 180ms ease;
+  }
+
+  .causcape-flow-overlay__flow[data-playback-state="inactive"] {
+    opacity: 0.14;
+  }
+
+  .causcape-flow-overlay__flow[data-playback-state="completed"] {
+    opacity: 0.48;
+
+    .causcape-flow-overlay__packet {
+      display: none;
+    }
+  }
+
+  .causcape-flow-overlay__flow[data-playback-state="active"] {
+    .causcape-flow-overlay__track-underlay {
+      stroke-width: 15;
+      opacity: 0.96;
+    }
+
+    .causcape-flow-overlay__track {
+      stroke-width: 5;
+      filter: drop-shadow(0 0 5px rgb(105 101 219 / 0.44));
+    }
+
+    .causcape-flow-overlay__packet {
+      opacity: 0.22;
+    }
+  }
+}
+
+.causcape-flow-overlay__playback-packet {
+  stroke: white;
+  stroke-width: 3;
+  filter: drop-shadow(0 0 7px rgb(105 101 219 / 0.72));
+  vector-effect: non-scaling-stroke;
+}
+
 .causcape-flow-overlay__packet--dot {
   stroke-width: 2;
 }

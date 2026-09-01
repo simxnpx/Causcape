@@ -4,6 +4,30 @@ import { describe, expect, it, vi } from "vitest";
 import { CauscapeEngineeringTools } from "./CauscapeEngineeringTools";
 
 describe("CauscapeEngineeringTools", () => {
+  it("opens the data flow player above the engineering library", () => {
+    render(
+      <CauscapeEngineeringTools
+        selectedObject={null}
+        flowPanel={<p>Flow setup</p>}
+        hasDataFlows={true}
+        isFlowPlaying={false}
+        onAddShape={vi.fn()}
+        onRename={vi.fn()}
+        onDescriptionChange={vi.fn()}
+        onMetadataSet={vi.fn()}
+        onMetadataDelete={vi.fn()}
+      />,
+    );
+
+    const flowButton = screen.getByRole("button", {
+      name: "Data flow player",
+    });
+    fireEvent.click(flowButton);
+
+    expect(screen.getByText("Flow setup")).toBeVisible();
+    expect(flowButton).toHaveAttribute("aria-expanded", "true");
+  });
+
   it("uses compact accessible icon tools and clearly disables details", () => {
     const { rerender } = render(
       <CauscapeEngineeringTools

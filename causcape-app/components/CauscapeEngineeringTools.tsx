@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import {
   adjustmentsIcon,
   drawShapeToolIcon,
+  playerPlayIcon,
 } from "@causcape/causcape/components/icons";
 
 import type { CanvasObject, MetadataValue } from "@causcape/core";
@@ -16,6 +17,9 @@ import "./CauscapeEngineeringTools.scss";
 
 type CauscapeEngineeringToolsProps = {
   selectedObject: CanvasObject | null;
+  flowPanel?: ReactNode;
+  hasDataFlows?: boolean;
+  isFlowPlaying?: boolean;
   onAddShape: (kind: PreparedEngineeringShapeKind) => void;
   onRename: (objectId: string, name: string) => void;
   onDescriptionChange: (objectId: string, description: string) => void;
@@ -34,6 +38,9 @@ const SHAPE_GROUPS = [
 
 export const CauscapeEngineeringTools = ({
   selectedObject,
+  flowPanel,
+  hasDataFlows = false,
+  isFlowPlaying = false,
   onAddShape,
   onRename,
   onDescriptionChange,
@@ -42,6 +49,7 @@ export const CauscapeEngineeringTools = ({
 }: CauscapeEngineeringToolsProps) => {
   const [showShapes, setShowShapes] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  const [showFlowPlayer, setShowFlowPlayer] = useState(false);
   const [name, setName] = useState(selectedObject?.name ?? "");
   const [description, setDescription] = useState(
     selectedObject?.description ?? "",
@@ -64,6 +72,28 @@ export const CauscapeEngineeringTools = ({
         role="toolbar"
         aria-label="Engineering canvas tools"
       >
+        {flowPanel ? (
+          <button
+            type="button"
+            className={`causcape-engineering-tools__tool causcape-engineering-tools__tool--flow${
+              hasDataFlows ? " causcape-engineering-tools__tool--has-flows" : ""
+            }${
+              isFlowPlaying ? " causcape-engineering-tools__tool--playing" : ""
+            }`}
+            aria-label="Data flow player"
+            aria-expanded={showFlowPlayer}
+            aria-controls="causcape-data-flow-player"
+            data-tooltip="Data flow player"
+            title="Data flow player"
+            onClick={() => {
+              setShowFlowPlayer((shown) => !shown);
+              setShowShapes(false);
+              setShowDetails(false);
+            }}
+          >
+            {playerPlayIcon}
+          </button>
+        ) : null}
         <button
           type="button"
           className="causcape-engineering-tools__tool"
@@ -75,6 +105,7 @@ export const CauscapeEngineeringTools = ({
           onClick={() => {
             setShowShapes((shown) => !shown);
             setShowDetails(false);
+            setShowFlowPlayer(false);
           }}
         >
           {drawShapeToolIcon}
@@ -103,11 +134,22 @@ export const CauscapeEngineeringTools = ({
           onClick={() => {
             setShowDetails((shown) => !shown);
             setShowShapes(false);
+            setShowFlowPlayer(false);
           }}
         >
           {adjustmentsIcon}
         </button>
       </div>
+
+      {showFlowPlayer && flowPanel ? (
+        <aside
+          id="causcape-data-flow-player"
+          className="causcape-engineering-tools__popover causcape-engineering-tools__flow-player"
+          aria-label="Data flow player setup"
+        >
+          {flowPanel}
+        </aside>
+      ) : null}
 
       {showShapes ? (
         <div

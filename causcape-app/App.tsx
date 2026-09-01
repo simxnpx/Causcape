@@ -78,6 +78,7 @@ import {
   transactProject,
   type CanvasObject,
   type CauscapeDocument,
+  type DataFlowScenario,
   type MetadataValue,
   type Project,
   type ProjectTemplate,
@@ -178,6 +179,11 @@ import { CauscapeProjectShell } from "./components/CauscapeProjectShell";
 import { CauscapeProjectDashboard } from "./components/CauscapeProjectDashboard";
 import { CauscapeEngineeringTools } from "./components/CauscapeEngineeringTools";
 import {
+  CauscapeDataFlowPanel,
+  CauscapeDataFlowPlaybackBar,
+} from "./components/CauscapeDataFlowPlayer";
+import { followDataFlowPlaybackStep } from "./components/dataFlowPlaybackViewport";
+import {
   CauscapeFlowOverlay,
   type CauscapeFlowOverlayHandle,
 } from "./components/CauscapeFlowOverlay";
@@ -194,6 +200,10 @@ import {
   PREPARED_ENGINEERING_SHAPES,
   type PreparedEngineeringShapeKind,
 } from "./data/causcapeCanvasObjects";
+import {
+  resolveDataFlowPlayback,
+  type ResolvedDataFlowPlayback,
+} from "./data/dataFlowScenarios";
 
 import type { CollabAPI } from "./collab/Collab";
 
@@ -426,6 +436,9 @@ const initializeScene = async (opts: {
 
 type CauscapeWrapperProps = {
   initialProject?: Project;
+  flowPlayback?:
+    | (ResolvedDataFlowPlayback & { readonly isPlaying: boolean })
+    | null;
   onProjectCanvasChange?: (
     elements: readonly OrderedCauscapeElement[],
     appState: AppState,
@@ -435,6 +448,7 @@ type CauscapeWrapperProps = {
 
 const CauscapeWrapper = ({
   initialProject,
+  flowPlayback,
   onProjectCanvasChange,
 }: CauscapeWrapperProps) => {
   const causcapeAPI = useCauscapeAPI();
@@ -1062,6 +1076,14 @@ const CauscapeWrapper = ({
       })}
     >
       <Causcape
+        flowPlayback={
+          flowPlayback
+            ? {
+                activeNodeElementIds: flowPlayback.activeNodeElementIds,
+                completedNodeElementIds: flowPlayback.completedNodeElementIds,
+              }
+            : undefined
+        }
         viewportStatusFrame={viewportStatusFrame}
         userToFollow={userToFollow}
         onChange={onChange}
@@ -1415,7 +1437,19 @@ const CauscapeWrapper = ({
           />
         )}
       </Causcape>
-      <CauscapeFlowOverlay ref={flowOverlayRef} />
+      <CauscapeFlowOverlay
+        ref={flowOverlayRef}
+        playback={
+          flowPlayback
+            ? {
+                activeEdgeId: flowPlayback.activeTransition?.edgeElementId,
+                activeDirection: flowPlayback.activeTransition?.direction,
+                completedEdgeIds: flowPlayback.completedEdgeElementIds,
+                isPlaying: flowPlayback.isPlaying,
+              }
+            : undefined
+        }
+      />
     </div>
   );
 };
@@ -1464,9 +1498,60 @@ const CauscapeProjectWorkspace = () => {
     [],
   );
   const [isDocumentEditable, setIsDocumentEditable] = useState(true);
+  const [dataFlowPlayback, setDataFlowPlayback] = useState<{
+    readonly flowId: string;
+    readonly stepIndex: number;
+    readonly isPlaying: boolean;
+  } | null>(null);
   const [projectError, setProjectError] = useState("");
   const projectRef = useRef(project);
   projectRef.current = project;
+
+  const activeDataFlow = useMemo(
+    () =>
+      dataFlowPlayback
+        ? project?.canvas.dataFlows?.find(
+            (flow) => flow.id === dataFlowPlayback.flowId,
+          ) ?? null
+        : null,
+    [dataFlowPlayback, project?.canvas.dataFlows],
+  );
+  const resolvedDataFlowPlayback = useMemo(
+    () =>
+      activeDataFlow && dataFlowPlayback
+        ? {
+            ...resolveDataFlowPlayback(
+              activeDataFlow,
+              dataFlowPlayback.stepIndex,
+              project?.canvas.objects ?? {},
+              (causcapeAPI?.getSceneElementsIncludingDeleted() ??
+                (
+                  project?.canvas.scene as unknown as {
+                    readonly elements?: readonly OrderedCauscapeElement[];
+                  }
+                )?.elements ??
+                []) as readonly OrderedCauscapeElement[],
+            ),
+            isPlaying: dataFlowPlayback.isPlaying,
+          }
+        : null,
+    [
+      activeDataFlow,
+      causcapeAPI,
+      dataFlowPlayback,
+      project?.canvas.objects,
+      project?.canvas.scene,
+    ],
+  );
+  const activeDataFlowNodeElementId =
+    resolvedDataFlowPlayback?.activeNodeElementIds[0];
+
+  useEffect(() => {
+    if (!causcapeAPI || !activeDataFlowNodeElementId) {
+      return;
+    }
+    followDataFlowPlaybackStep(causcapeAPI, [activeDataFlowNodeElementId]);
+  }, [activeDataFlowNodeElementId, causcapeAPI]);
 
   const getProjectForMCP = useCallback(() => projectRef.current, []);
   const setProjectFromMCP = useCallback((nextProject: Project) => {
@@ -1477,6 +1562,10 @@ const CauscapeProjectWorkspace = () => {
     () => workspaceRef.current?.ownerDocument ?? null,
     [],
   );
+
+  useEffect(() => {
+    setDataFlowPlayback(null);
+  }, [project?.id]);
 
   const refreshProjects = useCallback(async () => {
     if (repositoryRef.current) {
@@ -1526,6 +1615,28 @@ const CauscapeProjectWorkspace = () => {
     return () => ownerWindow.clearTimeout(timeout);
   }, [project]);
 
+  useEffect(() => {
+    if (!dataFlowPlayback?.isPlaying || !activeDataFlow) {
+      return;
+    }
+    const ownerWindow = workspaceRef.current?.ownerDocument.defaultView;
+    if (!ownerWindow) {
+      return;
+    }
+    const timeout = ownerWindow.setTimeout(() => {
+      setDataFlowPlayback((current) => {
+        if (!current || current.flowId !== activeDataFlow.id) {
+          return current;
+        }
+        if (current.stepIndex >= activeDataFlow.steps.length - 1) {
+          return { ...current, isPlaying: false };
+        }
+        return { ...current, stepIndex: current.stepIndex + 1 };
+      });
+    }, 1800);
+    return () => ownerWindow.clearTimeout(timeout);
+  }, [activeDataFlow, dataFlowPlayback]);
+
   const handleCanvasChange = useCallback(
     (
       elements: readonly OrderedCauscapeElement[],
@@ -1562,7 +1673,11 @@ const CauscapeProjectWorkspace = () => {
         return {
           ...currentProject,
           updatedAt: new Date().toISOString(),
-          canvas: { scene: nextScene, objects: nextObjects },
+          canvas: {
+            ...currentProject.canvas,
+            scene: nextScene,
+            objects: nextObjects,
+          },
         };
       });
     },
@@ -1590,6 +1705,56 @@ const CauscapeProjectWorkspace = () => {
       });
       return result.ok ? result.value : currentProject;
     });
+  }, []);
+
+  const saveDataFlow = useCallback((flow: DataFlowScenario) => {
+    const currentProject = projectRef.current;
+    if (!currentProject) {
+      return;
+    }
+    const result = transactProject(currentProject, {
+      id: `browser-data-flow-${randomId()}`,
+      expectedRevision: currentProject.revision,
+      occurredAt: new Date().toISOString(),
+      provenance: {
+        actor: { type: "human", id: "local-user" },
+        channel: "browser",
+        summary: `Saved data flow ${flow.name}`,
+      },
+      operations: [{ type: "data-flow.upsert", flow }],
+    });
+    if (!result.ok) {
+      setProjectError(result.issues.map((issue) => issue.message).join("; "));
+      return;
+    }
+    projectRef.current = result.value;
+    setProject(result.value);
+    setProjectError("");
+  }, []);
+
+  const deleteDataFlow = useCallback((flowId: string) => {
+    setDataFlowPlayback((current) =>
+      current?.flowId === flowId ? null : current,
+    );
+    const currentProject = projectRef.current;
+    if (!currentProject) {
+      return;
+    }
+    const result = transactProject(currentProject, {
+      id: `browser-data-flow-delete-${randomId()}`,
+      expectedRevision: currentProject.revision,
+      occurredAt: new Date().toISOString(),
+      provenance: {
+        actor: { type: "human", id: "local-user" },
+        channel: "browser",
+        summary: `Deleted data flow ${flowId}`,
+      },
+      operations: [{ type: "data-flow.delete", flowId }],
+    });
+    if (result.ok) {
+      projectRef.current = result.value;
+      setProject(result.value);
+    }
   }, []);
 
   const focusCanvasObject = useCallback(
@@ -1847,6 +2012,7 @@ const CauscapeProjectWorkspace = () => {
               key={project.id}
               initialProject={project}
               onProjectCanvasChange={handleCanvasChange}
+              flowPlayback={resolvedDataFlowPlayback}
             />
             <CauscapeProjectActions
               onOpenProjects={() => {
@@ -1855,11 +2021,80 @@ const CauscapeProjectWorkspace = () => {
               }}
               onExport={exportProject}
             />
+            {activeDataFlow && dataFlowPlayback && resolvedDataFlowPlayback ? (
+              <CauscapeDataFlowPlaybackBar
+                flow={activeDataFlow}
+                stepIndex={dataFlowPlayback.stepIndex}
+                isPlaying={dataFlowPlayback.isPlaying}
+                hasMissingConnection={
+                  resolvedDataFlowPlayback.hasMissingConnection
+                }
+                onPrevious={() =>
+                  setDataFlowPlayback((current) =>
+                    current
+                      ? {
+                          ...current,
+                          isPlaying: false,
+                          stepIndex: Math.max(0, current.stepIndex - 1),
+                        }
+                      : current,
+                  )
+                }
+                onNext={() =>
+                  setDataFlowPlayback((current) =>
+                    current
+                      ? {
+                          ...current,
+                          isPlaying: false,
+                          stepIndex: Math.min(
+                            activeDataFlow.steps.length - 1,
+                            current.stepIndex + 1,
+                          ),
+                        }
+                      : current,
+                  )
+                }
+                onPlayingChange={(isPlaying) =>
+                  setDataFlowPlayback((current) =>
+                    current
+                      ? {
+                          ...current,
+                          isPlaying,
+                          stepIndex:
+                            isPlaying &&
+                            current.stepIndex ===
+                              activeDataFlow.steps.length - 1
+                              ? 0
+                              : current.stepIndex,
+                        }
+                      : current,
+                  )
+                }
+                onClose={() => setDataFlowPlayback(null)}
+              />
+            ) : null}
           </div>
         }
         canvasControls={
           <CauscapeEngineeringTools
             selectedObject={selectedObject}
+            flowPanel={
+              <CauscapeDataFlowPanel
+                objects={project.canvas.objects}
+                flows={project.canvas.dataFlows ?? []}
+                onSave={saveDataFlow}
+                onDelete={deleteDataFlow}
+                onStart={(flowId) =>
+                  setDataFlowPlayback({
+                    flowId,
+                    stepIndex: 0,
+                    isPlaying: true,
+                  })
+                }
+              />
+            }
+            hasDataFlows={Boolean(project.canvas.dataFlows?.length)}
+            isFlowPlaying={Boolean(dataFlowPlayback?.isPlaying)}
             onAddShape={addPreparedShape}
             onRename={renameCanvasObject}
             onDescriptionChange={updateCanvasObjectDescription}

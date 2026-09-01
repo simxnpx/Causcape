@@ -110,12 +110,14 @@ const CauscapeBase = (props: CauscapeProps) => {
     children,
     validateEmbeddable,
     renderEmbeddable,
+    renderCauscapeEdgeLabels,
     aiEnabled,
     showDeprecatedFonts,
     renderScrollbars,
     viewportStatusFrame,
     currentUserControls,
     imageOptions,
+    flowPlayback,
   } = props;
 
   const canvasActions = props.UIOptions?.canvasActions;
@@ -252,12 +254,14 @@ const CauscapeBase = (props: CauscapeProps) => {
           onDuplicate={onDuplicate}
           validateEmbeddable={validateEmbeddable}
           renderEmbeddable={renderEmbeddable}
+          renderCauscapeEdgeLabels={renderCauscapeEdgeLabels}
           aiEnabled={aiEnabled !== false}
           showDeprecatedFonts={showDeprecatedFonts}
           renderScrollbars={renderScrollbars}
           viewportStatusFrame={viewportStatusFrame}
           currentUserControls={currentUserControls}
           imageOptions={normalizedImageOptions}
+          flowPlayback={flowPlayback}
         >
           {children}
         </App>

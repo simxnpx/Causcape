@@ -31,6 +31,7 @@ type CauscapeNodeOverlayProps = Readonly<{
   theme: Theme;
   linksEnabled: boolean;
   onOpenDescription: (elementId: CauscapeNodeElement["id"]) => void;
+  playbackState?: "active" | "completed" | "inactive";
 }>;
 
 const ARCHITECTURE_ICONS: Record<
@@ -73,6 +74,7 @@ export const CauscapeNodeOverlay = ({
   theme,
   linksEnabled,
   onOpenDescription,
+  playbackState,
 }: CauscapeNodeOverlayProps) => {
   const data = getCauscapeNodeRenderData(element.causcape, theme);
   if (!data.isArchitecture) {
@@ -84,6 +86,7 @@ export const CauscapeNodeOverlay = ({
       className="causcape-node-overlay-card"
       data-testid="causcape-node-overlay"
       data-links-enabled={linksEnabled}
+      data-flow-playback-state={playbackState}
       style={{
         ["--causcape-accent" as string]: data.kindAccent,
         ["--causcape-foreground" as string]: data.foreground,

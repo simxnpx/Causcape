@@ -292,4 +292,112 @@ describe("Causcape project transactions", () => {
       expect(opened.value.migration).toBe(null);
     }
   });
+
+  it("persists an ordered data flow through existing canvas objects", () => {
+    const project = createProject();
+    const result = transactProject(project, {
+      id: "transaction-checkout-flow",
+      expectedRevision: 0,
+      occurredAt: "2026-08-26T10:05:00.000Z",
+      provenance,
+      operations: [
+        {
+          type: "object.upsert",
+          object: {
+            id: "frontend",
+            elementIds: ["frontend-node"],
+            name: "Frontend",
+            metadata: { kind: "service" },
+            state: "active",
+          },
+        },
+        {
+          type: "object.upsert",
+          object: {
+            id: "backend",
+            elementIds: ["backend-node"],
+            name: "Backend",
+            metadata: { kind: "service" },
+            state: "active",
+          },
+        },
+        {
+          type: "data-flow.upsert",
+          flow: {
+            id: "checkout-read",
+            name: "Checkout read path",
+            steps: [
+              {
+                id: "request",
+                objectId: "frontend",
+                title: "Send request",
+                signal: "default",
+              },
+              {
+                id: "handle",
+                objectId: "backend",
+                title: "Handle request",
+                description: "Validate the session and load the basket.",
+                signal: "success",
+              },
+            ],
+          },
+        },
+      ],
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.canvas.dataFlows).toEqual([
+        expect.objectContaining({
+          id: "checkout-read",
+          name: "Checkout read path",
+          steps: [
+            expect.objectContaining({ objectId: "frontend" }),
+            expect.objectContaining({ objectId: "backend" }),
+          ],
+        }),
+      ]);
+    }
+  });
+
+  it("rejects data flow steps that do not reference this project", () => {
+    const result = transactProject(createProject(), {
+      id: "transaction-invalid-flow",
+      expectedRevision: 0,
+      occurredAt: "2026-08-26T10:05:00.000Z",
+      provenance,
+      operations: [
+        {
+          type: "data-flow.upsert",
+          flow: {
+            id: "broken-flow",
+            name: "Broken flow",
+            steps: [
+              {
+                id: "one",
+                objectId: "missing-one",
+                title: "Missing one",
+                signal: "default",
+              },
+              {
+                id: "two",
+                objectId: "missing-two",
+                title: "Missing two",
+                signal: "error",
+              },
+            ],
+          },
+        },
+      ],
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      issues: [
+        { code: "UNKNOWN_OBJECT", path: "canvas.dataFlows.0.steps.0" },
+        { code: "UNKNOWN_OBJECT", path: "canvas.dataFlows.0.steps.1" },
+      ],
+    });
+  });
 });

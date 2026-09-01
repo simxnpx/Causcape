@@ -3,6 +3,7 @@ import type {
   CanvasReference,
   CauscapeDocument,
   CreateProjectFromTemplateOptions,
+  DataFlowScenario,
   DocumentBlock,
   JsonValue,
   MetadataValue,
@@ -92,6 +93,80 @@ const walkBlocks = (
     visit(block);
     walkBlocks(block.children, visit);
   }
+};
+
+const DATA_FLOW_SIGNALS = new Set([
+  "default",
+  "success",
+  "cache-miss",
+  "error",
+]);
+
+const validateDataFlows = (project: Project): ProjectIssue[] => {
+  const flows = project.canvas.dataFlows ?? [];
+  if (!Array.isArray(flows)) {
+    return [
+      issue("INVALID_PROJECT", "Project data flows must be an array", {
+        path: "canvas.dataFlows",
+      }),
+    ];
+  }
+
+  const issues: ProjectIssue[] = [];
+  const flowIds = new Set<string>();
+  flows.forEach((flow, flowIndex) => {
+    const flowPath = `canvas.dataFlows.${flowIndex}`;
+    if (!flow.id?.trim() || !flow.name?.trim() || flowIds.has(flow.id)) {
+      issues.push(
+        issue(
+          "INVALID_PROJECT",
+          "Data flow identity must be unique and named",
+          {
+            path: flowPath,
+          },
+        ),
+      );
+    }
+    flowIds.add(flow.id);
+    if (!Array.isArray(flow.steps) || flow.steps.length < 2) {
+      issues.push(
+        issue("INVALID_PROJECT", "A data flow requires at least two steps", {
+          path: `${flowPath}.steps`,
+        }),
+      );
+      return;
+    }
+
+    const stepIds = new Set<string>();
+    flow.steps.forEach(
+      (step: DataFlowScenario["steps"][number], stepIndex: number) => {
+        const stepPath = `${flowPath}.steps.${stepIndex}`;
+        if (
+          !step.id?.trim() ||
+          !step.title?.trim() ||
+          stepIds.has(step.id) ||
+          !DATA_FLOW_SIGNALS.has(step.signal)
+        ) {
+          issues.push(
+            issue("INVALID_PROJECT", "Data flow step is invalid", {
+              path: stepPath,
+            }),
+          );
+        }
+        stepIds.add(step.id);
+        if (!project.canvas.objects[step.objectId]) {
+          issues.push(
+            issue(
+              "UNKNOWN_OBJECT",
+              `Data flow step targets unknown object ${step.objectId}`,
+              { path: stepPath },
+            ),
+          );
+        }
+      },
+    );
+  });
+  return issues;
 };
 
 const validateProject = (project: Project): ProjectIssue[] => {
@@ -186,6 +261,7 @@ const validateProject = (project: Project): ProjectIssue[] => {
       ),
     );
   }
+  issues.push(...validateDataFlows(project));
   return issues;
 };
 
@@ -313,6 +389,37 @@ const applyOperation = (
       };
       return [];
     }
+    case "data-flow.upsert": {
+      const flows = [...(project.canvas.dataFlows ?? [])];
+      const existingIndex = flows.findIndex(
+        (flow) => flow.id === operation.flow.id,
+      );
+      if (existingIndex === -1) {
+        flows.push(clone(operation.flow));
+      } else {
+        flows[existingIndex] = clone(operation.flow);
+      }
+      (
+        project.canvas as {
+          dataFlows: readonly DataFlowScenario[];
+        }
+      ).dataFlows = flows;
+      return [];
+    }
+    case "data-flow.delete": {
+      const flows = project.canvas.dataFlows ?? [];
+      if (!flows.some((flow) => flow.id === operation.flowId)) {
+        return [
+          issue("INVALID_TRANSACTION", `Unknown data flow ${operation.flowId}`),
+        ];
+      }
+      (
+        project.canvas as {
+          dataFlows: readonly DataFlowScenario[];
+        }
+      ).dataFlows = flows.filter((flow) => flow.id !== operation.flowId);
+      return [];
+    }
     case "document.replace":
       (project as { document: CauscapeDocument }).document = clone(
         operation.document,
@@ -358,7 +465,7 @@ export const transactProject = (
       createdAt: transaction.occurredAt,
       updatedAt: transaction.occurredAt,
       revision: 0,
-      canvas: { scene: EMPTY_SCENE, objects: {} },
+      canvas: { scene: EMPTY_SCENE, objects: {}, dataFlows: [] },
       document: clone(create.document),
       provenance: [
         {

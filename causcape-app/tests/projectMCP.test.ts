@@ -81,6 +81,7 @@ describe("project document WebMCP handlers", () => {
       projectId: "payments",
       title: "Payments architecture",
       revision: 1,
+      dataFlows: [],
       objects: {
         "payment-service": {
           name: "Payment Service",
