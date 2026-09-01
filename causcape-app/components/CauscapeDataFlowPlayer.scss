@@ -588,6 +588,136 @@
   }
 }
 
+.theme--dark .causcape-data-flow-panel,
+.dark .causcape-data-flow-panel {
+  color: #f2f0f7;
+
+  .causcape-data-flow-panel__header span,
+  .causcape-data-flow-panel__intro,
+  .causcape-data-flow-panel__name,
+  .causcape-data-flow-panel__empty,
+  .causcape-data-flow-panel__editor-footer span,
+  .causcape-data-flow-panel__library article span {
+    color: #aaa6b3;
+  }
+
+  .causcape-data-flow-panel__header button {
+    border-color: rgba(169, 165, 255, 0.3);
+    background: rgba(105, 101, 219, 0.16);
+    color: #c5c2ff;
+  }
+
+  .causcape-data-flow-panel__library article {
+    border-color: rgba(255, 255, 255, 0.1);
+    background: linear-gradient(145deg, #2a2931, #242329);
+
+    &:hover {
+      border-color: rgba(169, 165, 255, 0.35);
+      box-shadow: 0 0.45rem 1.3rem rgba(0, 0, 0, 0.24);
+    }
+
+    button {
+      color: #c9c6d0;
+
+      &:hover {
+        background: #3a3843;
+        color: #fff;
+      }
+    }
+  }
+
+  .causcape-data-flow-panel__empty-state {
+    border-color: rgba(169, 165, 255, 0.32);
+    background: radial-gradient(circle at 50% 0, #35324b, #242329 72%);
+
+    p {
+      color: #aaa6b3;
+    }
+  }
+
+  .causcape-data-flow-panel__name input,
+  .causcape-data-flow-step-editor__fields input,
+  .causcape-data-flow-step-editor__fields textarea,
+  .causcape-data-flow-step-editor__fields select {
+    border-color: rgba(255, 255, 255, 0.16);
+    background: #201f25;
+    color: #f2f0f7;
+    color-scheme: dark;
+  }
+
+  .causcape-data-flow-step-editor__rail span {
+    border-color: #575285;
+    background: #36334c;
+    color: #cfccff;
+  }
+
+  .causcape-data-flow-step-editor__rail i {
+    background: linear-gradient(#575285, #393743);
+  }
+
+  .causcape-data-flow-step-editor__actions button {
+    background: #37353f;
+    color: #d2ced9;
+
+    &:hover:not(:disabled) {
+      background: #45424f;
+      color: #fff;
+    }
+  }
+
+  .causcape-data-flow-panel__add-step {
+    border-color: rgba(169, 165, 255, 0.55);
+    background: #292735;
+    color: #c5c2ff;
+  }
+
+  .causcape-data-flow-panel__editor-footer {
+    border-color: rgba(255, 255, 255, 0.1);
+    background: #211f27;
+  }
+}
+
+.theme--dark .causcape-data-flow-playback,
+.dark .causcape-data-flow-playback {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(31, 30, 37, 0.95);
+  box-shadow: 0 1.2rem 3.5rem rgba(0, 0, 0, 0.42),
+    0 0.15rem 0.6rem rgba(0, 0, 0, 0.3);
+  color: #f2f0f7;
+
+  .causcape-data-flow-playback__progress i {
+    background: #44414c;
+    box-shadow: 0 0 0 2px rgba(31, 30, 37, 0.92);
+  }
+
+  .causcape-data-flow-playback__identity {
+    border-color: rgba(255, 255, 255, 0.12);
+
+    strong {
+      color: #aaa6b3;
+    }
+  }
+
+  .causcape-data-flow-playback__copy {
+    [data-step-signal] {
+      background: color-mix(in srgb, var(--playback-signal) 22%, #201f25);
+    }
+
+    p {
+      color: #b8b4bf;
+    }
+  }
+
+  .causcape-data-flow-playback__controls button {
+    background: #3a3842;
+    color: #e5e2eb;
+
+    &:hover:not(:disabled) {
+      background: #494651;
+    }
+  }
+}
+
 @keyframes causcape-data-flow-player-enter {
   from {
     opacity: 0;

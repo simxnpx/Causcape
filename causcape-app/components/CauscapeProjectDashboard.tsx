@@ -1,4 +1,8 @@
+import { THEME } from "@causcape/causcape";
+import { MoonIcon, SunIcon } from "@causcape/causcape/components/icons";
+
 import type { ProjectTemplate } from "@causcape/core";
+import type { Theme } from "@causcape/element/types";
 
 import "./CauscapeProjectDashboard.scss";
 
@@ -8,6 +12,8 @@ import type { ProjectSummary } from "../data/CauscapeProjectRepository";
 
 type CauscapeProjectDashboardProps = {
   projects: readonly ProjectSummary[];
+  theme?: Theme;
+  onThemeChange?: (theme: Theme) => void;
   onOpen: (id: string) => void;
   onCreate: (template: ProjectTemplate) => void;
   onImport: (file: File) => void;
@@ -15,6 +21,8 @@ type CauscapeProjectDashboardProps = {
 
 export const CauscapeProjectDashboard = ({
   projects,
+  theme = THEME.LIGHT,
+  onThemeChange,
   onOpen,
   onCreate,
   onImport,
@@ -38,14 +46,31 @@ export const CauscapeProjectDashboard = ({
             between them.
           </p>
         </div>
-        <label className="causcape-dashboard__import">
-          Import .causcape
-          <input
-            type="file"
-            accept=".causcape,application/json"
-            onChange={handleImport}
-          />
-        </label>
+        <div className="causcape-dashboard__header-actions">
+          <button
+            className="causcape-dashboard__theme-toggle"
+            type="button"
+            aria-label={
+              theme === THEME.DARK
+                ? "Switch to light mode"
+                : "Switch to dark mode"
+            }
+            title={theme === THEME.DARK ? "Light mode" : "Dark mode"}
+            onClick={() =>
+              onThemeChange?.(theme === THEME.DARK ? THEME.LIGHT : THEME.DARK)
+            }
+          >
+            {theme === THEME.DARK ? SunIcon : MoonIcon}
+          </button>
+          <label className="causcape-dashboard__import">
+            Import .causcape
+            <input
+              type="file"
+              accept=".causcape,application/json"
+              onChange={handleImport}
+            />
+          </label>
+        </div>
       </header>
 
       <section aria-labelledby="new-project-heading">

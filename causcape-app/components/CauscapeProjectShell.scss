@@ -53,18 +53,30 @@
   transform: translateY(-50%);
 }
 
+.causcape-view-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  align-items: stretch;
+  padding: 0.28rem;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 0.9rem;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 0.35rem 1.2rem rgba(20, 20, 20, 0.13);
+  backdrop-filter: blur(12px);
+}
+
+.causcape-theme-toggle,
 .causcape-document-toggle {
   position: relative;
   display: grid;
-  width: 3.43rem;
-  height: 3.43rem;
+  width: 2.75rem;
+  height: 2.75rem;
   padding: 0;
-  border: 1px solid rgba(0, 0, 0, 0.14);
-  border-radius: 0.9rem;
-  background: rgba(255, 255, 255, 0.92);
+  border: 0;
+  border-radius: 0.65rem;
+  background: transparent;
   color: #4c4855;
-  box-shadow: 0 0.35rem 1.2rem rgba(20, 20, 20, 0.13);
-  backdrop-filter: blur(12px);
   cursor: pointer;
   place-items: center;
   transition: color 120ms ease, background-color 120ms ease,
@@ -93,25 +105,29 @@
   }
 }
 
+.causcape-theme-toggle:hover,
 .causcape-document-toggle:hover {
   background: #f0efff;
   color: #5f5bd4;
   transform: translateY(-1px);
 }
 
+.causcape-theme-toggle:hover::before,
+.causcape-theme-toggle:focus-visible::before,
 .causcape-document-toggle:hover::before,
 .causcape-document-toggle:focus-visible::before {
   transform: translate(0, -50%);
   opacity: 1;
 }
 
+.causcape-theme-toggle:focus-visible,
 .causcape-document-toggle:focus-visible {
   outline: 2px solid #6965db;
   outline-offset: 2px;
 }
 
+.causcape-theme-toggle[aria-pressed="true"],
 .causcape-document-toggle[aria-pressed="true"] {
-  border-color: #6965db;
   background: #6965db;
   color: white;
 }
@@ -200,20 +216,30 @@
   background: #17161b;
 }
 
-.theme--dark .causcape-document-toggle,
-.dark .causcape-document-toggle {
+.theme--dark .causcape-view-controls,
+.dark .causcape-view-controls {
   border-color: rgba(255, 255, 255, 0.16);
   background: rgba(35, 34, 40, 0.98);
+}
+
+.theme--dark .causcape-theme-toggle,
+.theme--dark .causcape-document-toggle,
+.dark .causcape-theme-toggle,
+.dark .causcape-document-toggle {
   color: #d8d5df;
 }
 
+.theme--dark .causcape-theme-toggle:hover,
 .theme--dark .causcape-document-toggle:hover,
+.dark .causcape-theme-toggle:hover,
 .dark .causcape-document-toggle:hover {
   background: #3b3946;
   color: #a9a5ff;
 }
 
+.theme--dark .causcape-theme-toggle[aria-pressed="true"],
 .theme--dark .causcape-document-toggle[aria-pressed="true"],
+.dark .causcape-theme-toggle[aria-pressed="true"],
 .dark .causcape-document-toggle[aria-pressed="true"] {
   background: #6965db;
   color: white;
@@ -232,6 +258,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .causcape-theme-toggle,
   .causcape-document-toggle,
   .causcape-document-region,
   .causcape-document-resizer::after {

@@ -28,6 +28,7 @@
 }
 
 .causcape-dashboard__import,
+.causcape-dashboard__theme-toggle,
 .causcape-dashboard__templates button,
 .causcape-dashboard__projects button {
   border: 1px solid rgba(0, 0, 0, 0.12);
@@ -36,6 +37,26 @@
   color: inherit;
   font: inherit;
   cursor: pointer;
+}
+
+.causcape-dashboard__header-actions {
+  display: flex;
+  flex: none;
+  gap: 0.65rem;
+  align-items: center;
+}
+
+.causcape-dashboard__theme-toggle {
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  padding: 0;
+  place-items: center;
+
+  svg {
+    width: 1.2rem;
+    height: 1.2rem;
+  }
 }
 
 .causcape-dashboard__import {
@@ -92,4 +113,30 @@
   max-width: 44rem;
   margin-top: 2rem;
   font-size: 0.9rem;
+}
+
+.theme--dark .causcape-dashboard,
+.dark .causcape-dashboard {
+  color: #f3f1f8;
+  background: #17161b;
+
+  .causcape-dashboard__import,
+  .causcape-dashboard__theme-toggle,
+  .causcape-dashboard__templates button,
+  .causcape-dashboard__projects button {
+    border-color: rgba(255, 255, 255, 0.13);
+    background: #242329;
+  }
+
+  .causcape-dashboard__templates button:hover,
+  .causcape-dashboard__projects button:hover {
+    border-color: rgba(169, 165, 255, 0.58);
+    box-shadow: 0 0.7rem 1.8rem rgba(0, 0, 0, 0.28);
+  }
+
+  .causcape-dashboard__templates span,
+  .causcape-dashboard__projects span,
+  .causcape-dashboard__compatibility {
+    color: #aaa6b3;
+  }
 }

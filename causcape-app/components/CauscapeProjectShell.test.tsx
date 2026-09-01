@@ -4,6 +4,39 @@ import { describe, expect, it, vi } from "vitest";
 import { CauscapeProjectShell } from "./CauscapeProjectShell";
 
 describe("CauscapeProjectShell", () => {
+  it("switches the complete project workspace between light and dark themes", () => {
+    const onThemeChange = vi.fn();
+    const { rerender } = render(
+      <CauscapeProjectShell
+        canvas={<div>Engineering canvas</div>}
+        document={<div>Project overview</div>}
+        theme="light"
+        onThemeChange={onThemeChange}
+      />,
+    );
+
+    const shell = screen.getByTestId("causcape-project-shell");
+    expect(shell).toHaveClass("theme--light");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Switch to dark mode" }),
+    );
+    expect(onThemeChange).toHaveBeenCalledWith("dark");
+
+    rerender(
+      <CauscapeProjectShell
+        canvas={<div>Engineering canvas</div>}
+        document={<div>Project overview</div>}
+        theme="dark"
+        onThemeChange={onThemeChange}
+      />,
+    );
+
+    expect(shell).toHaveClass("theme--dark");
+    expect(
+      screen.getByRole("button", { name: "Switch to light mode" }),
+    ).toBeVisible();
+  });
+
   it("opens the project document as a right-side pane beside the canvas", () => {
     const onModeChange = vi.fn();
     render(
