@@ -110,6 +110,7 @@ const CauscapeBase = (props: CauscapeProps) => {
     children,
     validateEmbeddable,
     renderEmbeddable,
+    renderCauscapeEdgeLabels,
     aiEnabled,
     showDeprecatedFonts,
     renderScrollbars,
@@ -253,6 +254,7 @@ const CauscapeBase = (props: CauscapeProps) => {
           onDuplicate={onDuplicate}
           validateEmbeddable={validateEmbeddable}
           renderEmbeddable={renderEmbeddable}
+          renderCauscapeEdgeLabels={renderCauscapeEdgeLabels}
           aiEnabled={aiEnabled !== false}
           showDeprecatedFonts={showDeprecatedFonts}
           renderScrollbars={renderScrollbars}
