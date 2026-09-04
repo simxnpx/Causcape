@@ -85,6 +85,244 @@ const graph = (
 };
 
 describe("graph quality pipeline", () => {
+  it.each([
+    [64, false],
+    [63, true],
+  ])(
+    "checks passing segments against the %i-unit card margin",
+    (gap, crowded) => {
+      const input = graph(
+        [
+          node("source", 0, 0, { width: 120, height: 80 }),
+          node("target", 400, 0, { width: 120, height: 80 }),
+          node("bystander", 200, 40 + gap, { width: 120, height: 80 }),
+        ],
+        [edge("flow", "source", "target")],
+      );
+      const report = analyzeGraphQuality(input, {
+        routes: new Map([
+          [
+            "flow",
+            {
+              x: 120,
+              y: 40,
+              width: 280,
+              height: 1,
+              points: [
+                [0, 0],
+                [280, 0],
+              ],
+            },
+          ],
+        ]),
+      });
+      expect(
+        report.diagnostics.some((d) => d.code === "EDGE_NODE_CLEARANCE"),
+      ).toBe(crowded);
+    },
+  );
+
+  it("reports impossible spacing without moving pinned cards", () => {
+    const input = graph(
+      [
+        node("source", 0, 0, { width: 120, height: 80 }),
+        node("target", 0, 0, { width: 120, height: 80 }),
+      ],
+      [edge("flow", "source", "target")],
+    );
+    const result = improveCauscapeGraph(input, {
+      pinnedNodeIds: new Set(["source", "target"]),
+    });
+    expect(result.changedNodeIds).toEqual([]);
+    expect(result.diagnostics.some((d) => d.code.includes("CLEARANCE"))).toBe(
+      true,
+    );
+  });
+
+  it("flags cramped return lanes even when they do not overlap cards", () => {
+    const source = node("source", 80, 80, { width: 600, height: 200 });
+    const target = node("target", 80, 440, { width: 600, height: 200 });
+    const input = graph([source, target], [edge("return", "source", "target")]);
+    const routes = new Map<string, CauscapeEdgeGeometry>([
+      [
+        "return",
+        {
+          x: 64,
+          y: 180,
+          width: 16,
+          height: 360,
+          points: [
+            [16, 0],
+            [0, 0],
+            [0, 360],
+            [16, 360],
+          ],
+        },
+      ],
+    ]);
+    const report = analyzeGraphQuality(input, { routes });
+    expect(report.metrics.edgeThroughNodeCount).toBe(0);
+    expect(report.diagnostics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "EDGE_ENDPOINT_CLEARANCE",
+          elementIds: ["return"],
+        }),
+        expect.objectContaining({
+          code: "EDGE_NODE_CLEARANCE",
+          elementIds: ["return", "source"],
+        }),
+      ]),
+    );
+  });
+
+  it("enforces room before bends even when callers request zero clearance", () => {
+    const input = graph(
+      [
+        node("source", 80, 80, { width: 600, height: 200 }),
+        node("target", 800, 440, { width: 600, height: 200 }),
+      ],
+      [edge("flow", "source", "target")],
+    );
+    const result = improveCauscapeGraph(input, {
+      pinnedNodeIds: new Set(["source", "target"]),
+      edgeClearance: 0,
+    });
+    const points = result.edges.get("flow")!.points;
+    const length = (a: number[], b: number[]) =>
+      Math.hypot(a[0] - b[0], a[1] - b[1]);
+    expect(length(points[0], points[1])).toBeGreaterThanOrEqual(80);
+    expect(length(points.at(-1)!, points.at(-2)!)).toBeGreaterThanOrEqual(80);
+    expect(
+      result.diagnostics.filter((d) => d.code.includes("CLEARANCE")),
+    ).toEqual([]);
+  });
+
+  it("keeps parallel workflow returns clear of routes and labels", () => {
+    const nodes = [
+      node("node-0", 80, 422, { width: 560, height: 205 }),
+      node("node-1", 790, 80, { width: 560, height: 227 }),
+      node("node-2", 1500, 80, { width: 560, height: 205 }),
+      node("node-3", 2210, 80, { width: 560, height: 227 }),
+      node("node-4", 2920, 80, { width: 560, height: 227 }),
+      node("node-5", 2210, 764, { width: 560, height: 227 }),
+      node("node-6", 790, 422, { width: 560, height: 205 }),
+      node("node-7", 1500, 422, { width: 560, height: 205 }),
+      node("node-8", 2210, 422, { width: 560, height: 227 }),
+      node("node-9", 2920, 422, { width: 560, height: 227 }),
+      node("node-10", 2920, 764, { width: 560, height: 227 }),
+      node("node-11", 3630, 80, { width: 560, height: 205 }),
+    ];
+    const result = improveCauscapeGraph(
+      graph(nodes, [
+        edge("edge-00", "node-0", "node-1", {
+          relationship: "calls",
+          label: "invoice candidates",
+        }),
+        edge("edge-01", "node-1", "node-2", {
+          relationship: "publishes",
+          label: "invoice task",
+        }),
+        edge("edge-02", "node-3", "node-2", {
+          relationship: "subscribes",
+          label: "consume task",
+        }),
+        edge("edge-03", "node-3", "node-4", {
+          relationship: "calls",
+          label: "register document",
+        }),
+        edge("edge-04", "node-5", "node-4", {
+          relationship: "calls",
+          label: "poll outcome",
+        }),
+        edge("edge-05", "node-5", "node-0", {
+          relationship: "writes",
+          label: "invoice outcome",
+        }),
+        edge("edge-06", "node-0", "node-6", {
+          relationship: "calls",
+          label: "unreconciled payments",
+        }),
+        edge("edge-07", "node-6", "node-7", {
+          relationship: "publishes",
+          label: "reconciliation task",
+        }),
+        edge("edge-08", "node-8", "node-7", {
+          relationship: "subscribes",
+          label: "consume task",
+        }),
+        edge("edge-09", "node-8", "node-4", {
+          relationship: "calls",
+          label: "submit match",
+        }),
+        edge("edge-10", "node-9", "node-4", {
+          relationship: "reads",
+          label: "ledger evidence",
+        }),
+        edge("edge-11", "node-9", "node-0", {
+          relationship: "writes",
+          label: "reconciliation outcome",
+        }),
+        edge("edge-12", "node-10", "node-4", {
+          relationship: "reads",
+          label: "delivery status",
+        }),
+        edge("edge-13", "node-10", "node-0", {
+          relationship: "writes",
+          label: "delivery outcome",
+        }),
+        edge("edge-14", "node-4", "node-11", {
+          relationship: "calls",
+          label: "submit document",
+        }),
+      ]),
+      {
+        pinnedNodeIds: new Set(nodes.map((node) => node.id)),
+        maxIterations: 1,
+      },
+    );
+    expect(result.metrics.edgeThroughNodeCount).toBe(0);
+    expect(result.metrics.edgeDetachedCount).toBe(0);
+    expect(result.metrics.routeOverlapCount).toBe(0);
+    expect(
+      result.metrics.edgeLabelOverlapCount,
+      JSON.stringify(result.diagnostics),
+    ).toBe(0);
+  });
+
+  it("separates labeled return paths into a shared service", () => {
+    const nodes = [
+      node("billing", 80, 422, { width: 560, height: 205 }),
+      node("jobs", 2210, 764, { width: 560, height: 227 }),
+      node("reconciliation", 2920, 422, { width: 560, height: 227 }),
+      node("delivery", 2920, 764, { width: 560, height: 227 }),
+    ];
+    const result = improveCauscapeGraph(
+      graph(nodes, [
+        edge("result-1", "jobs", "billing", {
+          relationship: "writes",
+          label: "invoice outcome",
+        }),
+        edge("result-2", "reconciliation", "billing", {
+          relationship: "writes",
+          label: "reconciliation outcome",
+        }),
+        edge("result-3", "delivery", "billing", {
+          relationship: "writes",
+          label: "delivery outcome",
+        }),
+      ]),
+      {
+        pinnedNodeIds: new Set(nodes.map((node) => node.id)),
+        maxIterations: 1,
+      },
+    );
+    expect(result.metrics.edgeDetachedCount).toBe(0);
+    expect(result.metrics.edgeThroughNodeCount).toBe(0);
+    expect(result.metrics.routeOverlapCount).toBe(0);
+    expect(result.metrics.edgeLabelOverlapCount).toBe(0);
+  });
+
   it("allows distinct typed relationships between the same nodes", () => {
     const service = node("service", 0, 0);
     const database = node("database", 200, 0);

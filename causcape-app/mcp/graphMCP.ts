@@ -933,7 +933,7 @@ export const createGraphMCPHandlers = (ctx: GraphMCPContext) => {
         ? {
             tool: "autoLayout" as const,
             reason:
-              "Re-route edges, restore endpoint bindings, and resolve avoidable overlaps; validate again afterward.",
+              "Re-route edges, restore bindings, and enforce card, endpoint, and label clearance; validate again afterward. If diagnostics persist, separate affected cards or report locked-layout constraints instead of repeating the same layout.",
           }
         : null,
     };
