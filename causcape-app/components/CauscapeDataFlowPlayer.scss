@@ -686,8 +686,12 @@
   color: #f2f0f7;
 
   .causcape-data-flow-playback__progress i {
-    background: #44414c;
     box-shadow: 0 0 0 2px rgba(31, 30, 37, 0.92);
+
+    // Theme the remaining steps without overriding active/completed states.
+    &[data-state="next"] {
+      background: #44414c;
+    }
   }
 
   .causcape-data-flow-playback__identity {
@@ -708,7 +712,8 @@
     }
   }
 
-  .causcape-data-flow-playback__controls button {
+  .causcape-data-flow-playback__controls
+    button:not(.causcape-data-flow-playback__play) {
     background: #3a3842;
     color: #e5e2eb;
 
