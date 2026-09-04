@@ -8,7 +8,14 @@ import {
   type ReactNode,
 } from "react";
 
-import { sidebarRightIcon } from "@causcape/causcape/components/icons";
+import { THEME } from "@causcape/causcape";
+import {
+  MoonIcon,
+  sidebarRightIcon,
+  SunIcon,
+} from "@causcape/causcape/components/icons";
+
+import type { Theme } from "@causcape/element/types";
 
 import "./CauscapeProjectShell.scss";
 
@@ -43,6 +50,8 @@ type CauscapeProjectShellProps = {
   canvas: ReactNode;
   canvasControls?: ReactNode;
   document: ReactNode;
+  theme?: Theme;
+  onThemeChange?: (theme: Theme) => void;
   onModeChange?: (mode: ProjectMode) => void;
 };
 
@@ -50,6 +59,8 @@ export const CauscapeProjectShell = ({
   canvas,
   canvasControls,
   document,
+  theme = THEME.LIGHT,
+  onThemeChange,
   onModeChange,
 }: CauscapeProjectShellProps) => {
   const [mode, setMode] = useState<ProjectMode>("focus");
@@ -230,8 +241,9 @@ export const CauscapeProjectShell = ({
   return (
     <div
       ref={shellRef}
-      className="causcape-project-shell"
+      className={`causcape-project-shell theme--${theme}`}
       data-mode={mode}
+      data-theme={theme}
       data-resizing={isResizing || undefined}
       data-testid="causcape-project-shell"
     >
@@ -251,27 +263,52 @@ export const CauscapeProjectShell = ({
           data-testid="causcape-canvas-controls"
         >
           {canvasControls}
-          <button
-            className="causcape-document-toggle"
-            type="button"
-            onClick={() => changeMode(mode === "focus" ? "document" : "focus")}
-            aria-label={
-              mode === "focus" ? "Open project document" : "Focus canvas"
-            }
-            aria-pressed={mode === "document"}
-            data-tooltip={
-              mode === "focus"
-                ? "Open project document"
-                : "Close project document"
-            }
-            title={
-              mode === "focus"
-                ? "Open project document"
-                : "Close project document"
-            }
+          <div
+            className="causcape-view-controls"
+            role="toolbar"
+            aria-label="Canvas view controls"
           >
-            {sidebarRightIcon}
-          </button>
+            <button
+              className="causcape-theme-toggle"
+              type="button"
+              onClick={() =>
+                onThemeChange?.(theme === THEME.DARK ? THEME.LIGHT : THEME.DARK)
+              }
+              aria-label={
+                theme === THEME.DARK
+                  ? "Switch to light mode"
+                  : "Switch to dark mode"
+              }
+              aria-pressed={theme === THEME.DARK}
+              data-tooltip={theme === THEME.DARK ? "Light mode" : "Dark mode"}
+              title={theme === THEME.DARK ? "Light mode" : "Dark mode"}
+            >
+              {theme === THEME.DARK ? SunIcon : MoonIcon}
+            </button>
+            <button
+              className="causcape-document-toggle"
+              type="button"
+              onClick={() =>
+                changeMode(mode === "focus" ? "document" : "focus")
+              }
+              aria-label={
+                mode === "focus" ? "Open project document" : "Focus canvas"
+              }
+              aria-pressed={mode === "document"}
+              data-tooltip={
+                mode === "focus"
+                  ? "Open project document"
+                  : "Close project document"
+              }
+              title={
+                mode === "focus"
+                  ? "Open project document"
+                  : "Close project document"
+              }
+            >
+              {sidebarRightIcon}
+            </button>
+          </div>
         </div>
       </section>
 

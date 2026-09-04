@@ -1,7 +1,8 @@
 .causcape-engineering-tools__flow-player {
-  width: min(34rem, calc(100vw - 2rem));
+  width: min(42rem, calc(100vw - 5.5rem));
+  max-width: calc(100vw - 5.5rem);
   padding: 0;
-  overflow: hidden auto;
+  overflow: hidden;
 }
 
 .causcape-engineering-tools__tool--flow {
@@ -279,13 +280,16 @@
 
 .causcape-data-flow-step-editor__fields {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 7.6rem;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) minmax(10rem, 0.72fr);
   gap: 0.4rem;
   padding: 0 0 0.75rem;
 
   input,
   textarea,
   select {
+    box-sizing: border-box;
+    min-width: 0;
     width: 100%;
     padding: 0.48rem 0.58rem;
     border: 1px solid rgba(44, 42, 51, 0.14);
@@ -311,6 +315,7 @@
   display: flex;
   align-items: center;
   gap: 0.2rem;
+  justify-content: flex-end;
 
   button {
     min-width: 1.8rem;
@@ -328,6 +333,20 @@
       cursor: not-allowed;
       opacity: 0.35;
     }
+  }
+}
+
+@media (max-width: 720px) {
+  .causcape-data-flow-step-editor__fields {
+    grid-template-columns: minmax(0, 1fr);
+
+    textarea {
+      grid-column: 1;
+    }
+  }
+
+  .causcape-data-flow-step-editor__actions {
+    justify-content: flex-start;
   }
 }
 
@@ -565,6 +584,141 @@
     &:hover:not(:disabled) {
       background: var(--playback-signal);
       filter: brightness(0.94);
+    }
+  }
+}
+
+.theme--dark .causcape-data-flow-panel,
+.dark .causcape-data-flow-panel {
+  color: #f2f0f7;
+
+  .causcape-data-flow-panel__header span,
+  .causcape-data-flow-panel__intro,
+  .causcape-data-flow-panel__name,
+  .causcape-data-flow-panel__empty,
+  .causcape-data-flow-panel__editor-footer span,
+  .causcape-data-flow-panel__library article span {
+    color: #aaa6b3;
+  }
+
+  .causcape-data-flow-panel__header button {
+    border-color: rgba(169, 165, 255, 0.3);
+    background: rgba(105, 101, 219, 0.16);
+    color: #c5c2ff;
+  }
+
+  .causcape-data-flow-panel__library article {
+    border-color: rgba(255, 255, 255, 0.1);
+    background: linear-gradient(145deg, #2a2931, #242329);
+
+    &:hover {
+      border-color: rgba(169, 165, 255, 0.35);
+      box-shadow: 0 0.45rem 1.3rem rgba(0, 0, 0, 0.24);
+    }
+
+    button {
+      color: #c9c6d0;
+
+      &:hover {
+        background: #3a3843;
+        color: #fff;
+      }
+    }
+  }
+
+  .causcape-data-flow-panel__empty-state {
+    border-color: rgba(169, 165, 255, 0.32);
+    background: radial-gradient(circle at 50% 0, #35324b, #242329 72%);
+
+    p {
+      color: #aaa6b3;
+    }
+  }
+
+  .causcape-data-flow-panel__name input,
+  .causcape-data-flow-step-editor__fields input,
+  .causcape-data-flow-step-editor__fields textarea,
+  .causcape-data-flow-step-editor__fields select {
+    border-color: rgba(255, 255, 255, 0.16);
+    background: #201f25;
+    color: #f2f0f7;
+    color-scheme: dark;
+  }
+
+  .causcape-data-flow-step-editor__rail span {
+    border-color: #575285;
+    background: #36334c;
+    color: #cfccff;
+  }
+
+  .causcape-data-flow-step-editor__rail i {
+    background: linear-gradient(#575285, #393743);
+  }
+
+  .causcape-data-flow-step-editor__actions button {
+    background: #37353f;
+    color: #d2ced9;
+
+    &:hover:not(:disabled) {
+      background: #45424f;
+      color: #fff;
+    }
+  }
+
+  .causcape-data-flow-panel__add-step {
+    border-color: rgba(169, 165, 255, 0.55);
+    background: #292735;
+    color: #c5c2ff;
+  }
+
+  .causcape-data-flow-panel__editor-footer {
+    border-color: rgba(255, 255, 255, 0.1);
+    background: #211f27;
+  }
+}
+
+.theme--dark .causcape-data-flow-playback,
+.dark .causcape-data-flow-playback {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(31, 30, 37, 0.95);
+  box-shadow: 0 1.2rem 3.5rem rgba(0, 0, 0, 0.42),
+    0 0.15rem 0.6rem rgba(0, 0, 0, 0.3);
+  color: #f2f0f7;
+
+  .causcape-data-flow-playback__progress i {
+    box-shadow: 0 0 0 2px rgba(31, 30, 37, 0.92);
+
+    // Theme the remaining steps without overriding active/completed states.
+    &[data-state="next"] {
+      background: #44414c;
+    }
+  }
+
+  .causcape-data-flow-playback__identity {
+    border-color: rgba(255, 255, 255, 0.12);
+
+    strong {
+      color: #aaa6b3;
+    }
+  }
+
+  .causcape-data-flow-playback__copy {
+    [data-step-signal] {
+      background: color-mix(in srgb, var(--playback-signal) 22%, #201f25);
+    }
+
+    p {
+      color: #b8b4bf;
+    }
+  }
+
+  .causcape-data-flow-playback__controls
+    button:not(.causcape-data-flow-playback__play) {
+    background: #3a3842;
+    color: #e5e2eb;
+
+    &:hover:not(:disabled) {
+      background: #494651;
     }
   }
 }

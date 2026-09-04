@@ -228,7 +228,7 @@ export const CAUSCPE_MCP_TOOLS: readonly MCPToolDefinition[] = [
   {
     name: "autoLayout",
     description:
-      "Organize causcape nodes with a deterministic incremental layered layout and route edges to node borders. Locked nodes remain anchored by default. Vertical side-flow packing is opt-in because it is only safe for a few isolated local chains.",
+      "Organize nodes and route edges to card borders with minimum spacing: 80 scene units before endpoint bends, 64 around passing segments, and 12 between labels and cards. Locked nodes remain anchored. Inspect diagnostics and call validateGraph after applying layout. If spacing remains blocked, separate the affected cards or ask before unlocking them. Vertical side-flow packing is opt-in.",
     inputSchema: {
       type: "object",
       properties: {
@@ -249,7 +249,7 @@ export const CAUSCPE_MCP_TOOLS: readonly MCPToolDefinition[] = [
   {
     name: "validateGraph",
     description:
-      "Inspect the stored graph geometry and bindings for detached edges, node or label overlaps, route crossings, and other quality problems. When repair is recommended, call autoLayout and validate again until the report is clean.",
+      "Required quality check after creating or changing architecture flows and before handing a project to the user. Inspect stored geometry and bindings for detached edges, overlaps, crossings, short endpoint runways, passing segments too close to cards, and cramped labels. Zero overlaps alone is not sufficient. When repair is recommended, call autoLayout and validate again. If diagnostics persist, separate the affected cards or report the constraint; do not claim the layout is clean.",
     inputSchema: {
       type: "object",
       properties: {},

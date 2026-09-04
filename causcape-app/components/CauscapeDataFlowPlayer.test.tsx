@@ -1,4 +1,7 @@
+import { readFileSync } from "node:fs";
+
 import { fireEvent, render, screen } from "@testing-library/react";
+import { compileString } from "sass";
 import { describe, expect, it, vi } from "vitest";
 
 import type { CanvasObject, DataFlowScenario } from "@causcape/core";
@@ -7,6 +10,12 @@ import {
   CauscapeDataFlowPanel,
   CauscapeDataFlowPlaybackBar,
 } from "./CauscapeDataFlowPlayer";
+
+// Compile the real stylesheet: normal SCSS imports are stubbed by Vitest.
+const playbackStyles = readFileSync(
+  "causcape-app/components/CauscapeDataFlowPlayer.scss",
+  "utf8",
+);
 
 const objects: Readonly<Record<string, CanvasObject>> = {
   frontend: {
@@ -143,6 +152,54 @@ describe("CauscapeDataFlowPanel", () => {
 });
 
 describe("CauscapeDataFlowPlaybackBar", () => {
+  it.each(["", "theme--dark", "dark"])(
+    "preserves active and completed step colors in the %s theme",
+    (theme) => {
+      const { container } = render(
+        <div className={theme}>
+          <CauscapeDataFlowPlaybackBar
+            flow={{
+              ...flow,
+              steps: [...flow.steps, { ...flow.steps[0], id: "response" }],
+            }}
+            stepIndex={1}
+            isPlaying={false}
+            hasMissingConnection={false}
+            onPrevious={vi.fn()}
+            onNext={vi.fn()}
+            onPlayingChange={vi.fn()}
+            onClose={vi.fn()}
+          />
+        </div>,
+      );
+      const doc = container.ownerDocument;
+      const style = doc.createElement("style");
+      // JSDOM does not resolve CSS variables. Resolve the success-step token
+      // here so this test exercises the real theme/state selector cascade.
+      style.textContent = compileString(playbackStyles).css.replaceAll(
+        "var(--playback-signal)",
+        "#2f9e44",
+      );
+      doc.head.append(style);
+      try {
+        const color = (selector: string) =>
+          doc.defaultView!.getComputedStyle(container.querySelector(selector)!)
+            .backgroundColor;
+        expect(color('[data-state="active"]')).not.toBe(
+          color('[data-state="next"]'),
+        );
+        expect(color('[data-state="done"]')).not.toBe(
+          color('[data-state="next"]'),
+        );
+        expect(color(".causcape-data-flow-playback__play")).not.toBe(
+          color('button[aria-label="Next flow step"]'),
+        );
+      } finally {
+        style.remove();
+      }
+    },
+  );
+
   it("shows the current step and exposes deterministic playback controls", () => {
     const onNext = vi.fn();
     render(

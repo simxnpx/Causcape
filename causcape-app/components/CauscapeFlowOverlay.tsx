@@ -9,7 +9,7 @@ import {
 import { LinearElementEditor } from "@causcape/element";
 import {
   getCauscapeEdgeLabel,
-  getCauscapeEdgeLabelAnchor,
+  getCauscapeEdgeLabelBounds,
 } from "@causcape/element";
 
 import type {
@@ -59,6 +59,12 @@ export type EngineeringFlowPath = {
   readonly durationSeconds?: number;
   readonly label?: string;
   readonly labelAnchor?: { readonly x: number; readonly y: number };
+  readonly labelLayout?: {
+    readonly width: number;
+    readonly height: number;
+    readonly lines: readonly string[];
+    readonly scale: number;
+  };
   readonly packetD?: string;
   readonly reverseD?: string;
   readonly reversePacketD?: string;
@@ -228,10 +234,11 @@ export const buildEngineeringFlowPaths = (
       return [];
     }
 
-    const authoredPoints = LinearElementEditor.getPointsGlobalCoordinates(
+    const scenePoints = LinearElementEditor.getPointsGlobalCoordinates(
       element as unknown as CauscapeLinearElement,
       elementsMap,
-    ).map(([sceneX, sceneY]) => ({
+    );
+    const authoredPoints = scenePoints.map(([sceneX, sceneY]) => ({
       x: compactCoordinate((sceneX + viewport.scrollX) * viewport.zoom.value),
       y: compactCoordinate((sceneY + viewport.scrollY) * viewport.zoom.value),
     }));
@@ -288,11 +295,12 @@ export const buildEngineeringFlowPaths = (
       element.type === "causcape-edge"
         ? getCauscapeEdgeLabel(element.causcape)
         : null;
-    const labelAnchor = label
-      ? getCauscapeEdgeLabelAnchor(
-          points.map(({ x, y }) => [x, y] as [number, number]),
-        )
-      : null;
+    // Use authored scene geometry, independent of packet direction and zoom,
+    // so the router, exports and interactive labels reserve the same space.
+    const labelBounds =
+      element.type === "causcape-edge" && label
+        ? getCauscapeEdgeLabelBounds(scenePoints, element.causcape)
+        : null;
     const color =
       status === "interrupted"
         ? "#dc2626"
@@ -317,11 +325,21 @@ export const buildEngineeringFlowPaths = (
             ? Math.max(3.2, presentation?.durationSeconds ?? 2.4)
             : presentation?.durationSeconds ?? 2.4,
         ...(label ? { label } : {}),
-        ...(labelAnchor
+        ...(labelBounds
           ? {
               labelAnchor: {
-                x: compactCoordinate(labelAnchor.x + labelAnchor.normalX * 22),
-                y: compactCoordinate(labelAnchor.y + labelAnchor.normalY * 22),
+                x: compactCoordinate(
+                  (labelBounds.labelX + viewport.scrollX) * viewport.zoom.value,
+                ),
+                y: compactCoordinate(
+                  (labelBounds.labelY + viewport.scrollY) * viewport.zoom.value,
+                ),
+              },
+              labelLayout: {
+                width: labelBounds.width,
+                height: labelBounds.height,
+                lines: labelBounds.lines,
+                scale: viewport.zoom.value,
               },
             }
           : {}),
@@ -471,9 +489,14 @@ export const CauscapeFlowOverlay = forwardRef<
               : path.playbackForwardD ?? path.d
             : null;
         const visibleLabel = path.label ? getVisibleLabel(path.label) : null;
-        const labelWidth = visibleLabel
-          ? Math.min(286, Math.max(96, visibleLabel.length * 7.2 + 28))
-          : 0;
+        const labelWidth =
+          path.labelLayout?.width ??
+          (visibleLabel
+            ? Math.min(286, Math.max(96, visibleLabel.length * 7.2 + 28))
+            : 0);
+        const labelHeight = path.labelLayout?.height ?? 30;
+        const labelLines =
+          path.labelLayout?.lines ?? (visibleLabel ? [visibleLabel] : []);
 
         return (
           <g
@@ -586,24 +609,27 @@ export const CauscapeFlowOverlay = forwardRef<
               <g
                 className="causcape-flow-overlay__label"
                 data-flow-label={path.id}
-                transform={`translate(${path.labelAnchor.x} ${path.labelAnchor.y})`}
+                transform={`translate(${path.labelAnchor.x} ${
+                  path.labelAnchor.y
+                }) scale(${path.labelLayout?.scale ?? 1})`}
               >
                 <rect
                   x={-labelWidth / 2}
-                  y="-15"
+                  y={-labelHeight / 2}
                   width={labelWidth}
-                  height="30"
+                  height={labelHeight}
                   rx="9"
                 />
-                <circle
-                  cx={-labelWidth / 2 + 14}
-                  cy="0"
-                  r="3"
-                  fill={path.color}
-                />
-                <text x={-labelWidth / 2 + 24} y="0">
-                  {visibleLabel}
-                </text>
+                {labelLines.map((line, index) => (
+                  <text
+                    key={index}
+                    x="0"
+                    textAnchor="middle"
+                    y={(index - (labelLines.length - 1) / 2) * 18}
+                  >
+                    {line}
+                  </text>
+                ))}
               </g>
             ) : null}
             {path.interruption ? (

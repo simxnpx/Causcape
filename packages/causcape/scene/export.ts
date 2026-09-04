@@ -16,7 +16,12 @@ import {
   applyDarkModeFilter,
 } from "@causcape/common";
 
-import { getCommonBounds, getElementAbsoluteCoords } from "@causcape/element";
+import {
+  getCommonBounds,
+  getElementAbsoluteCoords,
+  getCauscapeEdgeLabelBounds,
+  LinearElementEditor,
+} from "@causcape/element";
 
 import {
   getInitializedImageElements,
@@ -572,7 +577,29 @@ const getCanvasSize = (
   elements: readonly NonDeletedCauscapeElement[],
   exportPadding: number,
 ): Bounds => {
-  const [minX, minY, maxX, maxY] = getCommonBounds(elements);
+  let [minX, minY, maxX, maxY] = getCommonBounds(elements);
+  const elementsMap = arrayToMap(elements);
+  // Relationship labels can extend beyond the outermost line. Include them
+  // in both raster and SVG bounds so perimeter annotations are not clipped.
+  for (const element of elements) {
+    if (element.type !== "causcape-edge") {
+      continue;
+    }
+    const bounds = getCauscapeEdgeLabelBounds(
+      LinearElementEditor.getPointsGlobalCoordinates(
+        { ...element, type: "arrow" },
+        elementsMap,
+      ),
+      element.causcape,
+    );
+    if (!bounds) {
+      continue;
+    }
+    minX = Math.min(minX, bounds.x);
+    minY = Math.min(minY, bounds.y);
+    maxX = Math.max(maxX, bounds.x + bounds.width);
+    maxY = Math.max(maxY, bounds.y + bounds.height);
+  }
   const width = distance(minX, maxX) + exportPadding * 2;
   const height = distance(minY, maxY) + exportPadding * 2;
 

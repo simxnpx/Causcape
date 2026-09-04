@@ -4,6 +4,25 @@ import { describe, expect, it, vi } from "vitest";
 import { CauscapeProjectDashboard } from "./CauscapeProjectDashboard";
 
 describe("CauscapeProjectDashboard", () => {
+  it("can change theme before a project is opened", () => {
+    const onThemeChange = vi.fn();
+    render(
+      <CauscapeProjectDashboard
+        projects={[]}
+        theme="dark"
+        onThemeChange={onThemeChange}
+        onOpen={vi.fn()}
+        onCreate={vi.fn()}
+        onImport={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Switch to light mode" }),
+    );
+    expect(onThemeChange).toHaveBeenCalledWith("light");
+  });
+
   it("opens recent projects and creates either engineering template", () => {
     const onOpen = vi.fn();
     const onCreate = vi.fn();

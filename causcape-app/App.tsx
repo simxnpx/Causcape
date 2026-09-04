@@ -90,6 +90,7 @@ import type {
   FileId,
   NonDeletedCauscapeElement,
   OrderedCauscapeElement,
+  Theme,
 } from "@causcape/element/types";
 import type {
   AppState,
@@ -436,6 +437,9 @@ const initializeScene = async (opts: {
 
 type CauscapeWrapperProps = {
   initialProject?: Project;
+  editorTheme: Theme;
+  appTheme: Theme | "system";
+  onAppThemeChange: (theme: Theme | "system") => void;
   flowPlayback?:
     | (ResolvedDataFlowPlayback & { readonly isPlaying: boolean })
     | null;
@@ -448,6 +452,9 @@ type CauscapeWrapperProps = {
 
 const CauscapeWrapper = ({
   initialProject,
+  editorTheme,
+  appTheme,
+  onAppThemeChange,
   flowPlayback,
   onProjectCanvasChange,
 }: CauscapeWrapperProps) => {
@@ -460,8 +467,6 @@ const CauscapeWrapper = ({
   // explicit prevents upstream collaboration UI from implying a server model,
   // while test mode retains the upstream collaboration regression coverage.
   const isCollabDisabled = !isTestEnv();
-
-  const { editorTheme, appTheme, setAppTheme } = useHandleAppTheme();
 
   const [langCode, setLangCode] = useAppLangCode();
 
@@ -1129,7 +1134,7 @@ const CauscapeWrapper = ({
         handleKeyboardGlobally={false}
         autoFocus={true}
         theme={editorTheme}
-        onThemeChange={setAppTheme}
+        onThemeChange={onAppThemeChange}
         renderTopRightUI={(isMobile) => {
           if (isMobile || !collabAPI || isCollabDisabled) {
             return null;
@@ -1489,6 +1494,7 @@ const serializeCanvasScene = (
 
 const CauscapeProjectWorkspace = () => {
   const causcapeAPI = useCauscapeAPI();
+  const { editorTheme, appTheme, setAppTheme } = useHandleAppTheme();
   const workspaceRef = useRef<HTMLDivElement>(null);
   const repositoryRef = useRef<CauscapeProjectRepository | null>(null);
   const [project, setProject] = useState<Project | null>(null);
@@ -1979,9 +1985,11 @@ const CauscapeProjectWorkspace = () => {
 
   if (showDashboard) {
     return (
-      <div ref={workspaceRef}>
+      <div ref={workspaceRef} className={`theme--${editorTheme}`}>
         <CauscapeProjectDashboard
           projects={projects}
+          theme={editorTheme}
+          onThemeChange={setAppTheme}
           onOpen={(id) => void openLocalProject(id)}
           onCreate={(template) => void createProject(template)}
           onImport={(file) => void importProject(file)}
@@ -1997,20 +2005,28 @@ const CauscapeProjectWorkspace = () => {
 
   if (!project) {
     return (
-      <div ref={workspaceRef} className="causcape-project-loading">
+      <div
+        ref={workspaceRef}
+        className={`causcape-project-loading theme--${editorTheme}`}
+      >
         {projectError || "Opening your project…"}
       </div>
     );
   }
 
   return (
-    <div ref={workspaceRef}>
+    <div ref={workspaceRef} className={`theme--${editorTheme}`}>
       <CauscapeProjectShell
+        theme={editorTheme}
+        onThemeChange={setAppTheme}
         canvas={
           <div className="causcape-canvas-stack">
             <CauscapeWrapper
               key={project.id}
               initialProject={project}
+              editorTheme={editorTheme}
+              appTheme={appTheme}
+              onAppThemeChange={setAppTheme}
               onProjectCanvasChange={handleCanvasChange}
               flowPlayback={resolvedDataFlowPlayback}
             />

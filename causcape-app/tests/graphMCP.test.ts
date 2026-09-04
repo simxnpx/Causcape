@@ -54,6 +54,58 @@ const createHarness = () => {
 };
 
 describe("graph WebMCP handlers", () => {
+  it("tells agents to repair cramped but connected lanes and verifies the repair", async () => {
+    const harness = createHarness();
+    const first = { ...harness.first, x: 80, y: 80, width: 600, height: 200 };
+    const second = {
+      ...harness.second,
+      x: 80,
+      y: 440,
+      width: 600,
+      height: 200,
+    };
+    const geometry = {
+      x: 64,
+      y: 180,
+      width: 16,
+      height: 360,
+      points: [
+        [16, 0],
+        [0, 0],
+        [0, 360],
+        [16, 360],
+      ] as [number, number][],
+    };
+    const edge = newCauscapeEdgeElement({
+      fromNodeId: first.id,
+      toNodeId: second.id,
+      ...geometry,
+      points: geometry.points as never,
+      ...getCauscapeEdgeBindings(first, second, geometry),
+    });
+    harness.api.updateScene({
+      elements: [
+        { ...first, boundElements: [{ id: edge.id, type: "causcape-edge" }] },
+        { ...second, boundElements: [{ id: edge.id, type: "causcape-edge" }] },
+        edge,
+      ],
+    });
+    const handlers = createGraphMCPHandlers({ getApi: () => harness.api });
+    const before = await handlers.validateGraph();
+    expect(before.metrics.edgeDetachedCount).toBe(0);
+    expect(before.diagnostics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "EDGE_ENDPOINT_CLEARANCE" }),
+        expect.objectContaining({ code: "EDGE_NODE_CLEARANCE" }),
+      ]),
+    );
+    expect(before.recommendedAction).toMatchObject({ tool: "autoLayout" });
+    await handlers.autoLayout();
+    const after = await handlers.validateGraph();
+    expect(after.metrics.edgeClearanceCount).toBe(0);
+    expect(after.recommendedAction).toBeNull();
+  });
+
   it("uses the light blue Causcape card color for new nodes", () => {
     const node = newCauscapeNodeElement({ label: "color", x: 0, y: 0 });
 
@@ -327,7 +379,20 @@ describe("graph WebMCP handlers", () => {
       updatedEdge?.type === "causcape-edge"
     ) {
       const updatedStartX = updatedEdge.x + updatedEdge.points[0][0];
-      expect(updatedStartX).toBeCloseTo(updatedNode.x + updatedNode.width);
+      const updatedStartY = updatedEdge.y + updatedEdge.points[0][1];
+      // Moving the card can close the right-hand corridor. The repaired edge
+      // may use another side, but must remain attached to the moved card.
+      const binding = updatedEdge.startBinding!;
+      expect(binding.elementId).toBe(updatedNode.id);
+      expect(updatedStartX).toBeCloseTo(
+        updatedNode.x + updatedNode.width * binding.fixedPoint[0],
+      );
+      expect(updatedStartY).toBeCloseTo(
+        updatedNode.y + updatedNode.height * binding.fixedPoint[1],
+      );
+      expect(
+        binding.fixedPoint.some((value) => value === 0 || value === 1),
+      ).toBe(true);
       expect(updatedStartX).not.toBe(initialStartX);
     }
   });
