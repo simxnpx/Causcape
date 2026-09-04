@@ -34,7 +34,9 @@ export const renderProject = async (
     headless: true,
   });
   try {
-    const page = await browser.newPage({ deviceScaleFactor: 2 });
+    // SVG export already applies the project's export scale. Doubling it
+    // again can exceed Chromium's raster limits on wide architecture canvases.
+    const page = await browser.newPage({ deviceScaleFactor: 1 });
     await page.setContent("<!doctype html><html><body></body></html>");
     await page.addScriptTag({ path: renderBundlePath });
     const svg = await evaluateProjectRenderer(page, project);

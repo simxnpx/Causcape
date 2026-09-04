@@ -42,6 +42,48 @@ const arrow = (
   )[0] as OrderedCauscapeElement;
 
 describe("CauscapeFlowOverlay", () => {
+  it("keeps label layout in scene space while zooming and reversing packets", () => {
+    const base = newCauscapeEdgeElement({
+      id: "read",
+      fromNodeId: "api",
+      toNodeId: "db",
+      label: "a long database lookup",
+      x: 0,
+      y: 0,
+      points: [
+        [0, 0],
+        [180, 0],
+      ],
+      roughness: 0,
+    });
+    const element = {
+      ...base,
+      causcape: { ...base.causcape, relationship: "reads" },
+    } as OrderedCauscapeElement;
+    const viewport = { scrollX: 0, scrollY: 0, width: 800, height: 600 };
+    const [full] = buildEngineeringFlowPaths([element], {
+      ...viewport,
+      zoom: { value: 1 },
+    });
+    const [half] = buildEngineeringFlowPaths([element], {
+      ...viewport,
+      zoom: { value: 0.5 },
+    });
+    expect(full.labelLayout).toBeDefined();
+    expect(half.labelLayout).toEqual({ ...full.labelLayout, scale: 0.5 });
+    expect(half.labelAnchor!.x).toBeCloseTo(full.labelAnchor!.x / 2);
+    expect(half.labelAnchor!.y).toBeCloseTo(full.labelAnchor!.y / 2);
+    expect(full.labelAnchor!.y).toBe(16);
+    const { container } = render(<CauscapeFlowOverlay paths={[half]} />);
+    expect(container.querySelector('[data-flow-label="read"]')).toHaveAttribute(
+      "transform",
+      expect.stringContaining("scale(0.5)"),
+    );
+    expect(
+      container.querySelectorAll('[data-flow-label="read"] text').length,
+    ).toBeGreaterThan(1);
+  });
+
   it("maps arrow geometry into viewport paths and preserves direction", () => {
     const paths = buildEngineeringFlowPaths([arrow()], {
       zoom: { value: 2 },

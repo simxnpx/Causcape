@@ -238,6 +238,9 @@ const renderElementToSvg = (
               offsetY || 0
             }) rotate(${degree} ${cx} ${cy})`,
           );
+          // The wrapper positions both the background and the content. Keeping
+          // the background's transform would translate and rotate it twice.
+          node.removeAttribute("transform");
           architectureGroup.appendChild(node);
 
           const rect = (
