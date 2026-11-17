@@ -1479,18 +1479,9 @@ const createBrowserProject = (template: ProjectTemplate) => {
   });
 };
 
-const serializeCanvasScene = (
-  elements: readonly OrderedCauscapeElement[],
-  appState: AppState,
-  files: BinaryFiles,
-): Project["canvas"]["scene"] =>
-  JSON.parse(
-    JSON.stringify({
-      elements,
-      appState: clearAppStateForLocalStorage(appState),
-      files,
-    }),
-  ) as Project["canvas"]["scene"];
+// Long enough to coalesce a drag, pan, or zoom gesture into one sync.
+const CANVAS_SYNC_DELAY_MS = 200;
+const EMPTY_OBJECT_IDS: readonly string[] = [];
 
 const CauscapeProjectWorkspace = () => {
   const causcapeAPI = useCauscapeAPI();
@@ -1559,7 +1550,6 @@ const CauscapeProjectWorkspace = () => {
     followDataFlowPlaybackStep(causcapeAPI, [activeDataFlowNodeElementId]);
   }, [activeDataFlowNodeElementId, causcapeAPI]);
 
-  const getProjectForMCP = useCallback(() => projectRef.current, []);
   const setProjectFromMCP = useCallback((nextProject: Project) => {
     projectRef.current = nextProject;
     setProject(nextProject);
@@ -1643,52 +1633,211 @@ const CauscapeProjectWorkspace = () => {
     return () => ownerWindow.clearTimeout(timeout);
   }, [activeDataFlow, dataFlowPlayback]);
 
+  // The editor reports every pointer move, pan, and zoom frame. Serializing
+  // the whole scene and re-rendering the workspace on each one made the
+  // canvas stutter, so scene sync is coalesced into one trailing update and
+  // flushed whenever something needs the current project.
+  const pendingCanvasChangeRef = useRef<{
+    readonly projectId: string;
+    readonly elements: readonly OrderedCauscapeElement[];
+    readonly appState: AppState;
+    readonly files: BinaryFiles;
+  } | null>(null);
+  const canvasSyncTimeoutRef = useRef<number | null>(null);
+  const lastUnknownSelectionKeyRef = useRef("");
+  const selectionCacheRef = useRef<{
+    readonly elements: readonly OrderedCauscapeElement[];
+    readonly selectedElementIds: AppState["selectedElementIds"];
+    readonly objectIds: readonly string[];
+  } | null>(null);
+  const sceneJSONCacheRef = useRef<{
+    readonly scene: Project["canvas"]["scene"];
+    readonly json: string;
+  } | null>(null);
+
+  const flushCanvasChange = useCallback(() => {
+    const ownerWindow = workspaceRef.current?.ownerDocument.defaultView;
+    if (canvasSyncTimeoutRef.current !== null) {
+      ownerWindow?.clearTimeout(canvasSyncTimeoutRef.current);
+      canvasSyncTimeoutRef.current = null;
+    }
+    const pending = pendingCanvasChangeRef.current;
+    pendingCanvasChangeRef.current = null;
+    if (!pending) {
+      return;
+    }
+    const applyCanvasChange = (
+      currentProject: Project | null,
+    ): Project | null => {
+      // A change from a project that has since been closed must not leak
+      // into the one that replaced it.
+      if (!currentProject || currentProject.id !== pending.projectId) {
+        return currentProject;
+      }
+      const nextObjects = deriveCanvasObjects(
+        pending.elements,
+        currentProject.canvas.objects,
+      );
+      const nextSceneJSON = JSON.stringify({
+        elements: pending.elements,
+        appState: clearAppStateForLocalStorage(pending.appState),
+        files: pending.files,
+      });
+      const cached = sceneJSONCacheRef.current;
+      const currentSceneJSON =
+        cached?.scene === currentProject.canvas.scene
+          ? cached.json
+          : JSON.stringify(currentProject.canvas.scene);
+      if (
+        currentSceneJSON === nextSceneJSON &&
+        JSON.stringify(currentProject.canvas.objects) ===
+          JSON.stringify(nextObjects)
+      ) {
+        sceneJSONCacheRef.current = {
+          scene: currentProject.canvas.scene,
+          json: currentSceneJSON,
+        };
+        return currentProject;
+      }
+      const nextScene = JSON.parse(nextSceneJSON) as Project["canvas"]["scene"];
+      sceneJSONCacheRef.current = { scene: nextScene, json: nextSceneJSON };
+      return {
+        ...currentProject,
+        updatedAt: new Date().toISOString(),
+        canvas: {
+          ...currentProject.canvas,
+          scene: nextScene,
+          objects: nextObjects,
+        },
+      };
+    };
+    const baseProject = projectRef.current;
+    const nextProject = applyCanvasChange(baseProject);
+    if (nextProject === baseProject) {
+      return;
+    }
+    // Callers such as agent reads need the result synchronously. React may
+    // still hold a newer queued update, so re-apply on top of it if so.
+    projectRef.current = nextProject;
+    setProject((currentProject) =>
+      currentProject === baseProject
+        ? nextProject
+        : applyCanvasChange(currentProject),
+    );
+  }, []);
+
   const handleCanvasChange = useCallback(
     (
       elements: readonly OrderedCauscapeElement[],
       appState: AppState,
       files: BinaryFiles,
     ) => {
-      const nextSelectedObjectIds = getSelectedCanvasObjectIds(
-        elements,
-        appState.selectedElementIds,
-      );
-      setSelectedObjectIds((currentIds) =>
-        currentIds.length === nextSelectedObjectIds.length &&
-        currentIds.every((id, index) => id === nextSelectedObjectIds[index])
-          ? currentIds
-          : nextSelectedObjectIds,
-      );
-      setProject((currentProject) => {
-        if (!currentProject) {
-          return currentProject;
-        }
-        const nextObjects = deriveCanvasObjects(
+      // Panning, zooming, and dragging keep the same scene array and
+      // selection object, so the per-frame path skips the scan of every
+      // element. Edits that change selection or grouping (select, group,
+      // add, delete, bind) produce a new array or selection object.
+      const cachedSelection = selectionCacheRef.current;
+      let nextSelectedObjectIds: readonly string[];
+      if (
+        cachedSelection?.elements === elements &&
+        cachedSelection.selectedElementIds === appState.selectedElementIds
+      ) {
+        nextSelectedObjectIds = cachedSelection.objectIds;
+      } else {
+        nextSelectedObjectIds =
+          Object.keys(appState.selectedElementIds).length === 0
+            ? EMPTY_OBJECT_IDS
+            : getSelectedCanvasObjectIds(elements, appState.selectedElementIds);
+        selectionCacheRef.current = {
           elements,
-          currentProject.canvas.objects,
-        );
-        const nextScene = serializeCanvasScene(elements, appState, files);
-        if (
-          JSON.stringify(currentProject.canvas.scene) ===
-            JSON.stringify(nextScene) &&
-          JSON.stringify(currentProject.canvas.objects) ===
-            JSON.stringify(nextObjects)
-        ) {
-          return currentProject;
-        }
-        return {
-          ...currentProject,
-          updatedAt: new Date().toISOString(),
-          canvas: {
-            ...currentProject.canvas,
-            scene: nextScene,
-            objects: nextObjects,
-          },
+          selectedElementIds: appState.selectedElementIds,
+          objectIds: nextSelectedObjectIds,
         };
-      });
+        setSelectedObjectIds((currentIds) =>
+          currentIds.length === nextSelectedObjectIds.length &&
+          currentIds.every((id, index) => id === nextSelectedObjectIds[index])
+            ? currentIds
+            : nextSelectedObjectIds,
+        );
+      }
+      const projectId = projectRef.current?.id;
+      const ownerWindow = workspaceRef.current?.ownerDocument.defaultView;
+      if (!projectId) {
+        return;
+      }
+      if (
+        pendingCanvasChangeRef.current &&
+        pendingCanvasChangeRef.current.projectId !== projectId
+      ) {
+        flushCanvasChange();
+      }
+      pendingCanvasChangeRef.current = { projectId, elements, appState, files };
+      // A newly created, pasted, or restored object is selected before the
+      // project knows about it. Sync now so the selection and its object
+      // land in the same render; otherwise the details panel sees a
+      // selection with no object and closes.
+      const knownObjects = projectRef.current?.canvas.objects ?? {};
+      const unknownSelectionKey = nextSelectedObjectIds
+        .filter((id) => knownObjects[id]?.state !== "active")
+        .join(",");
+      // Sync immediately only once per unknown selection, so a selection
+      // that never resolves cannot bring back per-frame serialization.
+      const selectsNewObject =
+        unknownSelectionKey !== "" &&
+        unknownSelectionKey !== lastUnknownSelectionKeyRef.current;
+      lastUnknownSelectionKeyRef.current = unknownSelectionKey;
+      if (!ownerWindow || selectsNewObject) {
+        flushCanvasChange();
+        return;
+      }
+      if (canvasSyncTimeoutRef.current !== null) {
+        ownerWindow.clearTimeout(canvasSyncTimeoutRef.current);
+      }
+      canvasSyncTimeoutRef.current = ownerWindow.setTimeout(
+        flushCanvasChange,
+        CANVAS_SYNC_DELAY_MS,
+      );
     },
-    [],
+    [flushCanvasChange],
   );
+
+  useEffect(() => {
+    const ownerDocument = workspaceRef.current?.ownerDocument;
+    const ownerWindow = ownerDocument?.defaultView;
+    if (!ownerDocument || !ownerWindow) {
+      return;
+    }
+    // The regular save waits for a render and a debounce, neither of which
+    // happens once the page is going away, so write the project directly.
+    // Saving is an idempotent put, so doing it on every hide also covers
+    // edits still waiting in the regular save debounce.
+    const saveNow = (onlyPendingChange: boolean) => {
+      const hadPendingChange = pendingCanvasChangeRef.current !== null;
+      flushCanvasChange();
+      const currentProject = projectRef.current;
+      if (currentProject && (hadPendingChange || !onlyPendingChange)) {
+        void repositoryRef.current?.save(currentProject).catch(() => {});
+      }
+    };
+    const saveOnPageHide = () => saveNow(false);
+    const saveWhenHidden = () => {
+      if (ownerDocument.visibilityState === "hidden") {
+        saveNow(false);
+      }
+    };
+    ownerWindow.addEventListener("pagehide", saveOnPageHide);
+    ownerDocument.addEventListener("visibilitychange", saveWhenHidden);
+    return () => {
+      ownerWindow.removeEventListener("pagehide", saveOnPageHide);
+      ownerDocument.removeEventListener("visibilitychange", saveWhenHidden);
+      saveNow(true);
+    };
+  }, [flushCanvasChange]);
+
+  const getProjectForMCP = useCallback(() => {
+    flushCanvasChange();
+    return projectRef.current;
+  }, [flushCanvasChange]);
 
   const handleDocumentChange = useCallback((document: CauscapeDocument) => {
     setProject((currentProject) => {
@@ -1786,57 +1935,71 @@ const CauscapeProjectWorkspace = () => {
     [causcapeAPI, project?.canvas.objects],
   );
 
-  const createProject = useCallback(async (template: ProjectTemplate) => {
-    if (!repositoryRef.current) {
-      return;
-    }
-    const nextProject = createBrowserProject(template);
-    await repositoryRef.current.save(nextProject);
-    setProject(nextProject);
-    setSelectedObjectIds([]);
-    setShowDashboard(false);
-    setProjects(await repositoryRef.current.list());
-  }, []);
-
-  const openLocalProject = useCallback(async (id: string) => {
-    if (!repositoryRef.current) {
-      return;
-    }
-    const opened = await repositoryRef.current.load(id);
-    if (opened) {
-      setProject(opened);
-      setSelectedObjectIds([]);
-      setShowDashboard(false);
-    }
-  }, []);
-
-  const importProject = useCallback(async (file: File) => {
-    if (!repositoryRef.current) {
-      return;
-    }
-    try {
-      const imported = await repositoryRef.current.importCopy(
-        await file.text(),
-        { id: randomId(), occurredAt: new Date().toISOString() },
-      );
-      setProject(imported);
+  const createProject = useCallback(
+    async (template: ProjectTemplate) => {
+      if (!repositoryRef.current) {
+        return;
+      }
+      flushCanvasChange();
+      const nextProject = createBrowserProject(template);
+      await repositoryRef.current.save(nextProject);
+      setProject(nextProject);
       setSelectedObjectIds([]);
       setShowDashboard(false);
       setProjects(await repositoryRef.current.list());
-      setProjectError("");
-    } catch (error) {
-      setProjectError(
-        error instanceof Error ? error.message : "Could not import project",
-      );
-    }
-  }, []);
+    },
+    [flushCanvasChange],
+  );
+
+  const openLocalProject = useCallback(
+    async (id: string) => {
+      if (!repositoryRef.current) {
+        return;
+      }
+      flushCanvasChange();
+      const opened = await repositoryRef.current.load(id);
+      if (opened) {
+        setProject(opened);
+        setSelectedObjectIds([]);
+        setShowDashboard(false);
+      }
+    },
+    [flushCanvasChange],
+  );
+
+  const importProject = useCallback(
+    async (file: File) => {
+      if (!repositoryRef.current) {
+        return;
+      }
+      flushCanvasChange();
+      try {
+        const imported = await repositoryRef.current.importCopy(
+          await file.text(),
+          { id: randomId(), occurredAt: new Date().toISOString() },
+        );
+        setProject(imported);
+        setSelectedObjectIds([]);
+        setShowDashboard(false);
+        setProjects(await repositoryRef.current.list());
+        setProjectError("");
+      } catch (error) {
+        setProjectError(
+          error instanceof Error ? error.message : "Could not import project",
+        );
+      }
+    },
+    [flushCanvasChange],
+  );
 
   const exportProject = useCallback(() => {
     const ownerDocument = workspaceRef.current?.ownerDocument;
-    if (project && ownerDocument) {
-      downloadProjectFile(project, ownerDocument);
+    flushCanvasChange();
+    const currentProject = projectRef.current;
+    if (currentProject && ownerDocument) {
+      downloadProjectFile(currentProject, ownerDocument);
     }
-  }, [project]);
+  }, [flushCanvasChange]);
 
   const selectedObject = useMemo<CanvasObject | null>(() => {
     const objectId = selectedObjectIds[0];

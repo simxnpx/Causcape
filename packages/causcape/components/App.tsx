@@ -21,7 +21,7 @@ import {
   buildGraph,
   getCauscapeEdgeBindings,
   getCauscapeFlowEndpointIds,
-  layoutCauscapeGraph,
+  rerouteCauscapeEdges,
 } from "@causcape/graph";
 
 import {
@@ -2158,6 +2158,7 @@ class App extends React.Component<AppProps, AppState> {
               >
                 <CauscapeNodeOverlay
                   element={element}
+                  elementVersion={element.version}
                   theme={this.state.theme}
                   linksEnabled={this.isLinksEnabled()}
                   onOpenDescription={this.inspectCauscapeNode}
@@ -12675,17 +12676,22 @@ class App extends React.Component<AppProps, AppState> {
     if (graph.edges.length === 0) {
       return;
     }
-    const result = layoutCauscapeGraph(graph, {
-      pinnedNodeIds: new Set(graph.nodes.map((node) => node.id)),
-      respectLocked: false,
-      maxIterations: 1,
+    // Only edges attached to, or now blocked by, the moved cards change.
+    // Re-routing every edge here froze the editor for seconds on each drop
+    // and reshuffled unrelated flows.
+    const routes = rerouteCauscapeEdges(graph, {
+      changedNodeIds: originalNodeIds,
+      // Edges that detoured around a card's old spot can straighten out.
+      vacatedBoxes: [...pointerDownState.originalElements.values()]
+        .filter((element) => originalNodeIds.has(element.id))
+        .map(({ x, y, width, height }) => ({ x, y, width, height })),
     });
     let didChange = false;
     for (const element of elements) {
       if (element.type !== "causcape-edge") {
         continue;
       }
-      const geometry = result.edges.get(element.id);
+      const geometry = routes.get(element.id);
       const edge = graph.edgesById.get(element.id);
       if (!geometry || !edge) {
         continue;

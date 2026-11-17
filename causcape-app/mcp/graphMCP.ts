@@ -20,6 +20,7 @@ import {
   isArchitectureNodeKind,
   layoutCauscapeGraph,
   analyzeGraphQuality,
+  rerouteCauscapeEdges as rerouteChangedCauscapeEdges,
   routeCauscapeEdge,
   suggestPosition,
 } from "@causcape/graph";
@@ -624,19 +625,31 @@ const applyRoutedCauscapeEdges = (
   return synchronizeCauscapeEdgeBoundElements(routed);
 };
 
+/** Re-route only the edges affected by changed cards or edges. */
 const rerouteCauscapeEdges = (
   elements: readonly CauscapeElement[],
+  changes: Readonly<{
+    nodeIds?: readonly string[];
+    edgeIds?: readonly string[];
+    /** Where the changed cards were before the change. */
+    vacatedBoxes?: readonly Readonly<{
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    }>[];
+  }>,
 ): CauscapeElement[] => {
   const graph = buildGraph(elements, { includeDiagnostics: false });
   if (graph.nodes.length === 0 || graph.edges.length === 0) {
     return [...elements];
   }
-  const result = layoutCauscapeGraph(graph, {
-    pinnedNodeIds: new Set(graph.nodes.map((node) => node.id)),
-    respectLocked: false,
-    maxIterations: 1,
+  const routes = rerouteChangedCauscapeEdges(graph, {
+    changedNodeIds: new Set(changes.nodeIds),
+    changedEdgeIds: new Set(changes.edgeIds),
+    vacatedBoxes: changes.vacatedBoxes,
   });
-  return applyRoutedCauscapeEdges(elements, graph, result.edges);
+  return applyRoutedCauscapeEdges(elements, graph, routes);
 };
 
 const restoreGraphEntities = (
@@ -1604,6 +1617,17 @@ export const createGraphMCPHandlers = (ctx: GraphMCPContext) => {
         input.patch.y !== undefined
           ? rerouteCauscapeEdges(
               nextElements as unknown as readonly CauscapeElement[],
+              {
+                nodeIds: [input.id],
+                vacatedBoxes: [
+                  {
+                    x: element.x,
+                    y: element.y,
+                    width: element.width,
+                    height: element.height,
+                  },
+                ],
+              },
             )
           : nextElements;
       applySceneUpdate(
@@ -1637,6 +1661,7 @@ export const createGraphMCPHandlers = (ctx: GraphMCPContext) => {
       );
       const nextSceneElements = rerouteCauscapeEdges(
         nextElements as unknown as readonly CauscapeElement[],
+        { edgeIds: [input.id] },
       );
       applySceneUpdate(
         api,

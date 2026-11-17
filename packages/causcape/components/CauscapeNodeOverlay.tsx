@@ -28,6 +28,12 @@ import {
 
 type CauscapeNodeOverlayProps = Readonly<{
   element: CauscapeNodeElement;
+  /**
+   * Scene elements can be mutated in place, so the element reference alone
+   * does not reveal changes. Passing the version lets memoization skip the
+   * card on pan and zoom frames while still re-rendering after edits.
+   */
+  elementVersion?: number;
   theme: Theme;
   linksEnabled: boolean;
   onOpenDescription: (elementId: CauscapeNodeElement["id"]) => void;
@@ -69,7 +75,7 @@ const REFERENCE_TYPE_LABELS = {
   runbook: "Runbook",
 } as const;
 
-export const CauscapeNodeOverlay = ({
+const CauscapeNodeOverlayCard = ({
   element,
   theme,
   linksEnabled,
@@ -198,6 +204,8 @@ export const CauscapeNodeOverlay = ({
     </article>
   );
 };
+
+export const CauscapeNodeOverlay = React.memo(CauscapeNodeOverlayCard);
 
 type CauscapeNodeDescriptionSheetProps = Readonly<{
   element: CauscapeNodeElement | null;
