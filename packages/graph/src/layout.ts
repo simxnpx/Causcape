@@ -103,6 +103,7 @@ export const GRAPH_SPACING = {
   labelPadding: 12,
 } as const;
 const MIN_MEANINGFUL_ROUTE_OVERLAP = 8;
+const MIN_LANE_SEPARATION = GRAPH_SPACING.labelPadding;
 const EPSILON = 1e-7;
 
 const boxesOverlap = (a: Box, b: Box): boolean =>
@@ -379,25 +380,7 @@ const segmentCrosses = (a: Point, b: Point, c: Point, d: Point): boolean =>
 const routeCrosses = (
   a: CauscapeEdgeGeometry,
   b: CauscapeEdgeGeometry,
-): boolean => {
-  const aPoints = absolutePoints(a);
-  const bPoints = absolutePoints(b);
-  for (let aIndex = 1; aIndex < aPoints.length; aIndex += 1) {
-    for (let bIndex = 1; bIndex < bPoints.length; bIndex += 1) {
-      if (
-        segmentCrosses(
-          aPoints[aIndex - 1],
-          aPoints[aIndex],
-          bPoints[bIndex - 1],
-          bPoints[bIndex],
-        )
-      ) {
-        return true;
-      }
-    }
-  }
-  return false;
-};
+): boolean => pointsCross(absolutePoints(a), absolutePoints(b));
 
 const segmentOverlapLength = (
   a: Point,
@@ -405,9 +388,15 @@ const segmentOverlapLength = (
   c: Point,
   d: Point,
 ): number => {
+  // Parallel lanes closer than MIN_LANE_SEPARATION read as one line, so
+  // they share a segment just like exactly collinear ones.
   const aHorizontal = Math.abs(a[1] - b[1]) < EPSILON;
   const bHorizontal = Math.abs(c[1] - d[1]) < EPSILON;
-  if (aHorizontal && bHorizontal && Math.abs(a[1] - c[1]) < EPSILON) {
+  if (
+    aHorizontal &&
+    bHorizontal &&
+    Math.abs(a[1] - c[1]) < MIN_LANE_SEPARATION
+  ) {
     return Math.max(
       0,
       Math.min(Math.max(a[0], b[0]), Math.max(c[0], d[0])) -
@@ -417,7 +406,7 @@ const segmentOverlapLength = (
 
   const aVertical = Math.abs(a[0] - b[0]) < EPSILON;
   const bVertical = Math.abs(c[0] - d[0]) < EPSILON;
-  if (aVertical && bVertical && Math.abs(a[0] - c[0]) < EPSILON) {
+  if (aVertical && bVertical && Math.abs(a[0] - c[0]) < MIN_LANE_SEPARATION) {
     return Math.max(
       0,
       Math.min(Math.max(a[1], b[1]), Math.max(c[1], d[1])) -
@@ -430,37 +419,7 @@ const segmentOverlapLength = (
 const routeOverlapLength = (
   first: CauscapeEdgeGeometry,
   second: CauscapeEdgeGeometry,
-): number => {
-  const firstPoints = absolutePoints(first);
-  const secondPoints = absolutePoints(second);
-  let length = 0;
-  for (let firstIndex = 1; firstIndex < firstPoints.length; firstIndex += 1) {
-    for (
-      let secondIndex = 1;
-      secondIndex < secondPoints.length;
-      secondIndex += 1
-    ) {
-      length += segmentOverlapLength(
-        firstPoints[firstIndex - 1],
-        firstPoints[firstIndex],
-        secondPoints[secondIndex - 1],
-        secondPoints[secondIndex],
-      );
-    }
-  }
-  return length;
-};
-
-const countRouteOverlapsAgainst = (
-  route: CauscapeEdgeGeometry,
-  routes: readonly CauscapeEdgeGeometry[],
-): number =>
-  routes.reduce(
-    (count, other) =>
-      count +
-      (routeOverlapLength(route, other) > MIN_MEANINGFUL_ROUTE_OVERLAP ? 1 : 0),
-    0,
-  );
+): number => pointsOverlapLength(absolutePoints(first), absolutePoints(second));
 
 const pointTouchesNodeBorder = (point: Point, box: Box): boolean => {
   const tolerance = 2;
@@ -478,36 +437,74 @@ const pointTouchesNodeBorder = (point: Point, box: Box): boolean => {
   );
 };
 
+/** Whether a segment runs along a rectangle's edge for a positive length. */
+const segmentRunsAlongBorder = (
+  start: Point,
+  end: Point,
+  box: Box,
+): boolean => {
+  const overlap = (a: number, b: number, min: number, max: number) =>
+    Math.min(Math.max(a, b), max) - Math.max(Math.min(a, b), min) > EPSILON;
+  if (Math.abs(start[1] - end[1]) < EPSILON) {
+    return (
+      (Math.abs(start[1] - box.y) < EPSILON ||
+        Math.abs(start[1] - (box.y + box.height)) < EPSILON) &&
+      overlap(start[0], end[0], box.x, box.x + box.width)
+    );
+  }
+  if (Math.abs(start[0] - end[0]) < EPSILON) {
+    return (
+      (Math.abs(start[0] - box.x) < EPSILON ||
+        Math.abs(start[0] - (box.x + box.width)) < EPSILON) &&
+      overlap(start[1], end[1], box.y, box.y + box.height)
+    );
+  }
+  return false;
+};
+
 /** Whether a segment enters the open interior of a rectangle. */
 const segmentIntersectsInterior = (
   start: Point,
   end: Point,
   box: Box,
 ): boolean => {
+  // Liang-Barsky clipping, unrolled to avoid allocating a closure per test:
+  // this runs for every candidate segment against every card.
   const dx = end[0] - start[0];
   const dy = end[1] - start[1];
   let lower = 0;
   let upper = 1;
-  const clip = (
-    origin: number,
-    delta: number,
-    min: number,
-    max: number,
-  ): boolean => {
-    if (Math.abs(delta) < EPSILON) {
-      return origin > min + EPSILON && origin < max - EPSILON;
+  if (Math.abs(dx) < EPSILON) {
+    if (
+      !(start[0] > box.x + EPSILON && start[0] < box.x + box.width - EPSILON)
+    ) {
+      return false;
     }
-    const first = (min - origin) / delta;
-    const second = (max - origin) / delta;
+  } else {
+    const first = (box.x - start[0]) / dx;
+    const second = (box.x + box.width - start[0]) / dx;
     lower = Math.max(lower, Math.min(first, second));
     upper = Math.min(upper, Math.max(first, second));
-    return lower < upper - EPSILON;
-  };
-  return (
-    clip(start[0], dx, box.x, box.x + box.width) &&
-    clip(start[1], dy, box.y, box.y + box.height) &&
-    Math.max(lower, EPSILON) < Math.min(upper, 1 - EPSILON)
-  );
+    if (!(lower < upper - EPSILON)) {
+      return false;
+    }
+  }
+  if (Math.abs(dy) < EPSILON) {
+    if (
+      !(start[1] > box.y + EPSILON && start[1] < box.y + box.height - EPSILON)
+    ) {
+      return false;
+    }
+  } else {
+    const first = (box.y - start[1]) / dy;
+    const second = (box.y + box.height - start[1]) / dy;
+    lower = Math.max(lower, Math.min(first, second));
+    upper = Math.min(upper, Math.max(first, second));
+    if (!(lower < upper - EPSILON)) {
+      return false;
+    }
+  }
+  return Math.max(lower, EPSILON) < Math.min(upper, 1 - EPSILON);
 };
 
 const validEdges = (graph: CauscapeGraph): readonly CauscapeEdge[] => {
@@ -648,46 +645,8 @@ const uniqueNumbers = (values: readonly number[]): number[] =>
     ),
   ].sort((a, b) => a - b);
 
-const countObstacleHits = (
-  points: readonly Point[],
-  nodes: readonly CauscapeNode[],
-  positions: ReadonlyMap<string, Position>,
-): number => {
-  let hits = 0;
-  for (const node of nodes) {
-    // Endpoint cards are obstacles too: touching their border is valid,
-    // but a detour must not turn back through their interior.
-    const box = boxFor(node, positions);
-    if (
-      points
-        .slice(1)
-        .some((_, index) =>
-          segmentIntersectsInterior(points[index], points[index + 1], box),
-        )
-    ) {
-      hits += 1;
-    }
-  }
-  return hits;
-};
-
-const countCrossingsAgainst = (
-  route: CauscapeEdgeGeometry,
-  routes: readonly CauscapeEdgeGeometry[],
-): number =>
-  routes.reduce(
-    (count, other) => count + (routeCrosses(route, other) ? 1 : 0),
-    0,
-  );
-
-const routeIntersectsBox = (route: CauscapeEdgeGeometry, box: Box): boolean => {
-  const points = absolutePoints(route);
-  return points
-    .slice(1)
-    .some((_, index) =>
-      segmentIntersectsInterior(points[index], points[index + 1], box),
-    );
-};
+const routeIntersectsBox = (route: CauscapeEdgeGeometry, box: Box): boolean =>
+  pointsIntersectBox(absolutePoints(route), box);
 
 const inflateBox = (box: Box, padding: number): Box => ({
   x: box.x - padding,
@@ -695,6 +654,108 @@ const inflateBox = (box: Box, padding: number): Box => ({
   width: box.width + padding * 2,
   height: box.height + padding * 2,
 });
+
+/** The cards a route must keep its distance from; see findCrowdedCards. */
+type SpacingObstacles = Readonly<{
+  fromId: string;
+  toId: string;
+  nodeIds: readonly string[];
+  boxes: readonly Box[];
+  /** `boxes` inflated by the passing clearance. */
+  clearanceBoxes: readonly Box[];
+  runway: number;
+}>;
+
+const createSpacingObstacles = (
+  edge: CauscapeEdge,
+  nodes: readonly CauscapeNode[],
+  positions: ReadonlyMap<string, Position> | undefined,
+  requestedClearance = 0,
+): SpacingObstacles => {
+  const [fromId, toId] = getCauscapeFlowEndpointIds(edge);
+  const clearance = Math.max(GRAPH_SPACING.nodeClearance, requestedClearance);
+  const boxes = nodes.map((node) => boxFor(node, positions));
+  return {
+    fromId,
+    toId,
+    nodeIds: nodes.map((node) => node.id),
+    boxes,
+    clearanceBoxes: boxes.map((box) => inflateBox(box, clearance)),
+    runway: Math.max(GRAPH_SPACING.endpointRunway, requestedClearance),
+  };
+};
+
+/** Whether the first or last segment is too short to leave its card. */
+const hasShortEndpointRunway = (
+  points: readonly Point[],
+  runway: number,
+): boolean => {
+  const length = (a: Point, b: Point) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+  return (
+    points.length < 2 ||
+    length(points[0], points[1]) + EPSILON < runway ||
+    length(points[points.length - 2], points[points.length - 1]) + EPSILON <
+      runway
+  );
+};
+
+/**
+ * The spacing rule shared by routing and quality analysis: return the
+ * indices of cards a route passes too close to, in card order, stopping
+ * after `limit + 1` of them. Only the segment attached to an endpoint card
+ * may enter that card's margin; later segments must not turn back and hug
+ * the source or target card.
+ */
+const findCrowdedCards = (
+  points: readonly Point[],
+  obstacles: SpacingObstacles,
+  limit = Infinity,
+): number[] => {
+  const crowded: number[] = [];
+  const { minX, minY, maxX, maxY } = boundsOf(points);
+  for (let nodeIndex = 0; nodeIndex < obstacles.boxes.length; nodeIndex += 1) {
+    const margin = obstacles.clearanceBoxes[nodeIndex];
+    // The clearance box contains the card, so a route that stays outside
+    // it cannot hit either one.
+    if (
+      maxX <= margin.x ||
+      minX >= margin.x + margin.width ||
+      maxY <= margin.y ||
+      minY >= margin.y + margin.height
+    ) {
+      continue;
+    }
+    const id = obstacles.nodeIds[nodeIndex];
+    for (let index = 0; index < points.length - 1; index += 1) {
+      const attached =
+        (id === obstacles.fromId && index === 0) ||
+        (id === obstacles.toId && index === points.length - 2);
+      if (
+        attached
+          ? segmentIntersectsInterior(
+              points[index],
+              points[index + 1],
+              obstacles.boxes[nodeIndex],
+            ) ||
+            // The attached segment must leave its card, not slide along
+            // the card's edge to reach its endpoint.
+            segmentRunsAlongBorder(
+              points[index],
+              points[index + 1],
+              obstacles.boxes[nodeIndex],
+            )
+          : segmentIntersectsInterior(points[index], points[index + 1], margin)
+      ) {
+        crowded.push(nodeIndex);
+        if (crowded.length > limit) {
+          return crowded;
+        }
+        break;
+      }
+    }
+  }
+  return crowded;
+};
 
 const routeSpacing = (
   edge: CauscapeEdge,
@@ -704,34 +765,546 @@ const routeSpacing = (
   requestedClearance = 0,
 ) => {
   const points = absolutePoints(route);
-  const [fromId, toId] = getCauscapeFlowEndpointIds(edge);
-  const clearance = Math.max(GRAPH_SPACING.nodeClearance, requestedClearance);
-  const runway = Math.max(GRAPH_SPACING.endpointRunway, requestedClearance);
-  const length = (a: Point, b: Point) => Math.hypot(a[0] - b[0], a[1] - b[1]);
-  const shortEndpoint =
-    points.length < 2 ||
-    length(points[0], points[1]) + EPSILON < runway ||
-    length(points[points.length - 2], points[points.length - 1]) + EPSILON <
-      runway;
-  const crowdedNodes = nodes.filter((node) => {
-    const box = boxFor(node, positions);
-    return points.slice(1).some((end, index) => {
-      // Only the segment actually attached to this card may enter its margin.
-      // Later segments must not turn back and hug the source or target card.
-      if (
-        (node.id === fromId && index === 0) ||
-        (node.id === toId && index === points.length - 2)
-      ) {
-        return segmentIntersectsInterior(points[index], end, box);
+  const obstacles = createSpacingObstacles(
+    edge,
+    nodes,
+    positions,
+    requestedClearance,
+  );
+  return {
+    shortEndpoint: hasShortEndpointRunway(points, obstacles.runway),
+    crowdedNodes: findCrowdedCards(points, obstacles).map(
+      (index) => nodes[index],
+    ),
+  };
+};
+
+type RouteScoringContext = SpacingObstacles &
+  Readonly<{
+    edge: CauscapeEdge;
+    labelPaddingBoxes: readonly Box[];
+    existingPoints: readonly (readonly Point[])[];
+    existingBounds: readonly Bounds[];
+    existingLabelBoxes: readonly Box[];
+    labelClearance: number;
+    weights: RoutingWeights;
+    fromBox: Box;
+    toBox: Box;
+    fromCenter: Point;
+    toCenter: Point;
+  }>;
+
+type Bounds = Readonly<{
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}>;
+
+const boundsOf = (points: readonly Point[]): Bounds => {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const point of points) {
+    minX = Math.min(minX, point[0]);
+    minY = Math.min(minY, point[1]);
+    maxX = Math.max(maxX, point[0]);
+    maxY = Math.max(maxY, point[1]);
+  }
+  return { minX, minY, maxX, maxY };
+};
+
+/**
+ * Conservative pre-check for crossing, overlap, and interior tests: all of
+ * them need the two shapes to come within EPSILON of each other.
+ */
+const boundsMayTouch = (a: Bounds, b: Bounds, margin = EPSILON): boolean =>
+  a.maxX >= b.minX - margin &&
+  a.minX <= b.maxX + margin &&
+  a.maxY >= b.minY - margin &&
+  a.minY <= b.maxY + margin;
+
+const boxBounds = (box: Box): Bounds => ({
+  minX: box.x,
+  minY: box.y,
+  maxX: box.x + box.width,
+  maxY: box.y + box.height,
+});
+
+type ScoredRoute = {
+  route: CauscapeEdgeGeometry;
+  /** Values of the routing mode's stages, compared lexicographically. */
+  scores: readonly number[];
+  /** Whether the route hits cards, clearances, labels, or shared lanes. */
+  hasHardIssues: boolean;
+  crossings: number;
+};
+
+const createRouteScoringContext = (
+  edge: CauscapeEdge,
+  nodes: readonly CauscapeNode[],
+  positions: ReadonlyMap<string, Position>,
+  existingRoutes: readonly CauscapeEdgeGeometry[],
+  existingLabelBoxes: readonly Box[],
+  requestedClearance: number,
+  labelClearance: number,
+  fromBox: Box,
+  toBox: Box,
+  weights: RoutingWeights,
+): RouteScoringContext => {
+  const obstacles = createSpacingObstacles(
+    edge,
+    nodes,
+    positions,
+    requestedClearance,
+  );
+  const existingPoints = existingRoutes.map(absolutePoints);
+  return {
+    ...obstacles,
+    edge,
+    labelPaddingBoxes: obstacles.boxes.map((box) =>
+      inflateBox(box, GRAPH_SPACING.labelPadding),
+    ),
+    existingPoints,
+    existingBounds: existingPoints.map(boundsOf),
+    existingLabelBoxes,
+    labelClearance,
+    weights,
+    fromBox,
+    toBox,
+    fromCenter: centerOf(fromBox),
+    toCenter: centerOf(toBox),
+  };
+};
+
+const pointsIntersectBox = (points: readonly Point[], box: Box): boolean => {
+  for (let index = 1; index < points.length; index += 1) {
+    if (segmentIntersectsInterior(points[index - 1], points[index], box)) {
+      return true;
+    }
+  }
+  return false;
+};
+
+const pointsCross = (a: readonly Point[], b: readonly Point[]): boolean => {
+  for (let aIndex = 1; aIndex < a.length; aIndex += 1) {
+    for (let bIndex = 1; bIndex < b.length; bIndex += 1) {
+      if (segmentCrosses(a[aIndex - 1], a[aIndex], b[bIndex - 1], b[bIndex])) {
+        return true;
       }
-      return segmentIntersectsInterior(
-        points[index],
-        end,
-        inflateBox(box, clearance),
+    }
+  }
+  return false;
+};
+
+const pointsOverlapLength = (
+  a: readonly Point[],
+  b: readonly Point[],
+): number => {
+  let length = 0;
+  for (let aIndex = 1; aIndex < a.length; aIndex += 1) {
+    for (let bIndex = 1; bIndex < b.length; bIndex += 1) {
+      length += segmentOverlapLength(
+        a[aIndex - 1],
+        a[aIndex],
+        b[bIndex - 1],
+        b[bIndex],
       );
-    });
+    }
+  }
+  return length;
+};
+
+/** Count the cards a candidate enters, stopping once `bound` is exceeded. */
+const countCandidateObstacleHits = (
+  points: readonly Point[],
+  context: RouteScoringContext,
+  bound: number,
+): number => {
+  const { minX, minY, maxX, maxY } = boundsOf(points);
+  let hits = 0;
+  for (const box of context.boxes) {
+    // A segment can only enter a card's interior if its bounds reach it.
+    if (
+      maxX <= box.x ||
+      minX >= box.x + box.width ||
+      maxY <= box.y ||
+      minY >= box.y + box.height
+    ) {
+      continue;
+    }
+    if (pointsIntersectBox(points, box)) {
+      hits += 1;
+      if (hits > bound) {
+        return hits;
+      }
+    }
+  }
+  return hits;
+};
+
+/** Mirrors routeSpacing, stopping once `bound` is exceeded. */
+const countCandidateSpacingHits = (
+  points: readonly Point[],
+  context: RouteScoringContext,
+  bound: number,
+): number => {
+  const short = hasShortEndpointRunway(points, context.runway) ? 1 : 0;
+  return short > bound
+    ? short
+    : short + findCrowdedCards(points, context, bound - short).length;
+};
+
+type RouteCandidate = {
+  raw: Point[];
+  compact?: Point[];
+  route?: CauscapeEdgeGeometry;
+  points?: Point[];
+  bounds?: Bounds;
+  labelBox?: Box | null;
+  scores: number[];
+};
+
+const candidateGeometry = (candidate: RouteCandidate) => {
+  if (!candidate.route) {
+    candidate.route = geometryFromAbsolutePoints(candidate.raw);
+    candidate.points = absolutePoints(candidate.route);
+    candidate.bounds = boundsOf(candidate.points);
+  }
+  return {
+    route: candidate.route,
+    points: candidate.points as Point[],
+    bounds: candidate.bounds as Bounds,
+  };
+};
+
+const candidateLabelBox = (
+  candidate: RouteCandidate,
+  context: RouteScoringContext,
+): Box | null => {
+  if (candidate.labelBox === undefined) {
+    candidate.labelBox = getCauscapeEdgeLabelBox(
+      context.edge,
+      candidateGeometry(candidate).route,
+      context.labelClearance,
+    );
+  }
+  return candidate.labelBox;
+};
+
+const candidateLength = (candidate: RouteCandidate): number => {
+  const { raw } = candidate;
+  let length = 0;
+  for (let index = 1; index < raw.length; index += 1) {
+    length += Math.hypot(
+      raw[index][0] - raw[index - 1][0],
+      raw[index][1] - raw[index - 1][1],
+    );
+  }
+  return length;
+};
+
+const countCandidateRouteOverlaps = (
+  candidate: RouteCandidate,
+  context: RouteScoringContext,
+  bound: number,
+): number => {
+  const { points, bounds } = candidateGeometry(candidate);
+  let overlaps = 0;
+  for (let index = 0; index < context.existingPoints.length; index += 1) {
+    if (
+      boundsMayTouch(
+        bounds,
+        context.existingBounds[index],
+        MIN_LANE_SEPARATION,
+      ) &&
+      pointsOverlapLength(points, context.existingPoints[index]) >
+        MIN_MEANINGFUL_ROUTE_OVERLAP
+    ) {
+      overlaps += 1;
+      if (overlaps > bound) {
+        return overlaps;
+      }
+    }
+  }
+  return overlaps;
+};
+
+const candidateOverlapLength = (
+  candidate: RouteCandidate,
+  context: RouteScoringContext,
+): number => {
+  const { points, bounds } = candidateGeometry(candidate);
+  let length = 0;
+  for (let index = 0; index < context.existingPoints.length; index += 1) {
+    // Routes farther apart than a lane contribute exactly 0, so skipping
+    // them keeps the floating-point sum identical.
+    if (
+      boundsMayTouch(bounds, context.existingBounds[index], MIN_LANE_SEPARATION)
+    ) {
+      length += pointsOverlapLength(points, context.existingPoints[index]);
+    }
+  }
+  return length;
+};
+
+const countCandidateLabelNodeHits = (
+  candidate: RouteCandidate,
+  context: RouteScoringContext,
+): number => {
+  const labelBox = candidateLabelBox(candidate, context);
+  return labelBox
+    ? context.labelPaddingBoxes.filter((box) => boxesOverlap(labelBox, box))
+        .length
+    : 0;
+};
+
+const countCandidateLabelBoxHits = (
+  candidate: RouteCandidate,
+  context: RouteScoringContext,
+): number => {
+  const labelBox = candidateLabelBox(candidate, context);
+  return labelBox
+    ? context.existingLabelBoxes.filter((box) => boxesOverlap(labelBox, box))
+        .length
+    : 0;
+};
+
+const countCandidateLabelRouteHits = (
+  candidate: RouteCandidate,
+  context: RouteScoringContext,
+): number => {
+  const labelBox = candidateLabelBox(candidate, context);
+  if (!labelBox) {
+    return 0;
+  }
+  const { points, bounds } = candidateGeometry(candidate);
+  const labelBounds = boxBounds(labelBox);
+  return (
+    context.existingPoints.filter(
+      (other, index) =>
+        boundsMayTouch(labelBounds, context.existingBounds[index]) &&
+        pointsIntersectBox(other, labelBox),
+    ).length +
+    context.existingLabelBoxes.filter(
+      (box) =>
+        boundsMayTouch(bounds, boxBounds(box)) &&
+        pointsIntersectBox(points, box),
+    ).length
+  );
+};
+
+const countCandidateCrossings = (
+  candidate: RouteCandidate,
+  context: RouteScoringContext,
+  bound: number,
+): number => {
+  const { points, bounds } = candidateGeometry(candidate);
+  let crossings = 0;
+  for (let index = 0; index < context.existingPoints.length; index += 1) {
+    if (
+      boundsMayTouch(bounds, context.existingBounds[index]) &&
+      pointsCross(points, context.existingPoints[index])
+    ) {
+      crossings += 1;
+      if (crossings > bound) {
+        return crossings;
+      }
+    }
+  }
+  return crossings;
+};
+
+const candidateBends = (candidate: RouteCandidate): number =>
+  candidateGeometry(candidate).route.points.length - 2;
+
+const candidatePortDeviation = (
+  candidate: RouteCandidate,
+  context: RouteScoringContext,
+): number => {
+  const { raw } = candidate;
+  const { fromBox, toBox, fromCenter, toCenter } = context;
+  return (
+    Math.min(
+      Math.abs(raw[0][0] - fromCenter[0]) / fromBox.width,
+      Math.abs(raw[0][1] - fromCenter[1]) / fromBox.height,
+    ) +
+    Math.min(
+      Math.abs(raw[raw.length - 1][0] - toCenter[0]) / toBox.width,
+      Math.abs(raw[raw.length - 1][1] - toCenter[1]) / toBox.height,
+    )
+  );
+};
+
+/**
+ * One scoring stage. A stage may stop early once its value exceeds `bound`,
+ * because such a candidate can no longer be a minimum.
+ */
+type RouteScoringStage = (
+  candidate: RouteCandidate,
+  context: RouteScoringContext,
+  bound: number,
+) => number;
+
+const obstacleStage: RouteScoringStage = (candidate, context, bound) =>
+  countCandidateObstacleHits(candidate.raw, context, bound);
+
+const spacingStage: RouteScoringStage = (candidate, context, bound) => {
+  // Most candidates are rejected here. Compacting is enough for spacing;
+  // the full geometry is built only for the survivors.
+  candidate.compact ??= compactPoints(candidate.raw);
+  return countCandidateSpacingHits(candidate.compact, context, bound);
+};
+
+/**
+ * Balanced routing treats a crossing as roughly one column of detour, in
+ * scene units of route length: avoiding it is preferred, but not by looping
+ * a flow around the whole diagram.
+ */
+const BALANCED_CROSSING_COST = 480;
+const BALANCED_BEND_COST = 40;
+
+const balancedCostStage: RouteScoringStage = (candidate, context, bound) => {
+  const base =
+    candidateLength(candidate) +
+    candidateBends(candidate) * BALANCED_BEND_COST +
+    candidateOverlapLength(candidate, context);
+  if (base > bound) {
+    return base;
+  }
+  const crossings = countCandidateCrossings(
+    candidate,
+    context,
+    Math.floor((bound - base) / BALANCED_CROSSING_COST),
+  );
+  return base + crossings * BALANCED_CROSSING_COST;
+};
+
+/**
+ * Candidates are ranked lexicographically by these stages. Both modes keep
+ * cards, clearances, shared segments, and labels strict. Balanced routing
+ * then trades crossings, bends, and length as one cost. Strict routing is the
+ * original order: no crossing at any length. It can keep labels clear in
+ * cramped pinned layouts where balanced routing takes the only free lane.
+ */
+const BALANCED_ROUTING: readonly RouteScoringStage[] = [
+  obstacleStage,
+  spacingStage,
+  countCandidateRouteOverlaps,
+  countCandidateLabelNodeHits,
+  countCandidateLabelBoxHits,
+  countCandidateLabelRouteHits,
+  balancedCostStage,
+  candidatePortDeviation,
+  (candidate) => candidateGeometry(candidate).route.x,
+  (candidate) => candidateGeometry(candidate).route.y,
+];
+
+const STRICT_ROUTING: readonly RouteScoringStage[] = [
+  obstacleStage,
+  spacingStage,
+  countCandidateRouteOverlaps,
+  candidateOverlapLength,
+  countCandidateLabelNodeHits,
+  countCandidateLabelBoxHits,
+  countCandidateLabelRouteHits,
+  countCandidateCrossings,
+  candidateBends,
+  candidatePortDeviation,
+  candidateLength,
+  (candidate) => candidateGeometry(candidate).route.x,
+  (candidate) => candidateGeometry(candidate).route.y,
+];
+
+type RoutingWeights = readonly RouteScoringStage[];
+
+const toScoredRoute = (
+  candidate: RouteCandidate,
+  context: RouteScoringContext,
+): ScoredRoute => {
+  const scores = context.weights.map((stage, index) => {
+    const value =
+      candidate.scores[index] ?? stage(candidate, context, Infinity);
+    return Number.isNaN(value) ? 0 : value;
   });
-  return { shortEndpoint, crowdedNodes };
+  return {
+    route: candidateGeometry(candidate).route,
+    scores,
+    hasHardIssues:
+      obstacleStage(candidate, context, 0) > 0 ||
+      spacingStage(candidate, context, 0) > 0 ||
+      countCandidateRouteOverlaps(candidate, context, 0) > 0 ||
+      countCandidateLabelNodeHits(candidate, context) > 0 ||
+      countCandidateLabelBoxHits(candidate, context) > 0 ||
+      countCandidateLabelRouteHits(candidate, context) > 0,
+    crossings: countCandidateCrossings(candidate, context, Infinity),
+  };
+};
+
+const compareScoredRoutes = (a: ScoredRoute, b: ScoredRoute): number => {
+  for (let index = 0; index < a.scores.length; index += 1) {
+    const difference = a.scores[index] - b.scores[index];
+    if (difference) {
+      return difference;
+    }
+  }
+  return 0;
+};
+
+/**
+ * Collect candidates and select the best by the staged order, keeping the
+ * earliest one on a full tie. The first stage (card hits) runs as candidates
+ * arrive, so the tens of thousands of channel combinations that cross a card
+ * are never stored. Later stages run only on candidates still tied for the
+ * minimum, so the expensive route and label checks see a handful of
+ * survivors instead of every combination.
+ */
+const createCandidatePool = (context: RouteScoringContext) => {
+  const stages = context.weights;
+  let survivors: RouteCandidate[] = [];
+  let firstMinimum = Infinity;
+  return {
+    add(raw: Point[]): void {
+      const candidate: RouteCandidate = { raw, scores: [] };
+      const value = stages[0](candidate, context, firstMinimum);
+      if (value > firstMinimum) {
+        return;
+      }
+      candidate.scores[0] = value;
+      if (value < firstMinimum) {
+        firstMinimum = value;
+        survivors = [];
+      }
+      survivors.push(candidate);
+    },
+    select(): ScoredRoute | null {
+      if (survivors.length === 0) {
+        return null;
+      }
+      for (
+        let stage = 1;
+        stage < stages.length && survivors.length > 1;
+        stage += 1
+      ) {
+        let minimum = Infinity;
+        for (const candidate of survivors) {
+          // A degenerate card (zero width or height) can yield NaN. Treat
+          // it as a tie so the pool never filters itself empty.
+          const raw = stages[stage](candidate, context, minimum);
+          const value = Number.isNaN(raw) ? 0 : raw;
+          candidate.scores[stage] = value;
+          if (value < minimum) {
+            minimum = value;
+          }
+        }
+        survivors = survivors.filter(
+          (candidate) => candidate.scores[stage] === minimum,
+        );
+      }
+      return toScoredRoute(survivors[0], context);
+    },
+  };
 };
 
 const routeAroundNodes = (
@@ -742,6 +1315,7 @@ const routeAroundNodes = (
   existingLabelBoxes: readonly Box[],
   clearance: number,
   labelClearance: number,
+  weights: RoutingWeights,
 ): CauscapeEdgeGeometry => {
   const [fromNodeId, toNodeId] = getCauscapeFlowEndpointIds(edge);
   const from = nodes.find((node) => node.id === fromNodeId);
@@ -804,19 +1378,33 @@ const routeAroundNodes = (
       box.y + box.height + laneGap,
     ]),
   ]);
-  const candidates: Point[][] = [
-    ...getLRouteCandidates(fromBox, toBox),
-    getOrthogonalRoutePoints(fromBox, toBox, true),
-    getOrthogonalRoutePoints(fromBox, toBox, false),
-  ];
+  const context = createRouteScoringContext(
+    edge,
+    nodes,
+    positions,
+    existingRoutes,
+    existingLabelBoxes,
+    clearance,
+    labelClearance,
+    fromBox,
+    toBox,
+    weights,
+  );
+  const candidates = createCandidatePool(context);
+  for (const points of getLRouteCandidates(fromBox, toBox)) {
+    candidates.add(points);
+  }
+  candidates.add(getOrthogonalRoutePoints(fromBox, toBox, true));
+  candidates.add(getOrthogonalRoutePoints(fromBox, toBox, false));
   for (const route of existingRoutes) {
     for (const point of absolutePoints(route)) {
       xChannels.push(point[0] - laneGap);
       xChannels.push(point[0] + laneGap);
     }
   }
-  for (const channel of xChannels) {
-    candidates.push([
+  // Identical channels yield identical candidates; keep the first of each.
+  for (const channel of new Set(xChannels)) {
+    candidates.add([
       borderPoint(fromBox, [channel, fromCenter[1]]),
       [channel, fromCenter[1]],
       [channel, toCenter[1]],
@@ -824,7 +1412,7 @@ const routeAroundNodes = (
     ]);
   }
   for (const channel of yChannels) {
-    candidates.push([
+    candidates.add([
       borderPoint(fromBox, [fromCenter[0], channel]),
       [fromCenter[0], channel],
       [toCenter[0], channel],
@@ -834,6 +1422,7 @@ const routeAroundNodes = (
   // Prefer side midpoints, but allow quarter-side ports for fan-in/fan-out.
   // Distinct ports avoid merging unrelated flows into the same final segment.
   const fractions = [0.5, 0.25, 0.75];
+  const uniqueXChannels = uniqueNumbers(xChannels);
   for (const fromFraction of fractions) {
     for (const toFraction of fractions) {
       if (fromFraction === 0.5 && toFraction === 0.5) {
@@ -841,8 +1430,8 @@ const routeAroundNodes = (
       }
       const fromY = fromBox.y + fromBox.height * fromFraction;
       const toY = toBox.y + toBox.height * toFraction;
-      for (const channel of uniqueNumbers(xChannels)) {
-        candidates.push([
+      for (const channel of uniqueXChannels) {
+        candidates.add([
           [
             channel < fromCenter[0] ? fromBox.x : fromBox.x + fromBox.width,
             fromY,
@@ -855,7 +1444,7 @@ const routeAroundNodes = (
       const fromX = fromBox.x + fromBox.width * fromFraction;
       const toX = toBox.x + toBox.width * toFraction;
       for (const channel of yChannels) {
-        candidates.push([
+        candidates.add([
           [
             fromX,
             channel < fromCenter[1] ? fromBox.y : fromBox.y + fromBox.height,
@@ -867,110 +1456,15 @@ const routeAroundNodes = (
       }
     }
   }
-  const scoreCandidate = (points: Point[]) => {
-    const route = geometryFromAbsolutePoints(points);
-    const spacing = routeSpacing(edge, route, nodes, positions, clearance);
-    const obstacleHits = countObstacleHits(points, nodes, positions);
-    const crossings = countCrossingsAgainst(route, existingRoutes);
-    const routeOverlaps = countRouteOverlapsAgainst(route, existingRoutes);
-    const routeOverlapLengthValue = existingRoutes.reduce(
-      (length, existingRoute) =>
-        length + routeOverlapLength(route, existingRoute),
-      0,
-    );
-    const labelBox = getCauscapeEdgeLabelBox(edge, route, labelClearance);
-    const labelNodeHits = labelBox
-      ? nodes.reduce(
-          (count, node) =>
-            count +
-            (boxesOverlap(
-              labelBox,
-              inflateBox(boxFor(node, positions), GRAPH_SPACING.labelPadding),
-            )
-              ? 1
-              : 0),
-          0,
-        )
-      : 0;
-    const labelBoxHits = labelBox
-      ? existingLabelBoxes.reduce(
-          (count, existingLabelBox) =>
-            count + (boxesOverlap(labelBox, existingLabelBox) ? 1 : 0),
-          0,
-        )
-      : 0;
-    const labelRouteHits = labelBox
-      ? existingRoutes.reduce(
-          (count, existingRoute) =>
-            count + (routeIntersectsBox(existingRoute, labelBox) ? 1 : 0),
-          0,
-        ) +
-        existingLabelBoxes.reduce(
-          (count, existingLabelBox) =>
-            count + (routeIntersectsBox(route, existingLabelBox) ? 1 : 0),
-          0,
-        )
-      : 0;
-    const length = points
-      .slice(1)
-      .reduce(
-        (sum, point, index) =>
-          sum +
-          Math.hypot(point[0] - points[index][0], point[1] - points[index][1]),
-        0,
-      );
-    return {
-      route,
-      obstacleHits,
-      spacingHits: Number(spacing.shortEndpoint) + spacing.crowdedNodes.length,
-      routeOverlaps,
-      routeOverlapLength: routeOverlapLengthValue,
-      crossings,
-      labelNodeHits,
-      labelBoxHits,
-      labelRouteHits,
-      portDeviation:
-        Math.min(
-          Math.abs(points[0][0] - fromCenter[0]) / fromBox.width,
-          Math.abs(points[0][1] - fromCenter[1]) / fromBox.height,
-        ) +
-        Math.min(
-          Math.abs(points[points.length - 1][0] - toCenter[0]) / toBox.width,
-          Math.abs(points[points.length - 1][1] - toCenter[1]) / toBox.height,
-        ),
-      bends: route.points.length - 2,
-      length,
-    };
-  };
-  const compare = (
-    a: ReturnType<typeof scoreCandidate>,
-    b: ReturnType<typeof scoreCandidate>,
-  ) =>
-    a.obstacleHits - b.obstacleHits ||
-    a.spacingHits - b.spacingHits ||
-    a.routeOverlaps - b.routeOverlaps ||
-    a.routeOverlapLength - b.routeOverlapLength ||
-    a.labelNodeHits - b.labelNodeHits ||
-    a.labelBoxHits - b.labelBoxHits ||
-    a.labelRouteHits - b.labelRouteHits ||
-    a.crossings - b.crossings ||
-    a.bends - b.bends ||
-    a.portDeviation - b.portDeviation ||
-    a.length - b.length ||
-    a.route.x - b.route.x ||
-    a.route.y - b.route.y;
-  const scored = candidates.map(scoreCandidate).sort(compare);
-  const best = scored[0];
+  // The pool always holds the direct candidates added above.
+  let best = candidates.select() as ScoredRoute;
+  // Balanced routing already prices crossings, so only a broken hard rule
+  // justifies searching the far larger set of outer detours.
   if (
-    best.obstacleHits ||
-    best.spacingHits ||
-    best.crossings ||
-    best.routeOverlaps ||
-    best.labelNodeHits ||
-    best.labelBoxHits ||
-    best.labelRouteHits
+    best.hasHardIssues ||
+    (weights === STRICT_ROUTING && best.crossings > 0)
   ) {
-    candidates.length = 0;
+    const detours = createCandidatePool(context);
     // Two independent endpoint channels let a return flow reach a free outer
     // lane without squeezing both endpoint runways into the same corridor.
     for (const fraction of fractions) {
@@ -981,7 +1475,7 @@ const routeAroundNodes = (
           const startY = fromBox.y + fromBox.height * fraction;
           const endY = toBox.y + toBox.height * fraction;
           for (const y of yChannels) {
-            candidates.push([
+            detours.add([
               [startX, startY],
               [startX + fromSide * channelGap, startY],
               [startX + fromSide * channelGap, y],
@@ -995,8 +1489,8 @@ const routeAroundNodes = (
           const startVerticalY =
             fromBox.y + (fromSide > 0 ? fromBox.height : 0);
           const endVerticalY = toBox.y + (toSide > 0 ? toBox.height : 0);
-          for (const x of uniqueNumbers(xChannels)) {
-            candidates.push([
+          for (const x of uniqueXChannels) {
+            detours.add([
               [startVerticalX, startVerticalY],
               [startVerticalX, startVerticalY + fromSide * channelGap],
               [x, startVerticalY + fromSide * channelGap],
@@ -1010,13 +1504,13 @@ const routeAroundNodes = (
     }
     // Mixed-side detours can leave a narrow vertical corridor before placing
     // the label. A single-channel Z route cannot do that around a tall blocker.
-    for (const channelX of uniqueNumbers(xChannels)) {
+    for (const channelX of uniqueXChannels) {
       for (const channelY of yChannels) {
         if (
           (channelX < fromBox.x || channelX > fromBox.x + fromBox.width) &&
           (channelY < toBox.y || channelY > toBox.y + toBox.height)
         ) {
-          candidates.push([
+          detours.add([
             borderPoint(fromBox, [channelX, fromCenter[1]]),
             [channelX, fromCenter[1]],
             [channelX, channelY],
@@ -1028,7 +1522,7 @@ const routeAroundNodes = (
           (channelY < fromBox.y || channelY > fromBox.y + fromBox.height) &&
           (channelX < toBox.x || channelX > toBox.x + toBox.width)
         ) {
-          candidates.push([
+          detours.add([
             borderPoint(fromBox, [fromCenter[0], channelY]),
             [fromCenter[0], channelY],
             [channelX, channelY],
@@ -1038,10 +1532,12 @@ const routeAroundNodes = (
         }
       }
     }
-    scored.push(...candidates.map(scoreCandidate));
-    scored.sort(compare);
+    const detour = detours.select();
+    if (detour && compareScoredRoutes(detour, best) < 0) {
+      best = detour;
+    }
   }
-  return scored[0].route;
+  return best.route;
 };
 
 const getQualityDiagnostic = (
@@ -1067,10 +1563,22 @@ const dedupeDiagnostics = (
   });
 };
 
+const OBSERVABILITY_PATTERN =
+  /\b(telemetry|opentelemetry|otel|metrics?|traces?|tracer|tracing|logs?|logger|logging|logstash|observability|monitoring)\b/i;
+
+/**
+ * Match observability terms as whole words, after splitting camelCase and
+ * snake_case names. "OpenTelemetry Collector" and "audit_log" match;
+ * "Catalog", "Blog", "Login", and "CatalogChanged" do not.
+ */
+const isObservabilityText = (text: string): boolean =>
+  OBSERVABILITY_PATTERN.test(
+    text.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " "),
+  );
+
 const getEdgeRoutingPriority = (edge: CauscapeEdge): number => {
-  const label =
-    getCauscapeEdgeLabel(edge.element.causcape)?.toLowerCase() ?? "";
-  if (/(telemetry|metric|trace|log)/.test(label)) {
+  const label = getCauscapeEdgeLabel(edge.element.causcape) ?? "";
+  if (isObservabilityText(label)) {
     return 100;
   }
   switch (edge.relationship) {
@@ -1094,7 +1602,17 @@ const getEdgeRoutingPriority = (edge: CauscapeEdge): number => {
 export const analyzeGraphQuality = (
   graph: CauscapeGraph,
   options: GraphQualityOptions = {},
-): GraphQualityReport => {
+): GraphQualityReport => analyzeGraphQualityWithPenalty(graph, options).report;
+
+/**
+ * The public score is clamped to 0..100, so every busy diagram scores 0 and
+ * "did this change help?" cannot be answered from it. Optimization passes
+ * compare this unclamped penalty instead.
+ */
+const analyzeGraphQualityWithPenalty = (
+  graph: CauscapeGraph,
+  options: GraphQualityOptions = {},
+): { report: GraphQualityReport; penalty: number } => {
   const positions = options.positions;
   const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
   const routes = new Map<string, CauscapeEdgeGeometry>();
@@ -1475,26 +1993,24 @@ export const analyzeGraphQuality = (
     }
   }
 
-  const score = Math.max(
-    0,
-    Math.min(
-      100,
-      100 -
-        overlapCount * 20 -
-        edgeThroughNodeCount * 16 -
-        edgeDetachedCount * 40 -
-        edgeClearanceCount * 12 -
-        crossingCount * 5 -
-        routeOverlapCount * 12 -
-        edgeLabelOverlapCount * 16 -
-        Math.min(20, routeBendCount * 0.25) -
-        Math.max(0, weakComponents.length - 1) * 4 -
-        (architectureGraph ? 0 : cycleCount * 2) -
-        labelOverflowCount * 2 -
-        offViewportNodeCount,
-    ),
-  );
-  return {
+  // Route clean-up compares getEdgePenalty instead of re-running this
+  // analysis. Any new term that depends on a single edge's route must be
+  // added there as well.
+  const penalty =
+    overlapCount * 20 +
+    edgeThroughNodeCount * PENALTY.edgeThroughNode +
+    edgeDetachedCount * PENALTY.edgeDetached +
+    edgeClearanceCount * PENALTY.edgeClearance +
+    crossingCount * PENALTY.crossing +
+    routeOverlapCount * PENALTY.routeOverlap +
+    edgeLabelOverlapCount * PENALTY.labelOverlap +
+    getBendPenalty(routeBendCount) +
+    Math.max(0, weakComponents.length - 1) * 4 +
+    (architectureGraph ? 0 : cycleCount * 2) +
+    labelOverflowCount * 2 +
+    offViewportNodeCount;
+  const score = Math.max(0, Math.min(100, 100 - penalty));
+  const report: GraphQualityReport = {
     metrics: {
       nodeCount: graph.nodes.length,
       edgeCount: validEdges(graph).length,
@@ -1515,6 +2031,7 @@ export const analyzeGraphQuality = (
     },
     diagnostics: dedupeDiagnostics(diagnostics),
   };
+  return { report, penalty };
 };
 
 const computeRanks = (graph: CauscapeGraph): Map<string, number> => {
@@ -1910,7 +2427,7 @@ const getObservabilityNodeIds = (graph: CauscapeGraph): ReadonlySet<string> =>
   new Set(
     graph.nodes
       .filter((node) =>
-        /(telemetry|metric|trace|log)/i.test(
+        isObservabilityText(
           `${node.label} ${node.architecture?.description ?? ""}`,
         ),
       )
@@ -1973,9 +2490,254 @@ const placeObservabilityLane = (
   }
 };
 
+/**
+ * Place a column's cards top to bottom in the given order, `gap` apart, as
+ * close to their desired tops as possible (least squares). Substituting
+ * z = top - (heights and gaps above) turns this into isotonic regression,
+ * solved exactly by pooling adjacent violators. Unlike sliding each card
+ * below the previous one, a crowded column spreads evenly around the
+ * parents that pull it, instead of drifting downward.
+ */
+const packLayer = (
+  desiredTops: readonly number[],
+  heights: readonly number[],
+  gap: number,
+  segment: ColumnSegment = { start: -Infinity, end: Infinity },
+): number[] => {
+  const offsets: number[] = [];
+  let offset = 0;
+  for (const height of heights) {
+    offsets.push(offset);
+    offset += height + gap;
+  }
+  const blocks: { sum: number; count: number }[] = [];
+  desiredTops.forEach((top, index) => {
+    blocks.push({ sum: top - offsets[index], count: 1 });
+    while (
+      blocks.length > 1 &&
+      blocks[blocks.length - 2].sum / blocks[blocks.length - 2].count >
+        blocks[blocks.length - 1].sum / blocks[blocks.length - 1].count
+    ) {
+      const last = blocks.pop()!;
+      blocks[blocks.length - 1].sum += last.sum;
+      blocks[blocks.length - 1].count += last.count;
+    }
+  });
+  // Keeping the stack inside a segment bounds only its first top and last
+  // bottom. Both are monotone in z, so clamping every z is exact.
+  const lastIndex = heights.length - 1;
+  const minZ = segment.start;
+  const maxZ =
+    segment.end - (offsets[lastIndex] ?? 0) - (heights[lastIndex] ?? 0);
+  const tops: number[] = [];
+  for (const block of blocks) {
+    const z = Math.min(Math.max(block.sum / block.count, minZ), maxZ);
+    for (let index = 0; index < block.count; index += 1) {
+      tops.push(z + offsets[tops.length]);
+    }
+  }
+  return tops;
+};
+
+/** A vertical range of a column that cards may occupy, top to bottom. */
+type ColumnSegment = Readonly<{ start: number; end: number }>;
+
+const stackHeight = (heights: readonly number[], gap: number): number =>
+  heights.reduce((sum, height) => sum + height, 0) +
+  Math.max(0, heights.length - 1) * gap;
+
+/**
+ * Pack a column around fixed cards. Cards keep their order and go into the
+ * free segments between fixed cards: each to the segment nearest its
+ * desired place, overflow moving down to the next one (the last segment is
+ * unbounded), then each segment is packed like a free column. Without fixed
+ * cards there is one unbounded segment and this is exactly packLayer.
+ */
+const packColumn = (
+  desiredTops: readonly number[],
+  heights: readonly number[],
+  gap: number,
+  segments: readonly ColumnSegment[],
+): number[] => {
+  const distanceTo = (index: number, segment: ColumnSegment) => {
+    const top = desiredTops[index];
+    const bottom = top + heights[index];
+    return Math.max(0, segment.start - top, bottom - segment.end);
+  };
+  const assigned: number[][] = segments.map(() => []);
+  let current = 0;
+  desiredTops.forEach((_, index) => {
+    let best = current;
+    for (
+      let candidate = current + 1;
+      candidate < segments.length;
+      candidate += 1
+    ) {
+      if (
+        distanceTo(index, segments[candidate]) <
+        distanceTo(index, segments[best])
+      ) {
+        best = candidate;
+      }
+    }
+    current = best;
+    assigned[best].push(index);
+  });
+  for (let segment = 0; segment < segments.length - 1; segment += 1) {
+    const length = segments[segment].end - segments[segment].start;
+    while (
+      assigned[segment].length > 0 &&
+      stackHeight(
+        assigned[segment].map((index) => heights[index]),
+        gap,
+      ) > length
+    ) {
+      assigned[segment + 1].unshift(assigned[segment].pop()!);
+    }
+  }
+  const tops: number[] = new Array(desiredTops.length);
+  assigned.forEach((indices, segment) => {
+    const packed = packLayer(
+      indices.map((index) => desiredTops[index]),
+      indices.map((index) => heights[index]),
+      gap,
+      segments[segment],
+    );
+    indices.forEach((index, position) => {
+      tops[index] = packed[position];
+    });
+  });
+  return tops;
+};
+
+/**
+ * The free segments of a column whose cards span [left, right], between
+ * fixed boxes that overlap it horizontally, each kept `gap` away.
+ */
+const getColumnSegments = (
+  left: number,
+  right: number,
+  fixedBoxes: readonly Box[],
+  gap: number,
+  top: number,
+): ColumnSegment[] => {
+  const blocked = fixedBoxes
+    .filter((box) => box.x < right && box.x + box.width > left)
+    .map((box) => ({ start: box.y - gap, end: box.y + box.height + gap }))
+    .sort((a, b) => a.start - b.start);
+  const segments: ColumnSegment[] = [];
+  let start = top;
+  for (const range of blocked) {
+    if (range.start > start) {
+      segments.push({ start, end: range.start });
+    }
+    start = Math.max(start, range.end);
+  }
+  segments.push({ start, end: Infinity });
+  return segments;
+};
+
+/**
+ * Lay out the diagram, keeping pinned and locked cards where they are.
+ *
+ * Cards are first laid out as if nothing were fixed. When the fixed cards
+ * sit where that layout (moved as a whole) would put them anyway, it is
+ * kept: the fixed cards are put back exactly and only free cards that
+ * collide with them are pushed aside. Locking a card in place therefore
+ * changes nothing else. Fixed cards placed elsewhere pull their neighbors
+ * instead: the diagram is packed around their real positions.
+ */
 const computePositions = (
   graph: CauscapeGraph,
   options: CauscapeLayoutOptions,
+): Map<string, Position> => {
+  const pinned = graph.nodes.filter((node) => isPinned(node, options));
+  const freeOptions = {
+    ...options,
+    pinnedNodeIds: undefined,
+    respectLocked: false,
+  };
+  if (pinned.length === 0) {
+    return placeNodes(graph, freeOptions, true);
+  }
+  const free = placeNodes(graph, freeOptions, false);
+  const meanOffset = (axis: "x" | "y") =>
+    pinned.reduce(
+      (sum, node) => sum + node[axis] - (free.get(node.id)?.[axis] ?? 0),
+      0,
+    ) / pinned.length;
+  const dx = meanOffset("x");
+  const dy = meanOffset("y");
+  const gapY = options.gapY ?? DEFAULT_GAP_Y;
+  const fitsFreeLayout = pinned.every((node) => {
+    const place = free.get(node.id);
+    return (
+      place !== undefined &&
+      Math.abs(node.x - place.x - dx) <= gapY / 2 &&
+      Math.abs(node.y - place.y - dy) <= gapY / 2
+    );
+  });
+  if (!fitsFreeLayout) {
+    return placeNodes(graph, options, false);
+  }
+  const positions = new Map<string, Position>();
+  for (const [id, position] of free) {
+    positions.set(id, { x: position.x + dx, y: position.y + dy });
+  }
+  const fixedBoxes: Box[] = [];
+  for (const node of pinned) {
+    positions.set(node.id, { x: node.x, y: node.y });
+    fixedBoxes.push(boxFor(node));
+  }
+  const resolveCollisions = (nodes: readonly CauscapeNode[]) => {
+    // Cards sharing an x form a column; keep each column's order and gaps.
+    const columns = new Map<number, CauscapeNode[]>();
+    for (const node of nodes) {
+      const x = positions.get(node.id)!.x;
+      columns.set(x, [...(columns.get(x) ?? []), node]);
+    }
+    for (const x of [...columns.keys()].sort((a, b) => a - b)) {
+      const column = columns
+        .get(x)!
+        .sort(
+          (a, b) =>
+            positions.get(a.id)!.y - positions.get(b.id)!.y ||
+            a.id.localeCompare(b.id),
+        );
+      const tops = packColumn(
+        column.map((node) => positions.get(node.id)!.y),
+        column.map((node) => node.height),
+        gapY,
+        getColumnSegments(
+          x,
+          x + Math.max(...column.map((node) => node.width)),
+          fixedBoxes,
+          gapY,
+          -Infinity,
+        ),
+      );
+      column.forEach((node, index) => {
+        positions.set(node.id, { x, y: tops[index] });
+        fixedBoxes.push(boxFor(node, positions));
+      });
+    }
+  };
+  const observabilityIds = getObservabilityNodeIds(graph);
+  const freeNodes = graph.nodes.filter((node) => !isPinned(node, options));
+  resolveCollisions(freeNodes.filter((node) => !observabilityIds.has(node.id)));
+  // Pushed cards may have grown the main flow; keep the lane below it.
+  placeObservabilityLane(graph, computeRanks(getFlowGraph(graph)), positions, {
+    ...options,
+    originX: (options.originX ?? 0) + dx,
+  });
+  resolveCollisions(freeNodes.filter((node) => observabilityIds.has(node.id)));
+  return positions;
+};
+
+const placeNodes = (
+  graph: CauscapeGraph,
+  options: CauscapeLayoutOptions,
+  shiftToOrigin: boolean,
 ): Map<string, Position> => {
   const originX = options.originX ?? 0;
   const originY = options.originY ?? 0;
@@ -2023,6 +2785,8 @@ const computePositions = (
   }
 
   const placed: Array<{ node: CauscapeNode; box: Box }> = [];
+  // Pinned and locked cards stay put; the other cards pack around them.
+  const hasPinnedNodes = graph.nodes.some((node) => isPinned(node, options));
   for (const node of graph.nodes) {
     if (isPinned(node, options)) {
       positions.set(node.id, { x: node.x, y: node.y });
@@ -2034,6 +2798,26 @@ const computePositions = (
     const desiredCenters = new Map<string, number>();
     let rootIndex = 0;
     for (const node of nodes) {
+      // Aim the primary story at its predecessor's row so it reads as one
+      // line; packing may still shift it to make room for its column.
+      const spineParent = mainSpine.has(node.id)
+        ? validEdges(flowGraph).find(
+            (edge) =>
+              edge.toNodeId === node.id &&
+              mainSpine.has(edge.fromNodeId) &&
+              positions.has(edge.fromNodeId),
+          )
+        : undefined;
+      const spineParentNode =
+        spineParent && graph.nodesById.get(spineParent.fromNodeId);
+      if (spineParentNode) {
+        desiredCenters.set(
+          node.id,
+          (positions.get(spineParentNode.id)?.y ?? 0) +
+            spineParentNode.height / 2,
+        );
+        continue;
+      }
       const neighborCenters = validEdges(flowGraph)
         .filter(
           (edge) => edge.toNodeId === node.id || edge.fromNodeId === node.id,
@@ -2072,32 +2856,40 @@ const computePositions = (
         (desiredCenters.get(a.id) ?? a.y) - (desiredCenters.get(b.id) ?? b.y) ||
         a.id.localeCompare(b.id),
     );
-    for (const node of nodes) {
-      if (isPinned(node, options)) {
-        continue;
-      }
-      const x = layerX.get(rank) ?? originX;
-      const step = Math.max(node.height + gapY, 1);
-      let y = Math.max(
-        originY,
-        (desiredCenters.get(node.id) ?? originY + node.height / 2) -
+    const freeNodes = nodes.filter((node) => !isPinned(node, options));
+    const x = layerX.get(rank) ?? originX;
+    const tops = packColumn(
+      freeNodes.map(
+        (node) =>
+          (desiredCenters.get(node.id) ?? originY + node.height / 2) -
           node.height / 2,
-      );
-      while (true) {
-        const candidateBox = {
-          x,
-          y,
-          width: node.width,
-          height: node.height,
-        };
-        if (!placed.some(({ box }) => boxesOverlap(candidateBox, box))) {
-          break;
-        }
-        y += step;
-      }
-      const selected = { x, y };
-      positions.set(node.id, selected);
+      ),
+      freeNodes.map((node) => node.height),
+      gapY,
+      getColumnSegments(
+        x,
+        x + Math.max(0, ...freeNodes.map((node) => node.width)),
+        placed.map(({ box }) => box),
+        gapY,
+        // Fixed cards cannot follow a shift of the whole diagram, so a
+        // column with them starts at the origin instead.
+        hasPinnedNodes ? originY : -Infinity,
+      ),
+    );
+    freeNodes.forEach((node, index) => {
+      positions.set(node.id, { x, y: tops[index] });
       placed.push({ node, box: boxFor(node, positions) });
+    });
+  }
+  if (shiftToOrigin && !hasPinnedNodes && positions.size > 0) {
+    // Centering a column on its parents can lift it above the origin.
+    // Fixed cards cannot move, so computePositions aligns the origin instead.
+    const shift =
+      originY - Math.min(...[...positions.values()].map(({ y }) => y));
+    if (shift > 0) {
+      for (const position of positions.values()) {
+        position.y += shift;
+      }
     }
   }
   if (options.enableVerticalSubflows) {
@@ -2112,10 +2904,238 @@ const computePositions = (
   return positions;
 };
 
+// Weights of analyzeGraphQualityWithPenalty, shared with getEdgePenalty.
+const PENALTY = {
+  edgeClearance: 12,
+  edgeDetached: 40,
+  edgeThroughNode: 16,
+  crossing: 5,
+  routeOverlap: 12,
+  labelOverlap: 16,
+  bend: 0.25,
+  maxBendPenalty: 20,
+} as const;
+
+const getBendPenalty = (bendCount: number): number =>
+  Math.min(PENALTY.maxBendPenalty, bendCount * PENALTY.bend);
+
+const countRouteBends = (route: CauscapeEdgeGeometry): number =>
+  Math.max(0, route.points.length - 2);
+
+/**
+ * Every penalty term of analyzeGraphQualityWithPenalty that involves `edge`,
+ * except the global bend cap. Replacing one route changes only these terms,
+ * so comparing them is equivalent to re-analyzing the whole diagram, at the
+ * cost of one edge instead of all pairs.
+ */
+const getEdgePenalty = (
+  graph: CauscapeGraph,
+  edge: CauscapeEdge,
+  route: CauscapeEdgeGeometry,
+  routes: ReadonlyMap<string, CauscapeEdgeGeometry>,
+  labelBoxes: ReadonlyMap<string, Box | null>,
+  positions: ReadonlyMap<string, Position>,
+  edgeClearance: number | undefined,
+  labelClearance: number,
+): number => {
+  let penalty = 0;
+  const points = absolutePoints(route);
+  const spacing = routeSpacing(
+    edge,
+    route,
+    graph.nodes,
+    positions,
+    edgeClearance,
+  );
+  penalty +=
+    PENALTY.edgeClearance *
+    (Number(spacing.shortEndpoint) + spacing.crowdedNodes.length);
+  const [fromId, toId] = getCauscapeFlowEndpointIds(edge);
+  const from = graph.nodesById.get(fromId);
+  const to = graph.nodesById.get(toId);
+  if (
+    !from ||
+    !to ||
+    !pointTouchesNodeBorder(points[0], boxFor(from, positions)) ||
+    !pointTouchesNodeBorder(points[points.length - 1], boxFor(to, positions))
+  ) {
+    penalty += PENALTY.edgeDetached;
+  }
+  const labelBox = getCauscapeEdgeLabelBox(edge, route, labelClearance);
+  for (const node of graph.nodes) {
+    const box = boxFor(node, positions);
+    if (
+      node.id !== fromId &&
+      node.id !== toId &&
+      pointsIntersectBox(points, box)
+    ) {
+      penalty += PENALTY.edgeThroughNode;
+    }
+    if (labelBox) {
+      if (boxesOverlap(labelBox, box)) {
+        penalty += PENALTY.labelOverlap;
+      } else if (
+        boxesOverlap(labelBox, inflateBox(box, GRAPH_SPACING.labelPadding))
+      ) {
+        penalty += PENALTY.edgeClearance;
+      }
+    }
+  }
+  for (const other of validEdges(graph)) {
+    const otherRoute = other.id === edge.id ? undefined : routes.get(other.id);
+    if (!otherRoute) {
+      continue;
+    }
+    const otherLabelBox = labelBoxes.get(other.id) ?? null;
+    if (routeCrosses(route, otherRoute)) {
+      penalty += PENALTY.crossing;
+    }
+    if (routeOverlapLength(route, otherRoute) > MIN_MEANINGFUL_ROUTE_OVERLAP) {
+      penalty += PENALTY.routeOverlap;
+    }
+    if (labelBox && routeIntersectsBox(otherRoute, labelBox)) {
+      penalty += PENALTY.labelOverlap;
+    }
+    if (otherLabelBox && routeIntersectsBox(route, otherLabelBox)) {
+      penalty += PENALTY.labelOverlap;
+    }
+    if (labelBox && otherLabelBox && boxesOverlap(labelBox, otherLabelBox)) {
+      penalty += PENALTY.labelOverlap;
+    }
+  }
+  return penalty;
+};
+
+type CardSide = "left" | "right" | "top" | "bottom";
+
+type SidePort = Readonly<{
+  edge: CauscapeEdge;
+  /** Index of the endpoint in the route's absolute points. */
+  pointIndex: number;
+  /** Position along the side: y for left/right, x for top/bottom. */
+  coordinate: number;
+  movable: boolean;
+}>;
+
+/**
+ * The card side an endpoint attaches to, read from the attached segment:
+ * a horizontal segment leaves through the left or right side, a vertical one
+ * through the top or bottom.
+ */
+const getEndpointSide = (
+  endpoint: Point,
+  next: Point,
+  box: Box,
+): CardSide | null => {
+  const tolerance = 2;
+  if (Math.abs(endpoint[1] - next[1]) < EPSILON) {
+    if (Math.abs(endpoint[0] - box.x) <= tolerance) {
+      return "left";
+    }
+    if (Math.abs(endpoint[0] - (box.x + box.width)) <= tolerance) {
+      return "right";
+    }
+  } else if (Math.abs(endpoint[0] - next[0]) < EPSILON) {
+    if (Math.abs(endpoint[1] - box.y) <= tolerance) {
+      return "top";
+    }
+    if (Math.abs(endpoint[1] - (box.y + box.height)) <= tolerance) {
+      return "bottom";
+    }
+  }
+  return null;
+};
+
+/**
+ * Count segment pairs of two routes that come within `tolerance` of each
+ * other without properly crossing. Lines that meet at a corner or run end to
+ * end in one lane read as a connection that does not exist. The quality
+ * penalty does not see them, since they neither cross nor overlap.
+ */
+const countRouteContacts = (
+  a: readonly Point[],
+  b: readonly Point[],
+  tolerance: number,
+): number => {
+  let contacts = 0;
+  for (let aIndex = 1; aIndex < a.length; aIndex += 1) {
+    for (let bIndex = 1; bIndex < b.length; bIndex += 1) {
+      const [p, q] = [a[aIndex - 1], a[aIndex]];
+      const [r, t] = [b[bIndex - 1], b[bIndex]];
+      // Axis-aligned segments are their own bounding boxes, so the box gap
+      // is their exact distance.
+      const gapX = Math.max(
+        0,
+        Math.max(Math.min(p[0], q[0]), Math.min(r[0], t[0])) -
+          Math.min(Math.max(p[0], q[0]), Math.max(r[0], t[0])),
+      );
+      const gapY = Math.max(
+        0,
+        Math.max(Math.min(p[1], q[1]), Math.min(r[1], t[1])) -
+          Math.min(Math.max(p[1], q[1]), Math.max(r[1], t[1])),
+      );
+      if (Math.hypot(gapX, gapY) < tolerance && !segmentCrosses(p, q, r, t)) {
+        contacts += 1;
+      }
+    }
+  }
+  return contacts;
+};
+
+/** Both end sides of a route, e.g. "right>top", or "" if unattached. */
+const getRouteEndSides = (
+  graph: CauscapeGraph,
+  edge: CauscapeEdge,
+  route: CauscapeEdgeGeometry,
+  positions: ReadonlyMap<string, Position>,
+): string => {
+  const points = absolutePoints(route);
+  const [fromId, toId] = getCauscapeFlowEndpointIds(edge);
+  const from = graph.nodesById.get(fromId);
+  const to = graph.nodesById.get(toId);
+  if (!from || !to || points.length < 2) {
+    return "";
+  }
+  const start = getEndpointSide(points[0], points[1], boxFor(from, positions));
+  const end = getEndpointSide(
+    points[points.length - 1],
+    points[points.length - 2],
+    boxFor(to, positions),
+  );
+  return start && end ? `${start}>${end}` : "";
+};
+
+/**
+ * Move a route's endpoint along its card side. The endpoint and its first
+ * bend move together, so the attached segment keeps its direction and
+ * length and the route stays orthogonal.
+ */
+const shiftRouteEndpoint = (
+  route: CauscapeEdgeGeometry,
+  pointIndex: number,
+  side: CardSide,
+  coordinate: number,
+): CauscapeEdgeGeometry => {
+  const points = absolutePoints(route);
+  const neighborIndex = pointIndex === 0 ? 1 : points.length - 2;
+  const axis = side === "left" || side === "right" ? 1 : 0;
+  points[pointIndex][axis] = coordinate;
+  points[neighborIndex][axis] = coordinate;
+  return geometryFromAbsolutePoints(points);
+};
+
+type RouteScope = Readonly<{
+  /** Edges to (re)route; every other valid edge keeps its fixed route. */
+  edgeIds: ReadonlySet<string>;
+  fixedRoutes: ReadonlyMap<string, CauscapeEdgeGeometry>;
+}>;
+
 const computeRoutes = (
   graph: CauscapeGraph,
   positions: ReadonlyMap<string, Position>,
   options: CauscapeLayoutOptions,
+  weights: RoutingWeights,
+  scope?: RouteScope,
 ): Map<string, CauscapeEdgeGeometry> => {
   const routes = new Map<string, CauscapeEdgeGeometry>();
   const labelBoxes: Box[] = [];
@@ -2127,11 +3147,25 @@ const computeRoutes = (
     0,
     options.labelClearance ?? DEFAULT_EDGE_CLEARANCE,
   );
-  for (const edge of [...validEdges(graph)].sort(
-    (a, b) =>
-      getEdgeRoutingPriority(a) - getEdgeRoutingPriority(b) ||
-      a.id.localeCompare(b.id),
-  )) {
+  const isRouted = (edge: CauscapeEdge) =>
+    !scope || scope.edgeIds.has(edge.id) || !scope.fixedRoutes.has(edge.id);
+  for (const edge of validEdges(graph)) {
+    const fixed = isRouted(edge) ? undefined : scope?.fixedRoutes.get(edge.id);
+    if (fixed) {
+      routes.set(edge.id, fixed);
+      const labelBox = getCauscapeEdgeLabelBox(edge, fixed, labelClearance);
+      if (labelBox) {
+        labelBoxes.push(labelBox);
+      }
+    }
+  }
+  for (const edge of [...validEdges(graph)]
+    .filter(isRouted)
+    .sort(
+      (a, b) =>
+        getEdgeRoutingPriority(a) - getEdgeRoutingPriority(b) ||
+        a.id.localeCompare(b.id),
+    )) {
     const route = routeAroundNodes(
       edge,
       graph.nodes,
@@ -2140,6 +3174,7 @@ const computeRoutes = (
       labelBoxes,
       clearance,
       labelClearance,
+      weights,
     );
     routes.set(edge.id, route);
     const labelBox = getCauscapeEdgeLabelBox(edge, route, labelClearance);
@@ -2149,8 +3184,9 @@ const computeRoutes = (
   }
   // Earlier routes cannot see later labels. Revisit only conflicts against
   // the complete set, accepting a replacement only when total quality rises.
-  for (let pass = 0; pass < 2; pass += 1) {
-    let report = analyzeGraphQuality(graph, {
+  // A local re-route after a drag gets one pass to stay interactive.
+  for (let pass = 0; pass < (scope ? 1 : 2); pass += 1) {
+    const { report } = analyzeGraphQualityWithPenalty(graph, {
       positions,
       routes,
       labelClearance,
@@ -2166,16 +3202,38 @@ const computeRoutes = (
         )
         .flatMap((item) => item.elementIds ?? []),
     );
+    // Kept in the same order as `routes`, which candidate generation uses.
+    const routeLabelBoxes = new Map<string, Box | null>();
+    let bendCount = 0;
+    for (const [id, route] of routes) {
+      const routedEdge = graph.edgesById.get(id);
+      routeLabelBoxes.set(
+        id,
+        routedEdge
+          ? getCauscapeEdgeLabelBox(routedEdge, route, labelClearance)
+          : null,
+      );
+      bendCount += countRouteBends(route);
+    }
+    const edgePenalty = (edge: CauscapeEdge, route: CauscapeEdgeGeometry) =>
+      getEdgePenalty(
+        graph,
+        edge,
+        route,
+        routes,
+        routeLabelBoxes,
+        positions,
+        options.edgeClearance,
+        labelClearance,
+      );
     let changed = false;
     for (const edge of validEdges(graph)) {
-      if (!conflicts.has(edge.id)) {
+      if (!conflicts.has(edge.id) || !isRouted(edge)) {
         continue;
       }
       const others = [...routes.entries()].filter(([id]) => id !== edge.id);
-      const otherLabels = others.flatMap(([id, route]) => {
-        const other = graph.edgesById.get(id);
-        const box =
-          other && getCauscapeEdgeLabelBox(other, route, labelClearance);
+      const otherLabels = others.flatMap(([id]) => {
+        const box = routeLabelBoxes.get(id);
         return box ? [box] : [];
       });
       const replacement = routeAroundNodes(
@@ -2186,24 +3244,408 @@ const computeRoutes = (
         otherLabels,
         clearance,
         labelClearance,
+        weights,
       );
       const previous = routes.get(edge.id)!;
-      routes.set(edge.id, replacement);
-      const next = analyzeGraphQuality(graph, {
-        positions,
-        routes,
-        labelClearance,
-        edgeClearance: options.edgeClearance,
-      });
-      if (next.metrics.score > report.metrics.score) {
-        report = next;
+      const nextBendCount =
+        bendCount - countRouteBends(previous) + countRouteBends(replacement);
+      const delta =
+        edgePenalty(edge, replacement) -
+        edgePenalty(edge, previous) +
+        getBendPenalty(nextBendCount) -
+        getBendPenalty(bendCount);
+      if (delta < 0) {
+        routes.set(edge.id, replacement);
+        routeLabelBoxes.set(
+          edge.id,
+          getCauscapeEdgeLabelBox(edge, replacement, labelClearance),
+        );
+        bendCount = nextBendCount;
         changed = true;
-      } else {
-        routes.set(edge.id, previous);
       }
     }
     if (!changed) {
       break;
+    }
+  }
+  balanceSidePorts(
+    graph,
+    routes,
+    positions,
+    options.edgeClearance,
+    labelClearance,
+    isRouted,
+  );
+  return routes;
+};
+
+/**
+ * Center connections on card sides. A side used by one route gets it at
+ * its middle; a side shared by k routes spreads them evenly, in their
+ * current order, at 1/(k+1), 2/(k+1), and so on. Straight routes cannot
+ * move without bending, so the others spread around them. Routing may
+ * attach off center to find a free lane, so each move is kept only if the
+ * diagram's quality penalty does not get worse.
+ */
+const balanceSidePorts = (
+  graph: CauscapeGraph,
+  routes: Map<string, CauscapeEdgeGeometry>,
+  positions: ReadonlyMap<string, Position>,
+  edgeClearance: number | undefined,
+  labelClearance: number,
+  isRouted: (edge: CauscapeEdge) => boolean,
+): void => {
+  const sides = new Map<
+    string,
+    { node: CauscapeNode; side: CardSide; ports: SidePort[] }
+  >();
+  for (const edge of validEdges(graph)) {
+    const route = routes.get(edge.id);
+    if (!route) {
+      continue;
+    }
+    const points = absolutePoints(route);
+    const endpointIds = getCauscapeFlowEndpointIds(edge);
+    for (const [end, pointIndex] of [
+      [0, 0],
+      [1, points.length - 1],
+    ] as const) {
+      const node = graph.nodesById.get(endpointIds[end]);
+      if (!node || points.length < 2) {
+        continue;
+      }
+      const next = points[pointIndex === 0 ? 1 : points.length - 2];
+      const side = getEndpointSide(
+        points[pointIndex],
+        next,
+        boxFor(node, positions),
+      );
+      if (!side) {
+        continue;
+      }
+      const key = `${node.id}:${side}`;
+      const group = sides.get(key) ?? { node, side, ports: [] };
+      group.ports.push({
+        edge,
+        pointIndex,
+        coordinate:
+          side === "left" || side === "right"
+            ? points[pointIndex][1]
+            : points[pointIndex][0],
+        // Moving one end of a straight route would bend it. Out-of-scope
+        // routes keep their stored geometry.
+        movable: points.length > 2 && isRouted(edge),
+      });
+      sides.set(key, group);
+    }
+  }
+
+  const routeLabelBoxes = new Map<string, Box | null>();
+  let bendCount = 0;
+  for (const [id, route] of routes) {
+    const routedEdge = graph.edgesById.get(id);
+    routeLabelBoxes.set(
+      id,
+      routedEdge
+        ? getCauscapeEdgeLabelBox(routedEdge, route, labelClearance)
+        : null,
+    );
+    bendCount += countRouteBends(route);
+  }
+  for (const { node, side, ports } of sides.values()) {
+    const box = boxFor(node, positions);
+    const [sideStart, sideLength] =
+      side === "left" || side === "right"
+        ? [box.y, box.height]
+        : [box.x, box.width];
+    const ordered = [...ports].sort(
+      (a, b) =>
+        a.coordinate - b.coordinate || a.edge.id.localeCompare(b.edge.id),
+    );
+    // Routes that cannot move stay as anchors; the movable routes between
+    // two anchors (or a side end) spread evenly over that stretch.
+    const targets = new Map<SidePort, number>();
+    let stretchStart = sideStart;
+    let stretch: SidePort[] = [];
+    const spread = (stretchEnd: number) => {
+      stretch.forEach((port, index) => {
+        targets.set(
+          port,
+          stretchStart +
+            ((stretchEnd - stretchStart) * (index + 1)) / (stretch.length + 1),
+        );
+      });
+      stretch = [];
+    };
+    for (const port of ordered) {
+      if (port.movable) {
+        stretch.push(port);
+      } else {
+        spread(port.coordinate);
+        stretchStart = port.coordinate;
+      }
+    }
+    spread(sideStart + sideLength);
+    for (const port of ordered) {
+      const target = targets.get(port);
+      if (target === undefined || Math.abs(port.coordinate - target) < 0.5) {
+        continue;
+      }
+      const previous = routes.get(port.edge.id)!;
+      const pointIndex = port.pointIndex === 0 ? 0 : previous.points.length - 1;
+      const replacement = shiftRouteEndpoint(
+        previous,
+        pointIndex,
+        side,
+        target,
+      );
+      // A bend may collapse (an L becoming a straight line is fine), but
+      // both ends must still leave their cards through the same sides;
+      // otherwise a route could end up running along a card's edge.
+      if (
+        getRouteEndSides(graph, port.edge, replacement, positions) !==
+        getRouteEndSides(graph, port.edge, previous, positions)
+      ) {
+        continue;
+      }
+      // Centering must not make two routes touch where they did not before.
+      const contacts = (route: CauscapeEdgeGeometry) => {
+        const points = absolutePoints(route);
+        let count = 0;
+        for (const [id, other] of routes) {
+          if (id !== port.edge.id) {
+            count += countRouteContacts(
+              points,
+              absolutePoints(other),
+              GRAPH_SPACING.labelPadding,
+            );
+          }
+        }
+        return count;
+      };
+      if (contacts(replacement) > contacts(previous)) {
+        continue;
+      }
+      const edgePenalty = (route: CauscapeEdgeGeometry) =>
+        getEdgePenalty(
+          graph,
+          port.edge,
+          route,
+          routes,
+          routeLabelBoxes,
+          positions,
+          edgeClearance,
+          labelClearance,
+        );
+      const nextBendCount =
+        bendCount - countRouteBends(previous) + countRouteBends(replacement);
+      const delta =
+        edgePenalty(replacement) -
+        edgePenalty(previous) +
+        getBendPenalty(nextBendCount) -
+        getBendPenalty(bendCount);
+      if (delta <= 0) {
+        routes.set(port.edge.id, replacement);
+        routeLabelBoxes.set(
+          port.edge.id,
+          getCauscapeEdgeLabelBox(port.edge, replacement, labelClearance),
+        );
+        bendCount = nextBendCount;
+      }
+    }
+  }
+};
+
+/** Readability failures that no amount of shorter routing makes up for. */
+const countHardRouteDefects = (metrics: GraphQualityMetrics): number =>
+  metrics.overlapCount +
+  metrics.edgeThroughNodeCount +
+  metrics.edgeDetachedCount +
+  metrics.edgeClearanceCount +
+  metrics.routeOverlapCount +
+  metrics.edgeLabelOverlapCount;
+
+const getSoftRouteCost = (
+  routes: ReadonlyMap<string, CauscapeEdgeGeometry>,
+  metrics: GraphQualityMetrics,
+): number => {
+  let cost = metrics.crossingCount * BALANCED_CROSSING_COST;
+  for (const route of routes.values()) {
+    const points = absolutePoints(route);
+    for (let index = 1; index < points.length; index += 1) {
+      cost += Math.hypot(
+        points[index][0] - points[index - 1][0],
+        points[index][1] - points[index - 1][1],
+      );
+    }
+    cost += Math.max(0, points.length - 2) * BALANCED_BEND_COST;
+  }
+  return cost;
+};
+
+/**
+ * Route with balanced weights first. Only when that leaves hard readability
+ * defects, also try strict routing and keep whichever is more readable.
+ */
+const computeBestRoutes = (
+  graph: CauscapeGraph,
+  positions: ReadonlyMap<string, Position>,
+  options: CauscapeLayoutOptions,
+): {
+  routes: Map<string, CauscapeEdgeGeometry>;
+  report: GraphQualityReport;
+} => {
+  // Same options as the caller's final report, so it can reuse this one.
+  const qualityOptions = {
+    positions,
+    viewport: options.viewport,
+    edgeClearance: options.edgeClearance,
+    labelClearance: options.labelClearance,
+  };
+  const balanced = computeRoutes(graph, positions, options, BALANCED_ROUTING);
+  const balancedReport = analyzeGraphQuality(graph, {
+    ...qualityOptions,
+    routes: balanced,
+  });
+  const balancedDefects = countHardRouteDefects(balancedReport.metrics);
+  if (balancedDefects === 0) {
+    return { routes: balanced, report: balancedReport };
+  }
+  const strict = computeRoutes(graph, positions, options, STRICT_ROUTING);
+  const strictReport = analyzeGraphQuality(graph, {
+    ...qualityOptions,
+    routes: strict,
+  });
+  const strictDefects = countHardRouteDefects(strictReport.metrics);
+  return strictDefects < balancedDefects ||
+    (strictDefects === balancedDefects &&
+      getSoftRouteCost(strict, strictReport.metrics) <
+        getSoftRouteCost(balanced, balancedReport.metrics))
+    ? { routes: strict, report: strictReport }
+    : { routes: balanced, report: balancedReport };
+};
+
+const storedEdgeRoute = (edge: CauscapeEdge): CauscapeEdgeGeometry | null => {
+  const { x, y, width, height, points } = edge.element;
+  return points && points.length >= 2
+    ? {
+        x,
+        y,
+        width,
+        height,
+        points: points.map((point) => [point[0], point[1]] as Point),
+      }
+    : null;
+};
+
+export type CauscapeRerouteOptions = Readonly<{
+  /** Cards that moved or changed size. */
+  changedNodeIds?: ReadonlySet<string>;
+  /** Edges whose label, relationship, or endpoints changed. */
+  changedEdgeIds?: ReadonlySet<string>;
+  /**
+   * Where changed cards used to be. Routes that passed beside those spots
+   * were probably detouring around the card and are re-routed too, so a
+   * moved card does not leave a detour around empty space.
+   */
+  vacatedBoxes?: readonly Readonly<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }>[];
+  edgeClearance?: number;
+  labelClearance?: number;
+}>;
+
+/**
+ * Re-route only the edges a local change affects: edges attached to changed
+ * cards, explicitly changed edges, edges without usable stored geometry,
+ * stored routes or labels that a changed card now sits on, and stored routes
+ * that passed beside a card's previous position. Every other edge
+ * keeps its stored route, so dragging one card does not reshuffle the whole
+ * diagram and stays fast enough to run on pointer up.
+ */
+export const rerouteCauscapeEdges = (
+  graph: CauscapeGraph,
+  options: CauscapeRerouteOptions = {},
+): Map<string, CauscapeEdgeGeometry> => {
+  const changedNodeIds = options.changedNodeIds ?? new Set<string>();
+  const changedEdgeIds = options.changedEdgeIds ?? new Set<string>();
+  const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
+  const labelClearance = Math.max(
+    0,
+    options.labelClearance ?? DEFAULT_EDGE_CLEARANCE,
+  );
+  const clearance = Math.max(
+    GRAPH_SPACING.nodeClearance,
+    options.edgeClearance ?? 0,
+  );
+  const changedBoxes = [...changedNodeIds]
+    .map((id) => nodeById.get(id))
+    .filter((node): node is CauscapeNode => node !== undefined)
+    .map((node) => ({ id: node.id, box: boxFor(node) }));
+  // A detour hugs the card at about the clearance distance, so look a
+  // little beyond it.
+  const vacatedBoxes = (options.vacatedBoxes ?? []).map((box) =>
+    inflateBox(box, clearance + GRAPH_SPACING.endpointRunway),
+  );
+  const fixedRoutes = new Map<string, CauscapeEdgeGeometry>();
+  const edgeIds = new Set<string>();
+  for (const edge of validEdges(graph)) {
+    const stored = storedEdgeRoute(edge);
+    if (stored) {
+      fixedRoutes.set(edge.id, stored);
+    }
+    const [fromId, toId] = getCauscapeFlowEndpointIds(edge);
+    const from = nodeById.get(fromId) as CauscapeNode;
+    const to = nodeById.get(toId) as CauscapeNode;
+    const points = stored ? absolutePoints(stored) : [];
+    const labelBox = stored
+      ? getCauscapeEdgeLabelBox(edge, stored, labelClearance)
+      : null;
+    if (
+      !stored ||
+      changedEdgeIds.has(edge.id) ||
+      changedNodeIds.has(fromId) ||
+      changedNodeIds.has(toId) ||
+      !pointTouchesNodeBorder(points[0], boxFor(from)) ||
+      !pointTouchesNodeBorder(points[points.length - 1], boxFor(to)) ||
+      changedBoxes.some(
+        ({ box }) =>
+          pointsIntersectBox(points, inflateBox(box, clearance)) ||
+          (labelBox !== null &&
+            boxesOverlap(
+              labelBox,
+              inflateBox(box, GRAPH_SPACING.labelPadding),
+            )),
+      ) ||
+      vacatedBoxes.some((box) => pointsIntersectBox(points, box))
+    ) {
+      edgeIds.add(edge.id);
+    }
+  }
+  const routes = new Map<string, CauscapeEdgeGeometry>();
+  if (edgeIds.size === 0) {
+    return routes;
+  }
+  const positions = new Map(
+    graph.nodes.map((node) => [node.id, { x: node.x, y: node.y }]),
+  );
+  const computed = computeRoutes(
+    graph,
+    positions,
+    {
+      edgeClearance: options.edgeClearance,
+      labelClearance: options.labelClearance,
+    },
+    BALANCED_ROUTING,
+    { edgeIds, fixedRoutes },
+  );
+  for (const id of edgeIds) {
+    const route = computed.get(id);
+    if (route) {
+      routes.set(id, route);
     }
   }
   return routes;
@@ -2226,12 +3668,11 @@ export const improveCauscapeGraph = (
   const before = analyzeGraphQuality(graph, qualityOptions);
   const maxIterations = Math.max(1, Math.floor(options.maxIterations ?? 3));
   let positions = computePositions(graph, options);
-  let edges = computeRoutes(graph, positions, options);
-  let after = analyzeGraphQuality(graph, {
-    ...qualityOptions,
+  let { routes: edges, report: after } = computeBestRoutes(
+    graph,
     positions,
-    routes: edges,
-  });
+    options,
+  );
   let iterations = 1;
   let converged = false;
   while (iterations < maxIterations) {
@@ -2243,12 +3684,11 @@ export const improveCauscapeGraph = (
       converged = true;
       break;
     }
-    const nextEdges = computeRoutes(graph, nextPositions, options);
-    const nextAfter = analyzeGraphQuality(graph, {
-      ...qualityOptions,
-      positions: nextPositions,
-      routes: nextEdges,
-    });
+    const { routes: nextEdges, report: nextAfter } = computeBestRoutes(
+      graph,
+      nextPositions,
+      options,
+    );
     if (nextAfter.metrics.score < after.metrics.score) {
       converged = true;
       break;

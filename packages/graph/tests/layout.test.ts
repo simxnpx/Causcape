@@ -829,6 +829,152 @@ describe("graph quality pipeline", () => {
     expect(result.after.metrics.overlapCount).toBe(0);
   });
 
+  it("recognizes observability names without matching look-alikes", () => {
+    const names = [
+      ["otel", "OpenTelemetry Collector"],
+      ["audit", "audit_log"],
+      ["stash", "Logstash"],
+      ["login", "Login Service"],
+      ["blog", "Blog Catalog"],
+    ] as const;
+    const service = node("service", 0, 0);
+    const others = names.map(([id, label], index) =>
+      node(id, 240, index * 60, { label }),
+    );
+    const result = improveCauscapeGraph(
+      graph(
+        [service, ...others],
+        names.map(([id]) =>
+          edge(`service-${id}`, "service", id, { relationship: "calls" }),
+        ),
+      ),
+      { originX: 0, originY: 0, gapX: 80, gapY: 40 },
+    );
+    const y = (id: string) => result.positions.get(id)?.y as number;
+    const mainFlowBottom = Math.max(y("login"), y("blog")) + 20;
+
+    for (const id of ["otel", "audit", "stash"]) {
+      expect(y(id), id).toBeGreaterThan(mainFlowBottom);
+    }
+    expect(y("otel")).toBe(y("audit"));
+    expect(y("otel")).toBe(y("stash"));
+  });
+
+  it("terminates when a free card slides below a pinned card at a fractional position", () => {
+    // (bottom + gap) - gap can round to just above bottom; the slide must
+    // still make progress instead of finding the same blocker forever.
+    for (const pinnedY of [14.17, 0.1, 33.333, 7.77, 101.9]) {
+      const pinned = node("pinned", 0, pinnedY, { width: 200, height: 132 });
+      const free = node("free", 0, pinnedY, { width: 200, height: 132 });
+      const result = improveCauscapeGraph(graph([pinned, free], []), {
+        pinnedNodeIds: new Set(["pinned"]),
+      });
+      expect(result.positions.get("pinned")).toEqual({ x: 0, y: pinnedY });
+      expect(result.after.metrics.overlapCount).toBe(0);
+    }
+  });
+
+  describe("connection points", () => {
+    const routePoints = (
+      result: ReturnType<typeof improveCauscapeGraph>,
+      id: string,
+    ) => {
+      const route = result.edges.get(id)!;
+      return route.points.map(([x, y]) => [x + route.x, y + route.y]);
+    };
+    const pinAll = (nodes: readonly CauscapeNode[]) => ({
+      pinnedNodeIds: new Set(nodes.map((current) => current.id)),
+      maxIterations: 1,
+    });
+
+    it("centers a single connection on each card side", () => {
+      const nodes = [
+        node("source", 0, 0, { width: 200, height: 120 }),
+        node("target", 600, 300, { width: 200, height: 120 }),
+      ];
+      const result = improveCauscapeGraph(
+        graph(nodes, [edge("source-target", "source", "target")]),
+        pinAll(nodes),
+      );
+      const points = routePoints(result, "source-target");
+      expect(points[0]).toEqual([200, 60]);
+      expect(points[points.length - 1]).toEqual([600, 360]);
+    });
+
+    it("spreads connections sharing a side evenly", () => {
+      const nodes = [
+        node("source", 0, 0, { width: 200, height: 120 }),
+        node("upper", 600, -200, { width: 200, height: 120 }),
+        node("lower", 600, 400, { width: 200, height: 120 }),
+      ];
+      const result = improveCauscapeGraph(
+        graph(nodes, [
+          edge("source-upper", "source", "upper"),
+          edge("source-lower", "source", "lower"),
+        ]),
+        pinAll(nodes),
+      );
+      expect(routePoints(result, "source-upper")[0]).toEqual([200, 40]);
+      expect(routePoints(result, "source-lower")[0]).toEqual([200, 80]);
+      // Each target has a single connection, entered at its side's middle.
+      expect(routePoints(result, "source-upper").at(-1)).toEqual([600, -140]);
+      expect(routePoints(result, "source-lower").at(-1)).toEqual([600, 460]);
+    });
+
+    it("spreads bent connections around a straight one", () => {
+      const result = improveCauscapeGraph(
+        graph(
+          [
+            node("source", 0, 200, { width: 200, height: 120 }),
+            node("a", 600, 0, { width: 200, height: 120 }),
+            node("b", 600, 200, { width: 200, height: 120 }),
+            node("c", 600, 400, { width: 200, height: 120 }),
+          ],
+          [
+            edge("source-a", "source", "a"),
+            edge("source-b", "source", "b"),
+            edge("source-c", "source", "c"),
+          ],
+        ),
+      );
+      const top = result.positions.get("source")!.y;
+      const ports = ["source-a", "source-b", "source-c"].map(
+        (id) => routePoints(result, id)[0][1] - top,
+      );
+      // The straight route keeps the middle; the others split each half.
+      expect(ports).toEqual([30, 60, 90]);
+    });
+
+    it("never ends a route by sliding along its card's edge", () => {
+      const nodes = [
+        node("source", 0, 0, { width: 200, height: 120 }),
+        node("upper", 600, -200, { width: 200, height: 120 }),
+      ];
+      const result = improveCauscapeGraph(
+        graph(nodes, [edge("source-upper", "source", "upper")]),
+        pinAll(nodes),
+      );
+      const points = routePoints(result, "source-upper");
+      const [last, beforeLast] = [points.at(-1)!, points.at(-2)!];
+      // Arriving horizontally means arriving at the left or right side.
+      if (last[1] === beforeLast[1]) {
+        expect([600, 800]).toContain(last[0]);
+      } else {
+        expect([-200, -80]).toContain(last[1]);
+      }
+    });
+  });
+
+  it("routes between degenerate zero-size cards without throwing", () => {
+    const source = node("source", 0, 0, { width: 0, height: 0 });
+    const target = node("target", 400, 0, { width: 0, height: 0 });
+    const result = improveCauscapeGraph(
+      graph([source, target], [edge("source-target", "source", "target")]),
+      { pinnedNodeIds: new Set(["source", "target"]), maxIterations: 1 },
+    );
+    expect(result.edges.get("source-target")?.points.length).toBeGreaterThan(1);
+  });
+
   it("detects overlaps, edge-through-node failures, and crossings", () => {
     const throughGraph = graph(
       [node("a", 0, 0), node("obstacle", 100, 0), node("b", 200, 0)],
